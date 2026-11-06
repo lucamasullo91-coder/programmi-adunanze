@@ -19,12 +19,35 @@ function doGet() {
         ') non è autorizzato. Chiedi a chi gestisce i programmi di aggiungerti.</p></div>'
     ).setTitle('Programmi adunanze');
   }
-  const js = UrlFetchApp.fetch(REPO + 'dist/app.js?v=' + Date.now()).getContentText();
-  const html =
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fira+Sans+Extra+Condensed:wght@400;500;600;700;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap">' +
-    '<script>window.__CONF=' + JSON.stringify({ base: REPO }) + '</script>' +
-    '<div id="root"></div><script>' + js.replace(/<\/script/gi, '<\\/script') + '</script>';
-  return HtmlService.createHtmlOutput(html)
+  // Pagina leggera: scarica il programma da GitHub nel browser e lo avvia; se qualcosa va storto lo scrive.
+  const boot =
+    '<div id="root"><p id="pa-boot" style="font-family:sans-serif;padding:32px 16px;text-align:center;color:#5f6b77">Carico il programma…</p></div>' +
+    '<script>window.__CONF=' + JSON.stringify({ base: REPO }) + ';(' + function (base) {
+      function errore(m) {
+        var d = document.getElementById('pa-boot');
+        if (!d) { d = document.createElement('p'); document.body.appendChild(d); }
+        d.style.cssText = 'font-family:monospace;padding:16px;color:#A8432B;white-space:pre-wrap';
+        d.textContent = 'Errore: ' + m;
+        try { google.script.run.salva('diag-tutto:' + Date.now(), String(m).slice(0, 500)); } catch (e) {}
+      }
+      window.addEventListener('error', function (e) { errore(e.message + ' (' + e.lineno + ':' + e.colno + ')'); });
+      fetch(base + 'dist/app.js?v=' + Date.now())
+        .then(function (r) { if (!r.ok) throw new Error('GitHub ' + r.status); return r.text(); })
+        .then(function (t) {
+          var s = document.createElement('script');
+          s.textContent = t;
+          document.body.appendChild(s);
+          setTimeout(function () {
+            if (window.__paAvviata) return;
+            try { (new Function(t))(); } catch (e) { errore('avvio: ' + e.message); }
+            setTimeout(function () { if (!window.__paAvviata) errore('il programma non è partito'); }, 4000);
+          }, 1500);
+        })
+        .catch(function (e) { errore('download: ' + e.message); });
+    }.toString() + ')(' + JSON.stringify(REPO) + ')</script>';
+  return HtmlService.createHtmlOutput(
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fira+Sans+Extra+Condensed:wght@400;500;600;700;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap">' + boot
+  )
     .setTitle('Programmi adunanze')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
