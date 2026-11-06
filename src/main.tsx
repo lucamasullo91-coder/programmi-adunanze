@@ -19,6 +19,15 @@ import {
 import { normalizza, type Carta, type Evento, type Foglio, type Riga } from "./tipi";
 import { jpegDaDataUrl, pdfDaJpeg, scarica } from "./pdfzip";
 
+// Any error is shown on the page (otherwise a failure inside the Google page is just a blank screen).
+const mostraErrore = (m: string) => {
+  const d = document.createElement("pre");
+  d.style.cssText = "white-space:pre-wrap;margin:16px;padding:12px;border:1px solid #A8432B;color:#A8432B;font:13px monospace;background:#fff";
+  d.textContent = "Errore: " + m;
+  document.body.appendChild(d);
+};
+window.addEventListener("error", (e) => mostraErrore(`${e.message} (${e.filename}:${e.lineno})`));
+window.addEventListener("unhandledrejection", (e) => mostraErrore(String((e.reason as Error)?.message ?? e.reason)));
 for (const c of [fogliCss, appCss]) {
   const st = document.createElement("style");
   st.textContent = c;
@@ -557,4 +566,6 @@ function ridimensiona(file: File): Promise<string> {
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const radice = document.getElementById("root") ?? document.body.appendChild(document.createElement("div"));
+radice.textContent = "";
+createRoot(radice).render(<App />);
