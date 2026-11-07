@@ -265,8 +265,17 @@ function App() {
       await document.fonts.ready;
       const fontEmbedCSS = await cssCaratteri([fogli[0].stile.carattere, fogli[0].stile.condensato]);
       const img: string[] = [];
-      for (const el of box.querySelectorAll<HTMLElement>(".fg-pages .fg-pg"))
-        img.push(await toJpeg(el, { pixelRatio: 2.5, quality: 0.92, backgroundColor: "#fff", cacheBust: false, ...(fontEmbedCSS ? { fontEmbedCSS } : {}) }));
+      // Safari (iPhone, iPad, Mac) leaves the pictures blank the first times it draws a page: draw pages with
+      // pictures a few times and keep the last one.
+      const webkit = /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|Android/.test(navigator.userAgent);
+      const opz = { pixelRatio: 2.5, quality: 0.92, backgroundColor: "#fff", cacheBust: false, ...(fontEmbedCSS ? { fontEmbedCSS } : {}) };
+      for (const el of box.querySelectorAll<HTMLElement>(".fg-pages .fg-pg")) {
+        const foto = [...el.querySelectorAll("img")];
+        await Promise.all(foto.map((i) => (i.complete ? Promise.resolve() : i.decode().catch(() => undefined))));
+        const prove = foto.length ? (webkit ? 3 : 1) : 0;
+        for (let k = 0; k < prove; k++) await toJpeg(el, opz);
+        img.push(await toJpeg(el, opz));
+      }
       const [w, h] = dimensioniPagina(fogli[0].stile);
       const nome = `Programma ${VISTE.find((v) => v[0] === vista)![1].toLowerCase()} ${bimestri.find((b) => b.id === bim)?.nome ?? ""}`.trim();
       const dati = pdfDaJpeg(img.map(jpegDaDataUrl), nome, { w: w * 0.75, h: h * 0.75 });
