@@ -18,4 +18,7 @@ un’assemblea o un congresso al posto di un’adunanza, poi scarica il PDF.
 
 1. Leggere i PDF (guida `mwb_I_AAAAMM.pdf`, riviste `w_I_AAAAMM.pdf`) con `strumenti/parse_mwb.py` e `parse_w.py`.
 2. Generare i mesi con `strumenti/build2.py dati` e aggiungere il bimestre in `dati/indice.json`.
-3. Fare il push: la pagina lo vede subito, senza toccare Apps Script.
+3. Colori: infrasettimanale = colore del titolo «Vita cristiana e ministero» sulla copertina della Guida
+   (`stile.colori.infra` nei mesi del bimestre). Fine settimana = Torre di Guardia: aggiungere copertina e articoli
+   in `strumenti/colori_tdg.json` e lanciare `python3 strumenti/colori_tdg.py dati` (scurisce da solo i colori troppo chiari).
+4. Fare il push: la pagina lo vede subito, senza toccare Apps Script.
