@@ -434,8 +434,7 @@
   display: block;
 }
 .fg-r.top {
-  /* like the week strip of the Guida: grey band, "label | reading" */
-  background: #E4E6E9;
+  background: #fff;
   margin: 0 -14px;
   padding: 4px 14px;
   border-bottom: 1px solid var(--fg-line);
@@ -444,6 +443,10 @@
   font-size: 0.82em;
   letter-spacing: 0.06em;
   color: var(--fg-gen);
+}
+/* From January 2027, like the week strip of the Guida: grey band, "label | reading" */
+.fg-r.top.grigia {
+  background: #E4E6E9;
 }
 .fg-r.top .w .sep {
   display: inline-block;

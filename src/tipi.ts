@@ -191,6 +191,8 @@ export type Colori = {
 export type ModoColore = "sezione" | "inchiostro" | "personalizzato";
 
 export type Stile = {
+  /** Grey band for the weekly reading, like the Guida (from January 2027). */
+  strisciaGrigia?: boolean;
   carattere: string;
   condensato: string;
   /** Text size in % of the base. */

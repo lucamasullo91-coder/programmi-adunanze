@@ -121,6 +121,7 @@ const giornoDiTesto = (t: string) => GIORNI_IT.indexOf((t.trim().split(/\s+/)[0]
 /** The base month with the values written by who compiles it. */
 function applica(f: Foglio, valori: Record<string, string>, foto: Record<string, string>, imp: Record<string, string>): Foglio {
   const g = structuredClone(f);
+  if (g.id >= "2027-01") g.stile = { ...g.stile, strisciaGrigia: true };
   g.sorv = imp["sorv"] ?? "";
   g.condTG = imp["condTG"] ?? "";
   if (imp["cong"]) g.cong = imp["cong"];

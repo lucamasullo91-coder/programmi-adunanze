@@ -186,13 +186,13 @@ function RigaFoglio({
   const h = <span className="h">{info?.ora ?? ""}</span>;
   if (r.tipo === "testa")
     return (
-      <div {...sa} className={cls("fg-r top", sa.className)} style={col}>
+      <div {...sa} className={cls("fg-r top", stile.strisciaGrigia && "grigia", sa.className)} style={col}>
         <span className="h" />
         <span className="w">
           {r.titolo}
           {r.rif && (
             <>
-              <span className="sep" aria-hidden />
+              {stile.strisciaGrigia ? <span className="sep" aria-hidden /> : " · "}
               <b dangerouslySetInnerHTML={ricco(r.rif)} />
             </>
           )}
