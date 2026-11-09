@@ -45,5 +45,6 @@ html, body { margin: 0; background: var(--pa-bg); color: var(--pa-ink); font-fam
   .fg-misura { display: none !important; }
   .fg-pw { box-shadow: none !important; break-after: page; page-break-after: always; }
   .campo.vuoto { background: none !important; }
+  .fg-r.cantico .campo.vuoto { display: none !important; }
   .campo.data { border-bottom: 0 !important; }
 }

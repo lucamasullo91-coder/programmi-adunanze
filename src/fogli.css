@@ -1942,6 +1942,13 @@
 .campo.vuoto.lungo {
   min-width: 26em;
 }
+/* Song number: optional. Short slot while compiling; left out of the PDF when empty ("Cantico e preghiera") */
+.fg-r.cantico .campo.vuoto {
+  min-width: 2.5em;
+}
+.esporta .fg-r.cantico .campo.vuoto {
+  display: none;
+}
 .fg-r .w b .campo:not(.vuoto) {
   font-weight: 600;
 }
