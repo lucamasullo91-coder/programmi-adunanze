@@ -16,7 +16,7 @@ import {
   dimensioniPagina,
   useScala,
 } from "./Rendering";
-import { normalizza, type Carta, type Evento, type Foglio, type Riga } from "./tipi";
+import { normalizza, GIORNI_IT, MESI_IT, cap, type Carta, type Evento, type Foglio, type Riga } from "./tipi";
 import { jpegDaDataUrl, pdfDaJpeg, scarica } from "./pdfzip";
 
 // Any error is shown on the page (otherwise a failure inside the Google page is just a blank screen).
@@ -89,6 +89,35 @@ const puo = (ruolo: Ruolo, cartaId: string) =>
   ruolo === "tutto" || (ruolo === "inf") === (tipoCarta(cartaId) === "INFRA");
 const cartaDi = (id: string) => id.replace(/-r\d+$/, "");
 
+/** Day and time of a meeting, from a given week on: key "regola-inf:2027-01-04" / "regola-fs:…" = {"g":3,"ora":"19:30"}
+ *  (g = day of the week, 0 Sunday … 6 Saturday). The latest rule starting on or before the week wins. */
+type Regola = { g: number; ora: string };
+const lunediDi = (cartaId: string) => cartaId.slice(0, 10);
+const tipoBreve = (cartaId: string) => (/-inf$/.test(cartaId) ? "inf" : "fs");
+function regolaPer(cartaId: string, valori: Record<string, string>): Regola | null {
+  const pre = `regola-${tipoBreve(cartaId)}:`;
+  const lun = lunediDi(cartaId);
+  let best: [string, Regola] | null = null;
+  for (const [k, v] of Object.entries(valori)) {
+    if (!k.startsWith(pre)) continue;
+    const da = k.slice(pre.length);
+    if (da > lun || (best && best[0] >= da)) continue;
+    try {
+      best = [da, JSON.parse(v) as Regola];
+    } catch {
+      /* ignore a broken value */
+    }
+  }
+  return best?.[1] ?? null;
+}
+/** "Mercoledì 6 gennaio" for the week starting on Monday `lun` and day `g`. */
+function titoloGiorno(lun: string, g: number) {
+  const [y, m, d] = lun.split("-").map(Number) as [number, number, number];
+  const x = new Date(Date.UTC(y, m - 1, d + ((g + 6) % 7)));
+  return `${cap(GIORNI_IT[x.getUTCDay()]!)} ${x.getUTCDate()} ${MESI_IT[x.getUTCMonth()]}`;
+}
+const giornoDiTesto = (t: string) => GIORNI_IT.indexOf((t.trim().split(/\s+/)[0] ?? "").toLowerCase());
+
 /** The base month with the values written by who compiles it. */
 function applica(f: Foglio, valori: Record<string, string>, foto: Record<string, string>, imp: Record<string, string>): Foglio {
   const g = structuredClone(f);
@@ -97,8 +126,15 @@ function applica(f: Foglio, valori: Record<string, string>, foto: Record<string,
   if (imp["cong"]) g.cong = imp["cong"];
   for (const s of g.settimane)
     for (const c of s.carte) {
+      const reg = c.kicker ? null : regolaPer(c.id, valori); // not on special weeks (Memorial)
+      if (reg) {
+        c.titolo = titoloGiorno(lunediDi(c.id), reg.g);
+        if (reg.ora) c.ora = reg.ora;
+      }
       const d = valori[`${c.id}:data`];
       if (d) c.titolo = d;
+      const o = valori[`${c.id}:ora`];
+      if (o) c.ora = o;
       const ev = valori[`${c.id}:evento`];
       if (ev)
         try {
@@ -115,6 +151,17 @@ function applica(f: Foglio, valori: Record<string, string>, foto: Record<string,
             const v = valori[`${r.id}:${k}`];
             if (v != null) (r as Record<string, unknown>)[k] = v;
           }
+    }
+  // Header ("Mercoledì 19:30"): day and time of the first meeting of each kind in the month
+  const prima = (t: "INFRA" | "FINE") =>
+    g.settimane.flatMap((s) => s.carte).find((c) => c.tipo === t && !c.kicker && !c.evento);
+  for (const v of g.viste ?? [])
+    for (const q of v.quando ?? []) {
+      const c = prima(q.colore === "fine" ? "FINE" : "INFRA");
+      if (!c) continue;
+      const gi = giornoDiTesto(c.titolo ?? "");
+      if (gi >= 0) q.etichetta = cap(GIORNI_IT[gi]!);
+      q.ora = c.ora ?? "";
     }
   return normalizza(g);
 }
@@ -133,7 +180,7 @@ const TIPI_EVENTO = [
 
 type Modifica =
   | { k: "nome"; chiave: string; etichetta: string; parte: string; valore: string }
-  | { k: "carta"; carta: Carta; data: string; evento: (Evento & { fotoId?: string }) | null };
+  | { k: "carta"; carta: Carta; data: string; ora: string; evento: (Evento & { fotoId?: string }) | null };
 
 function App() {
   const [stato, setStato] = useState<Stato | null>(null);
@@ -238,7 +285,7 @@ function App() {
     if (!carta) return;
     if (k === "data") {
       const ev = stato.valori[`${cartaId}:evento`];
-      setMod({ k: "carta", carta, data: carta.titolo, evento: ev ? JSON.parse(ev) : null });
+      setMod({ k: "carta", carta, data: carta.titolo, ora: carta.ora ?? fogli[0]?.inizio ?? "", evento: ev ? JSON.parse(ev) : null });
       return;
     }
     const r = carta.sezioni.flatMap((z) => z.righe).find((x) => x.id === id) as Riga;
@@ -343,7 +390,7 @@ function App() {
           </button>
         </div>
         <p className="pa-aiuto">
-          Tocca uno spazio tratteggiato per scrivere un nome. Tocca la data di un’adunanza per cambiarla o per mettere
+          Tocca uno spazio tratteggiato per scrivere un nome. Tocca la data di un’adunanza per cambiare giorno e orario (anche per le settimane seguenti) o per mettere
           al suo posto un’assemblea o un congresso. Si salva da solo.
         </p>
       </header>
@@ -362,7 +409,7 @@ function App() {
         <FinestraCarta
           m={mod}
           chiudi={() => setMod(null)}
-          salva={async (data, ev, file) => {
+          salva={async (data, ora, seguenti, ev, file) => {
             let fotoId = ev?.fotoId;
             if (file && ev) {
               setLavoro("Carico la foto…");
@@ -379,8 +426,24 @@ function App() {
             const base0 = Object.values(base)
               .flatMap((f) => f.settimane.flatMap((s) => s.carte))
               .find((c) => c.id === mod.carta.id);
+            const id = mod.carta.id;
+            const oraBase = base0?.ora ?? Object.values(base)[0]?.inizio ?? "";
+            const g = giornoDiTesto(data);
+            const righe: [string, string][] = [];
+            if (seguenti && g >= 0) {
+              // from this week on: one rule, and this week follows it
+              righe.push([`regola-${tipoBreve(id)}:${lunediDi(id)}`, JSON.stringify({ g, ora: ora.trim() })]);
+              righe.push([`${id}:data`, data.trim() !== titoloGiorno(lunediDi(id), g) ? data.trim() : ""]);
+              righe.push([`${id}:ora`, ""]);
+            } else {
+              const reg = regolaPer(id, stato?.valori ?? {});
+              const titolo0 = reg ? titoloGiorno(lunediDi(id), reg.g) : base0?.titolo;
+              const ora0 = reg?.ora || oraBase;
+              righe.push([`${id}:data`, data.trim() && data.trim() !== titolo0 ? data.trim() : ""]);
+              righe.push([`${id}:ora`, ora.trim() && ora.trim() !== ora0 ? ora.trim() : ""]);
+            }
             void salva([
-              [`${mod.carta.id}:data`, data.trim() && data.trim() !== base0?.titolo ? data.trim() : ""],
+              ...righe,
               [`${mod.carta.id}:evento`, ev ? JSON.stringify({ ...ev, foto: undefined, ...(fotoId ? { fotoId } : {}) }) : ""],
             ]);
             setMod(null);
@@ -485,9 +548,11 @@ function FinestraCarta({
 }: {
   m: Extract<Modifica, { k: "carta" }>;
   chiudi: () => void;
-  salva: (data: string, ev: (Evento & { fotoId?: string }) | null, file: File | null) => void;
+  salva: (data: string, ora: string, seguenti: boolean, ev: (Evento & { fotoId?: string }) | null, file: File | null) => void;
 }) {
   const [data, setData] = useState(m.data);
+  const [ora, setOra] = useState(m.ora);
+  const [seguenti, setSeguenti] = useState(false);
   const [ev, setEv] = useState<(Evento & { fotoId?: string }) | null>(m.evento);
   const [file, setFile] = useState<File | null>(null);
   const p = (x: Partial<Evento>) => setEv((e) => ({ tipo: TIPI_EVENTO[0]!, ...(e ?? {}), ...x }));
@@ -498,7 +563,11 @@ function FinestraCarta({
         className="pa-box"
         onSubmit={(e) => {
           e.preventDefault();
-          salva(data, ev, file);
+          if (seguenti && giornoDiTesto(data) < 0) {
+            alert("Scrivi il giorno all’inizio, per esempio «Mercoledì 6 gennaio».");
+            return;
+          }
+          salva(data, ora, seguenti, ev, file);
         }}
       >
         <small>{fine ? "Adunanza del fine settimana" : "Adunanza infrasettimanale"}</small>
@@ -506,6 +575,18 @@ function FinestraCarta({
           Giorno
           <input value={data} onChange={(e) => setData(e.target.value)} placeholder="Martedì 3 novembre" />
         </label>
+        {!m.carta.kicker && (
+          <>
+            <label>
+              Orario d’inizio
+              <input type="time" value={ora} onChange={(e) => setOra(e.target.value)} />
+            </label>
+            <label className="pa-check">
+              <input type="checkbox" checked={seguenti} onChange={(e) => setSeguenti(e.target.checked)} />
+              Usa questo giorno della settimana e questo orario anche per tutte le settimane seguenti
+            </label>
+          </>
+        )}
         <label>
           Questa settimana
           <select
