@@ -192,8 +192,8 @@ function RigaFoglio({
           {r.titolo}
           {r.rif && (
             <>
-              {" "}
-              · <b dangerouslySetInnerHTML={ricco(r.rif)} />
+              <span className="sep" aria-hidden />
+              <b dangerouslySetInnerHTML={ricco(r.rif)} />
             </>
           )}
         </span>

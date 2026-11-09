@@ -434,7 +434,8 @@
   display: block;
 }
 .fg-r.top {
-  background: #fff;
+  /* like the week strip of the Guida: grey band, "label | reading" */
+  background: #E4E6E9;
   margin: 0 -14px;
   padding: 4px 14px;
   border-bottom: 1px solid var(--fg-line);
@@ -443,6 +444,15 @@
   font-size: 0.82em;
   letter-spacing: 0.06em;
   color: var(--fg-gen);
+}
+.fg-r.top .w .sep {
+  display: inline-block;
+  width: 1px;
+  height: 1.05em;
+  margin: 0 0.6em;
+  background: currentColor;
+  opacity: 0.55;
+  vertical-align: -0.17em;
 }
 .fg-r.top .w b {
   font-weight: 700;
