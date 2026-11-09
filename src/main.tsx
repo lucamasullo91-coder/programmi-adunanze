@@ -162,7 +162,14 @@ function App() {
       .then(([s, ind]) => {
         setStato(s);
         setBimestri(ind.bimestri);
-        setBim(ind.bimestri.at(-1)?.id ?? "");
+        // Open on the current two-month period (or the next one, if today falls before all of them)
+        const d = new Date();
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const ora =
+          ind.bimestri.find((b) => b.mesi.includes(ym)) ??
+          ind.bimestri.find((b) => (b.mesi.at(-1) ?? "") >= ym) ??
+          ind.bimestri.at(-1);
+        setBim(ora?.id ?? "");
         if (s.ruolo === "fs") setVista((v) => (v === "inf" ? "fs" : v));
         if (s.ruolo === "inf") setVista((v) => (v === "fs" ? "inf" : v));
       })
