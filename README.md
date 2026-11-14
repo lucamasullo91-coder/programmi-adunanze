@@ -22,3 +22,12 @@ un’assemblea o un congresso al posto di un’adunanza, poi scarica il PDF.
    (`stile.colori.infra` nei mesi del bimestre). Fine settimana = Torre di Guardia: aggiungere copertina e articoli
    in `strumenti/colori_tdg.json` e lanciare `python3 strumenti/colori_tdg.py dati` (scurisce da solo i colori troppo chiari).
 4. Fare il push: la pagina lo vede subito, senza toccare Apps Script.
+
+## Programma espositori (OEM)
+
+Pagina separata per il programma dell'opera con espositori mobili, con la stessa tecnica: `espositori/app.html`
+(pagina completa, nessuna compilazione) caricata da `espositori/Codice.gs`, da incollare in un Foglio Google a parte
+«Programma espositori – dati» (schede *Accessi* e *Mesi*: un mese per riga, in JSON, con numero di versione così due
+persone non si sovrascrivono). Ruoli in *Accessi*: `compila`, `legge` (il proprietario del Foglio può tutto).
+Struttura di partenza: le postazioni della congregazione, senza nomi; «Nuovo mese» copia postazioni, orari e
+allestimento del mese prima con i nomi vuoti. I nomi stanno solo nel Foglio.
