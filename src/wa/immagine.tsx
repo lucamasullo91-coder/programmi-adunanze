@@ -82,23 +82,17 @@ export function dividiNome(s: string): [string, string] {
   return [p.slice(0, i).join(" "), p.slice(i).join(" ")];
 }
 
-const cap = (s: string) => s;
 
-function Persona({ x, solo }: { x: Nome; solo: boolean }) {
+/** One person on one line, all capitals, as on the printed program: role tag, then NAME SURNAME. */
+function Persona({ x }: { x: Nome }) {
   const vuoto = !x.v.trim();
-  const [n, c] = x.cognome ? [x.nome ?? "", x.cognome] : dividiNome(x.v);
   return (
-    <span className={`wa-p${solo ? " solo" : ""}`}>
-      {x.ruolo && <span className="wa-ruolo">{x.ruolo}</span>}
+    <span className="wa-p">
       {x.prima && <s className="wa-prima">{x.prima}</s>}
-      {vuoto ? (
-        <span className="wa-cog vuoto">da definire</span>
-      ) : (
-        <>
-          {n && <span className="wa-nom">{cap(n)}</span>}
-          <span className="wa-cog">{cap(c)}</span>
-        </>
-      )}
+      <span className="wa-pl">
+        {x.ruolo && <span className="wa-ruolo">{x.ruolo}</span>}
+        <span className={`wa-nome${vuoto ? " vuoto" : ""}`}>{vuoto ? "da definire" : x.v}</span>
+      </span>
     </span>
   );
 }
@@ -107,11 +101,7 @@ function RigaVoce({ v, colore }: { v: Voce; colore: string }) {
   const lbl = (
     <span className="wa-l">
       <span className="wa-et">
-        {v.n ? (
-          <b className="wa-n" style={{ color: colore }}>
-            {v.n}.
-          </b>
-        ) : null}
+        {v.n ? <b className="wa-n">{v.n}.</b> : null}
         {v.etichetta}
       </span>
       {v.sotto && <span className="wa-sotto">{v.sotto}</span>}
@@ -132,11 +122,23 @@ function RigaVoce({ v, colore }: { v: Voce; colore: string }) {
       {lbl}
       <span className="wa-v">
         {v.nomi ? (
-          v.nomi.map((x, i) => <Persona key={i} x={x} solo={v.nomi!.length === 1} />)
+          v.nomi.map((x, i) => <Persona key={i} x={x} />)
         ) : (
           <span className={`wa-txt${v.testo ? "" : " vuoto"}`}>{v.testo || "da definire"}</span>
         )}
       </span>
+    </div>
+  );
+}
+
+/** "Martedì 17 novembre · 19:30": the date big, the time a bit smaller on the same line. */
+function Data({ s }: { s: string }) {
+  const i = s.lastIndexOf(" · ");
+  const [d, o] = i > 0 && /^\d{1,2}:\d{2}$/.test(s.slice(i + 3)) ? [s.slice(0, i), s.slice(i + 3)] : [s, ""];
+  return (
+    <div className={`wa-s${d.length > 26 ? " lunga" : ""}`}>
+      {d}
+      {o && <span className="wa-ora">{o}</span>}
     </div>
   );
 }
@@ -173,11 +175,24 @@ export function Immagine({
     const corpo = el.querySelector<HTMLElement>(".wa-corpo");
     if (!corpo) return;
     // Largest size that still fits: binary search between 0.5 and 1.35.
-    let lo = 0.5;
+    let lo = 0.4;
     let hi = 1.6;
+    // fits = nothing below the page, no name wider than its row, no part title cut. A row whose names do not fit
+    // beside the title goes on two lines (title, then names): so sparse images can use bigger text.
+    const righe = [...el.querySelectorAll<HTMLElement>(".wa-r:not(.grande)")];
     const entra = (k: number) => {
       el.style.setProperty("--k", String(k));
-      return corpo.scrollHeight <= corpo.clientHeight + 1;
+      for (const r of righe) r.classList.remove("pila");
+      const larga = (r: HTMLElement) => {
+        const t = r.querySelector<HTMLElement>(".wa-et");
+        return r.scrollWidth > r.clientWidth + 1 || (!!t && t.scrollWidth > t.clientWidth + 1);
+      };
+      for (const r of righe) if (larga(r)) r.classList.add("pila");
+      if (corpo.scrollHeight > corpo.clientHeight + 1) return false;
+      for (const r of righe) if (r.scrollWidth > r.clientWidth + 1) return false;
+      for (const e of el.querySelectorAll<HTMLElement>(".wa-et"))
+        if (e.scrollHeight > e.clientHeight + 8 || e.scrollWidth > e.clientWidth + 1) return false;
+      return true;
     };
     if (entra(hi)) return;
     for (let i = 0; i < 12; i++) {
@@ -197,12 +212,12 @@ export function Immagine({
       style={{ ...style, "--c": m.colore } as CSSProperties}
     >
       <div className="wa-band">
+        <div className="wa-t">{m.titolo}</div>
+        <Data s={m.sotto} />
         <div className="wa-k">
           <span>{m.kicker}</span>
           {m.flag && <em>{m.flag}</em>}
         </div>
-        <div className="wa-t">{m.titolo}</div>
-        <div className="wa-s">{m.sotto}</div>
       </div>
       <div className="wa-corpo">
         {m.blocchi.map((b, i) => (
@@ -250,33 +265,40 @@ export const CSS_IMMAGINE = `
   font-family: "Fira Sans", system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden;
   font-size: calc(var(--k) * 10px); -webkit-font-smoothing: antialiased; position: relative; text-align: left; line-height: 1.2; }
 .wa * { box-sizing: border-box; }
-.wa-band { background: var(--c); color: #fff; padding: 50px 64px 40px; flex: none; position: relative; }
-.wa-band::after { content: ""; position: absolute; left: 64px; bottom: 0; width: 120px; height: 8px; background: #F2C66D; }
-.wa-k { display: flex; align-items: center; gap: 18px; font-size: 25px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; opacity: .9; }
-.wa-k em { font-style: normal; font-size: 20px; letter-spacing: .08em; border: 2px solid #fff; border-radius: 8px; padding: 4px 12px; }
-.wa-t { font-size: 62px; font-weight: 700; line-height: 1.05; margin-top: 14px; letter-spacing: -.005em; }
-.wa-s { font-size: 34px; font-weight: 400; margin-top: 10px; opacity: .95; }
-.wa-corpo { flex: 1; min-height: 0; padding: 36px 64px 16px; display: flex; flex-direction: column; gap: 2.6em; overflow: hidden; }
-.wa-b h3 { margin: 0 0 .5em; display: flex; align-items: center; gap: .55em; color: var(--s); font-size: 2.5em; font-weight: 700;
-  letter-spacing: .1em; text-transform: uppercase; border-bottom: 3px solid var(--s); padding-bottom: .35em; }
+.wa-band { background: var(--c); color: #fff; padding: 38px 56px 34px; flex: none; position: relative; }
+.wa-band::after { content: ""; position: absolute; left: 56px; bottom: 0; width: 120px; height: 8px; background: #F2C66D; }
+.wa-t { font-size: 40px; font-weight: 500; line-height: 1.1; letter-spacing: .01em; opacity: .95; }
+.wa-s { font-size: 72px; font-weight: 700; line-height: 1.05; margin-top: 8px; letter-spacing: -.01em; white-space: nowrap; }
+.wa-ora { font-size: .62em; font-weight: 500; margin-left: .45em; opacity: .9; }
+.wa-s.lunga { font-size: 46px; white-space: normal; }
+.wa-k { display: flex; align-items: center; gap: 18px; margin-top: 18px; font-size: 34px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.wa-k em { font-style: normal; font-size: 22px; letter-spacing: .08em; border: 2px solid #fff; border-radius: 8px; padding: 4px 12px; }
+.wa-corpo { flex: 1; min-height: 0; padding: 30px 56px 12px; display: flex; flex-direction: column; gap: 1.5em; overflow: hidden; }
+.wa-b h3 { margin: 0 0 .35em; display: flex; align-items: center; gap: .55em; color: var(--s); font-size: 2.9em; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; border-bottom: 3px solid var(--s); padding-bottom: .3em; }
 .wa-b h3 img, .wa-b h3 svg { width: 1.5em; height: 1.5em; object-fit: contain; }
-.wa-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1em 2em; padding: .8em 0;
+.wa-r { display: grid; grid-template-columns: minmax(36%, 1fr) auto; align-items: center; gap: .6em 1.6em; padding: .55em 0;
   border-bottom: 1.5px solid #DCD9D2; }
 .wa-r:last-child { border-bottom: 0; }
-.wa-l { display: flex; flex-direction: column; gap: .25em; min-width: 0; }
-.wa-et { font-size: 3.7em; font-weight: 600; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.wa-et.piccola { font-size: 2.3em; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.wa-r.pila { grid-template-columns: minmax(0, 1fr); gap: .25em; }
+.wa-r.pila .wa-v { justify-self: start; align-items: flex-start; }
+.wa-r.pila .wa-p { align-items: flex-start; text-align: left; }
+.wa-r.pila .wa-pl { justify-content: flex-start; }
+.wa-r.pila .wa-txt { text-align: left; }
+.wa-l { display: flex; flex-direction: column; gap: .2em; min-width: 0; }
+.wa-et { font-size: 4.3em; font-weight: 600; line-height: 1.12; color: var(--s); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.wa-et.piccola { font-size: 2.7em; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .wa-n { margin-right: .3em; font-weight: 700; }
-.wa-sotto { font-size: 2.6em; color: #5F6B77; line-height: 1.2; }
-.wa-v { display: flex; gap: 2.6em; justify-content: flex-end; align-items: flex-start; }
-.wa-p { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.05; }
-.wa-ruolo { font-size: 2em; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--s); margin-bottom: .35em; }
-.wa-prima { font-size: 2.5em; color: #8A939C; text-decoration-thickness: 3px; margin-bottom: .2em; }
-.wa-nom { font-size: 2.8em; color: #4A545E; font-weight: 400; margin-bottom: .12em; }
-.wa-cog { font-size: 4.4em; font-weight: 700; letter-spacing: .005em; }
-.wa-cog.vuoto, .wa-txt.vuoto, .wa-tema.vuoto { color: #A2AAB2; font-weight: 400; font-style: italic; font-size: 3em; }
-.wa-txt { font-size: 4.2em; font-weight: 700; text-align: right; }
-.wa-r.grande { display: flex; flex-direction: column; align-items: flex-start; gap: .45em; }
-.wa-tema { font-size: 4.8em; font-weight: 700; line-height: 1.12; }
-.wa-piede { flex: none; padding: 14px 64px 34px; font-size: 24px; color: #5F6B77; letter-spacing: .08em; text-transform: uppercase; display: flex; justify-content: space-between; }
+.wa-sotto { font-size: 2.9em; color: #5F6B77; line-height: 1.2; }
+.wa-v { display: flex; flex-direction: column; gap: .3em; align-items: flex-end; justify-self: end; }
+.wa-p { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.1; }
+.wa-pl { display: flex; align-items: baseline; justify-content: flex-end; gap: .5em; white-space: nowrap; }
+.wa-ruolo { font-size: 2.3em; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--s); }
+.wa-prima { font-size: 2.9em; color: #8A939C; text-decoration-thickness: 3px; text-transform: uppercase; margin-bottom: .1em; }
+.wa-nome { font-size: 4.3em; font-weight: 700; text-transform: uppercase; letter-spacing: .01em; }
+.wa-nome.vuoto, .wa-txt.vuoto, .wa-tema.vuoto { color: #A2AAB2; font-weight: 400; font-style: italic; font-size: 3.4em; text-transform: none; }
+.wa-txt { font-size: 4.6em; font-weight: 700; text-align: right; text-transform: uppercase; white-space: nowrap; }
+.wa-r.grande { display: flex; flex-direction: column; align-items: flex-start; gap: .4em; }
+.wa-tema { font-size: 5.2em; font-weight: 700; line-height: 1.12; }
+.wa-piede { flex: none; padding: 10px 56px 30px; font-size: 24px; color: #5F6B77; letter-spacing: .08em; text-transform: uppercase; display: flex; justify-content: space-between; }
 `;
