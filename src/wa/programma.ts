@@ -2,6 +2,7 @@
 // - presidente infrasettimanale: prayers and every part with a number, short titles, names only;
 // - presidente fine settimana: opening song, theme, outline number, speaker, congregation;
 // - reparto Audio/Video: the same public talk lines, or the Efficaci parts with student and assistant, plus the podium.
+import { srcIcona } from "../icone";
 import { MESI_IT, colore, orari, type Carta, type Foglio, type Riga } from "../tipi";
 import type { Blocco, Modello, Nome, Voce } from "./immagine";
 
@@ -79,30 +80,17 @@ export function immaginiCarta(
   if (c.evento || (c.tipo !== "INFRA" && c.tipo !== "FINE")) return null;
   const col = (x: string | undefined) => colore(x, f.stile.colori);
   const piede = f.cong;
-  const vocePodio: Voce = { etichetta: "Addetto al podio", nomi: [{ v: podio }] };
+  const sezDp = c.sezioni.find((z) => /discorso pubblico/i.test(z.titolo));
+  const striscia = { testo: "Reparto Audio/Video", colore: COLORE_AV };
+  const podioBlocco: Blocco = { colore: COLORE_AV, voci: [{ etichetta: "Podio", nomi: [{ v: podio }] }] };
   if (c.tipo === "FINE") {
     const dp = discorsoPubblico(c, valori);
     const fine = f.stile.colori.fine;
+    const colDp = col(sezDp?.colore ?? "@fine");
+    const blocco: Blocco = { titolo: "Discorso pubblico", colore: colDp, icona: srcIcona(sezDp?.icona ?? "discorso", colDp) || undefined, voci: dp };
     return {
-      pres: {
-        kicker: "Presidente",
-        titolo: "Adunanza del fine settimana",
-        sotto: sottoData(c, f),
-        colore: fine,
-        piede,
-        blocchi: [{ titolo: "Discorso pubblico", colore: fine, voci: dp }],
-      },
-      av: {
-        kicker: "Reparto Audio/Video",
-        titolo: "Adunanza del fine settimana",
-        sotto: sottoData(c, f),
-        colore: COLORE_AV,
-        piede,
-        blocchi: [
-          { titolo: "Discorso pubblico", colore: COLORE_AV, voci: dp },
-          { titolo: "Podio", colore: COLORE_AV, voci: [vocePodio] },
-        ],
-      },
+      pres: { kicker: "Presidente", titolo: "Adunanza del fine settimana", sotto: sottoData(c, f), colore: fine, piede, blocchi: [blocco] },
+      av: { titolo: "Adunanza del fine settimana", sotto: sottoData(c, f), colore: fine, striscia, piede, blocchi: [podioBlocco, blocco] },
     };
   }
   // Midweek
@@ -140,11 +128,12 @@ export function immaginiCarta(
           : [nome(r, "chi", valori)],
       };
       voci.push(v);
-      if (ministero && conAssistente(r)) efficaci.push({ ...v, sotto: r.ambito });
+      if (ministero && conAssistente(r)) efficaci.push(v);
     }
-    if (voci.length) blocchi.push({ titolo: z.titolo, colore: col(z.colore), voci });
+    if (voci.length) blocchi.push({ titolo: z.titolo, colore: col(z.colore), icona: srcIcona(z.icona, col(z.colore)) || undefined, voci });
   }
-  const ministero = col(c.sezioni.find((z) => /efficaci/i.test(z.titolo))?.colore ?? "@ministero");
+  const sezMin = c.sezioni.find((z) => /efficaci/i.test(z.titolo));
+  const ministero = col(sezMin?.colore ?? "@ministero");
   return {
     pres: {
       kicker: "Presidente",
@@ -155,19 +144,20 @@ export function immaginiCarta(
       blocchi,
     },
     av: {
-      kicker: "Reparto Audio/Video",
       titolo: "Adunanza infrasettimanale",
       sotto: sottoData(c, f),
-      colore: COLORE_AV,
+      colore: f.stile.colori.infra,
+      striscia,
       piede,
       blocchi: [
-        ...(efficaci.length ? [{ titolo: "Efficaci nel ministero", colore: ministero, voci: efficaci }] : []),
-        { titolo: "Podio", colore: COLORE_AV, voci: [vocePodio] },
+        podioBlocco,
+        ...(efficaci.length
+          ? [{ titolo: "Efficaci nel ministero", colore: ministero, icona: srcIcona(sezMin?.icona ?? "ministero", ministero) || undefined, voci: efficaci }]
+          : []),
       ],
     },
   };
 }
-
 /** The fields of a meeting that appear on its images, for the "Modifica" window. */
 export type CampoModifica = { chiave: string; etichetta: string; parte: string; valore: string; nome: boolean };
 export function campiCarta(c: Carta, valori: Record<string, string>, podio: string): CampoModifica[] {

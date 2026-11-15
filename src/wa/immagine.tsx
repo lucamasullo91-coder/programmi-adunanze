@@ -43,7 +43,9 @@ export type Blocco = {
 };
 export type Modello = {
   /** Small caps line in the band: who it is for. */
-  kicker: string;
+  kicker?: string | undefined;
+  /** Strip under the band (the department the image is for), with its colour. */
+  striscia?: { testo: string; colore: string } | undefined;
   titolo: string;
   /** Date and time, under the title. */
   sotto: string;
@@ -214,17 +216,24 @@ export function Immagine({
       <div className="wa-band">
         <div className="wa-t">{m.titolo}</div>
         <Data s={m.sotto} />
-        <div className="wa-k">
-          <span>{m.kicker}</span>
-          {m.flag && <em>{m.flag}</em>}
-        </div>
+        {(m.kicker || m.flag) && (
+          <div className="wa-k">
+            {m.kicker && <span>{m.kicker}</span>}
+            {m.flag && <em>{m.flag}</em>}
+          </div>
+        )}
       </div>
+      {m.striscia && (
+        <div className="wa-str" style={{ background: m.striscia.colore }}>
+          {m.striscia.testo}
+        </div>
+      )}
       <div className="wa-corpo">
         {m.blocchi.map((b, i) => (
           <section key={i} className="wa-b" style={{ "--s": b.colore } as CSSProperties}>
             {b.titolo && (
               <h3>
-                {b.icona && icone?.[b.icona]}
+                {b.icona && (icone?.[b.icona] ?? <img src={b.icona} alt="" />)}
                 <span>{b.titolo}</span>
               </h3>
             )}
@@ -273,6 +282,7 @@ export const CSS_IMMAGINE = `
 .wa-s.lunga { font-size: 46px; white-space: normal; }
 .wa-k { display: flex; align-items: center; gap: 18px; margin-top: 18px; font-size: 34px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .wa-k em { font-style: normal; font-size: 22px; letter-spacing: .08em; border: 2px solid #fff; border-radius: 8px; padding: 4px 12px; }
+.wa-str { flex: none; color: #fff; padding: 16px 56px; font-size: 34px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .wa-corpo { flex: 1; min-height: 0; padding: 30px 56px 12px; display: flex; flex-direction: column; gap: 1.5em; overflow: hidden; }
 .wa-b h3 { margin: 0 0 .35em; display: flex; align-items: center; gap: .55em; color: var(--s); font-size: 2.9em; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; border-bottom: 3px solid var(--s); padding-bottom: .3em; }
