@@ -154,6 +154,75 @@ body.editing .tip{display:block;width:100%;order:8}
 .hint{margin:0;font-size:13px;color:#4D5A68;line-height:1.4}
 .export{position:fixed;left:-12000px;top:0;width:794px;background:#fff}
 .export .pgm{width:794px;max-width:none;padding:0 22px;box-shadow:none;border-radius:0;outline:0}
+
+/* ---------- carrelli ---------- */
+.tabs{display:flex;gap:4px;width:100%;background:var(--neu);border-radius:6px;padding:3px}
+.tabs button{flex:1;font:700 13px var(--f);letter-spacing:.06em;text-transform:uppercase;border:0;border-radius:4px;padding:9px 10px;background:transparent;color:var(--bar-muted);cursor:pointer}
+.tabs button[aria-selected="true"]{background:#fff;color:var(--title);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+body.tab-car .solo-pgm{display:none!important}
+body:not(.tab-car) .solo-car{display:none!important}
+.car .carts{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:18px 16px;margin-top:16px;align-items:start}
+.car .carts.n1{grid-template-columns:minmax(0,560px);justify-content:center}
+.cart{display:grid;gap:8px;min-width:0;break-inside:avoid;align-content:start}
+/* one or two carts: the cart on the left, what to know beside it (keeps the A4 page readable) */
+.car .carts.n1 .cart,.car .carts.n2 .cart{grid-template-columns:minmax(0,190px) minmax(0,1fr);grid-template-areas:"h h" "f d" "f i" "f .";grid-template-rows:auto auto auto 1fr;column-gap:14px}
+.car .carts.n1 .cart{grid-template-columns:minmax(0,230px) minmax(0,1fr)}
+.car .carts.n1 .cart>h2,.car .carts.n2 .cart>h2{grid-area:h}
+.car .carts.n1 .frame,.car .carts.n2 .frame{grid-area:f;align-self:start}
+.car .carts.n1 .didas,.car .carts.n2 .didas{grid-area:d;margin-top:0}
+.car .carts.n1 .cinfo,.car .carts.n2 .cinfo{grid-area:i}
+.cart h2{margin:0;display:flex;align-items:baseline;gap:8px;font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--title);border-bottom:2px solid var(--gold);padding-bottom:4px}
+.cart h2 small{white-space:nowrap;font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--slate)}
+.frame{background:#23272D;border-radius:7px 7px 4px 4px;padding:7px 7px 0;display:grid;gap:6px;position:relative}
+.frame .poster{background:#fff;border-radius:3px;aspect-ratio:3/4.4;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.frame .poster img{width:100%;height:100%;object-fit:cover;display:block}
+.frame .shelf{position:relative;background:#30353C;border-radius:3px;padding:5px 5px 0;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.frame .slot{background:#F4F3EF;aspect-ratio:3/4;border-radius:2px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-width:0}
+.frame .slot img{width:100%;height:100%;object-fit:cover;display:block}
+.frame .lip{position:absolute;left:3px;right:3px;bottom:0;height:34%;border:1.5px solid rgba(255,255,255,.55);border-top-width:2px;border-radius:0 0 3px 3px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.1));pointer-events:none}
+.frame .vuoto-c{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9AA3AD;text-align:center;padding:4px}
+.frame .poster .vuoto-c{color:#7d8792}
+.frame .base{height:16px;position:relative;margin:0 -7px}
+.frame .base i{position:absolute;bottom:-9px;width:22px;height:22px;border-radius:50%;background:#1A1D21;border:3px solid #3A4048}
+.frame .base i:first-child{left:14%} .frame .base i:last-child{right:14%}
+.didas{min-width:0;margin:6px 0 0;padding:0;list-style:none;display:grid;gap:2px}
+.didas li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:4px;font-size:11px;line-height:1.25;color:var(--ink2)}
+.didas li b{font-size:9.5px;font-weight:800;color:#fff;background:var(--slate);border-radius:3px;text-align:center;height:15px;line-height:15px}
+.didas li.ps b{background:var(--title)}
+.cinfo{display:grid;gap:5px;min-width:0;border-left:3px solid var(--gold);padding:2px 0 2px 9px}
+.cinfo small{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+.cinfo .ob{font-size:12.5px;font-weight:600;color:var(--ink2);line-height:1.3}
+.cinfo>div{min-width:0}.cinfo ul{overflow-wrap:anywhere;margin:0;padding-left:16px;font-size:11.5px;color:var(--ink2);display:grid;gap:2px}
+.cinfo .vid{justify-self:start;max-width:100%;min-width:0;display:inline-flex;align-items:center;gap:7px;background:var(--title);color:#fff;text-decoration:none;border-radius:999px;padding:5px 12px 5px 6px;font-size:12px;font-weight:700;letter-spacing:.02em}
+.cinfo .vid i{width:18px;height:18px;border-radius:50%;background:#fff;position:relative;flex:none}
+.cinfo .vid i:after{content:"";position:absolute;left:7px;top:5px;border-left:6px solid var(--title);border-top:4px solid transparent;border-bottom:4px solid transparent}
+.cinfo .vid span{min-width:0;line-height:1.2}
+.cinfo .vuota{font-size:12px;color:#9AA3AD}
+.car .nota-sala{margin-top:14px;border:1px solid var(--rule);border-radius:5px;padding:9px 12px;font-size:12.5px;color:var(--ink2)}
+.car .nota-sala small{display:block;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin-bottom:3px}
+.car .pgm-foot{justify-content:space-between}
+body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
+/* catalogo e scelta */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.cat-it{border:2px solid transparent;border-radius:6px;background:#F7F6F2;padding:4px;display:grid;gap:3px;cursor:pointer;text-align:center;font:600 10.5px/1.2 var(--f);color:#1F2630;min-width:0}
+.cat-it .im{aspect-ratio:3/4;background:#fff;border-radius:3px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#9AA3AD;font-size:20px}
+.cat-it .im img{width:100%;height:100%;object-fit:contain}
+.cat-it span{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cat-it.on{border-color:var(--title);background:#FFF6DA}
+.cat-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #EEE9DF}
+.cat-row img{width:44px;height:58px;object-fit:contain;background:#F4F3EF;border-radius:3px}
+.cat-row b{font-size:13px;display:block}
+.cat-row small{font-size:11px;color:#4D5A68;text-transform:uppercase;letter-spacing:.08em}
+.scope{display:flex;flex-wrap:wrap;gap:6px}
+.scope label{display:flex;align-items:center;gap:5px;font-size:13px;border:1px solid #D0CBC0;border-radius:999px;padding:6px 10px;cursor:pointer}
+.scope input{margin:0}
+.sez{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4D5A68;margin:4px 0 0}
+@media (max-width:700px){
+  .car .carts{grid-template-columns:repeat(min(var(--n),2),minmax(0,1fr))}
+  .car .carts.n1{grid-template-columns:minmax(0,1fr)}
+  .car .carts.n2 .cart{grid-template-columns:minmax(0,1fr);grid-template-areas:"h" "f" "d" "i";grid-template-rows:auto}
+  .car .carts.n1 .cart{grid-template-columns:minmax(0,170px) minmax(0,1fr)}
+}
 @media (min-width:701px){ .bar{position:sticky;top:0} }
 @media (max-width:700px){
   .pgm{padding:22px 14px 16px}
@@ -181,18 +250,25 @@ body.editing .tip{display:block;width:100%;order:8}
 </head>
 <body>
 <div class="bar">
+<div class="tabs" role="tablist"><button type="button" role="tab" data-tab="pgm" aria-selected="true">Programma</button><button type="button" role="tab" data-tab="car" aria-selected="false">Carrelli</button></div>
 <label class="sel"><span>Mese</span><select id="b-mese" aria-label="Mese"></select></label>
-<label class="sel"><span>Vista</span><select id="b-pers" aria-label="Programma generale o personale"></select></label>
+<label class="sel solo-car"><span>Sala</span><select id="b-sala" aria-label="Sala del Regno"></select></label>
+<label class="sel solo-pgm"><span>Vista</span><select id="b-pers" aria-label="Programma generale o personale"></select></label>
 <span class="sp"></span>
 <button class="btn" id="b-mod" type="button" aria-pressed="false">Modifica</button>
 <button class="btn primary" id="b-pdf" type="button">PDF</button>
 <div class="row2">
-<button class="btn" id="b-imp" type="button">Impostazioni</button>
-<button class="btn" id="b-alle" type="button">Allestimento del mese</button>
-<button class="btn" id="b-add" type="button">Aggiungi postazione</button>
-<button class="btn" id="b-nuovo" type="button">Nuovo mese</button>
+<button class="btn solo-pgm" id="b-imp" type="button">Impostazioni</button>
+<button class="btn solo-pgm" id="b-alle" type="button">Allestimento del mese</button>
+<button class="btn solo-pgm" id="b-add" type="button">Aggiungi postazione</button>
+<button class="btn solo-pgm" id="b-nuovo" type="button">Nuovo mese</button>
+<label class="sel solo-car"><span>Carrelli</span><select id="b-ncar" aria-label="Quanti carrelli"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+<button class="btn solo-car" id="b-riprendi" type="button">Riprendi dal mese prima</button>
+<button class="btn solo-car" id="b-cat" type="button">Catalogo</button>
+<button class="btn solo-car" id="b-nota" type="button">Nota per la sala</button>
 </div>
-<p class="tip">Tocca un turno per scrivere i nomi (nome e cognome per esteso), una postazione per cambiarne giorni e orari, la testata o il piè di pagina per le impostazioni. Le modifiche si salvano da sole.</p>
+<p class="tip solo-car">Tocca il poster o un posto del ripiano per scegliere cosa esporre, il testo sotto un carrello per obiettivo, suggerimenti e video. Le modifiche si salvano da sole.</p>
+<p class="tip solo-pgm">Tocca un turno per scrivere i nomi (nome e cognome per esteso), una postazione per cambiarne giorni e orari, la testata o il piè di pagina per le impostazioni. Le modifiche si salvano da sole.</p>
 <p class="st" id="st" role="status"></p>
 </div>
 <div id="app"><p class="hint" style="text-align:center;padding:24px">Carico i dati…</p></div>
@@ -207,8 +283,11 @@ body.editing .tip{display:block;width:100%;order:8}
     var args = [].slice.call(arguments, 1);
     if (gs) return new Promise(function (ok, ko) { var r = google.script.run.withSuccessHandler(ok).withFailureHandler(ko); r[fn].apply(r, args); });
     var ls = JSON.parse(localStorage.getItem("oem-prova") || "{}");
-    if (fn === "stato") return Promise.resolve({ email: "prova@locale", ruolo: new URLSearchParams(location.search).get("ruolo") || "tutto", mesi: ls });
+    if (fn === "stato") { var kk = JSON.parse(localStorage.getItem("oem-prova-cat") || "{}"); return Promise.resolve({ email: "prova@locale", ruolo: new URLSearchParams(location.search).get("ruolo") || "tutto", mesi: ls, carrelli: JSON.parse(localStorage.getItem("oem-prova-car") || "{}"), catalogo: Object.keys(kk).map(function (k) { return kk[k]; }) }); }
     if (fn === "salvaMese") { var a = ls[args[0]] || { rev: 0 }; if (+args[2] !== a.rev) return Promise.resolve({ ok: false, rev: a.rev, dati: a.dati }); ls[args[0]] = { dati: args[1], rev: a.rev + 1 }; localStorage.setItem("oem-prova", JSON.stringify(ls)); return Promise.resolve({ ok: true, rev: a.rev + 1 }); }
+    if (fn === "salvaCarrelli") { var lc = JSON.parse(localStorage.getItem("oem-prova-car") || "{}"), c0 = lc[args[0]] || { rev: 0 }; if (+args[2] !== c0.rev) return Promise.resolve({ ok: false, rev: c0.rev, dati: c0.dati }); lc[args[0]] = { dati: args[1], rev: c0.rev + 1 }; localStorage.setItem("oem-prova-car", JSON.stringify(lc)); return Promise.resolve({ ok: true, rev: c0.rev + 1 }); }
+    if (fn === "salvaCatalogo") { var lk = JSON.parse(localStorage.getItem("oem-prova-cat") || "{}"); lk[JSON.parse(args[0]).id] = args[0]; localStorage.setItem("oem-prova-cat", JSON.stringify(lk)); return Promise.resolve(true); }
+    if (fn === "eliminaCatalogo") { var lk2 = JSON.parse(localStorage.getItem("oem-prova-cat") || "{}"); delete lk2[args[0]]; localStorage.setItem("oem-prova-cat", JSON.stringify(lk2)); return Promise.resolve(true); }
     if (fn === "eliminaMese") { delete ls[args[0]]; localStorage.setItem("oem-prova", JSON.stringify(ls)); return Promise.resolve(true); }
     return Promise.reject(new Error(fn));
   }
@@ -230,7 +309,7 @@ body.editing .tip{display:block;width:100%;order:8}
     { id: "pv", nome: "Piazza Vittoria", via: "", dove: "", ritiro: "", colore: "prugna", fasce: [{ g: "dom", ora: "17:00–19:00" }] }
   ];
 
-  var S = { mesi: {}, rev: {} }, cur = null, X = null, persona = "", editMode = false, ruolo = "legge";
+  var S = { mesi: {}, rev: {}, car: {}, carRev: {} }, CAT = {}, tab = "pgm", sala = "pianura", cur = null, X = null, persona = "", editMode = false, ruolo = "legge";
   var tSave = null, inVolo = false, ancora = false;
 
   function esc(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -355,7 +434,17 @@ body.editing .tip{display:block;width:100%;order:8}
     var sp = document.getElementById("b-pers"), lista = persone();
     if (persona && !lista.some(function (n) { return norm(n) === norm(persona); })) lista.unshift(persona);
     sp.innerHTML = '<option value="">Programma generale</option>' + lista.map(function (n) { return '<option value="' + esc(n) + '"' + (norm(n) === norm(persona) ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
-    app.innerHTML = sheetHTML();
+    var ss = document.getElementById("b-sala");
+    ss.innerHTML = SALE.map(function (s) { return '<option value="' + s.id + '"' + (s.id === sala ? " selected" : "") + ">" + esc(s.nome) + "</option>"; }).join("");
+    document.body.classList.toggle("tab-car", tab === "car");
+    [].forEach.call(document.querySelectorAll(".tabs [data-tab]"), function (b) { b.setAttribute("aria-selected", b.dataset.tab === tab ? "true" : "false"); });
+    if (tab === "car") {
+      var A = allest();
+      document.getElementById("b-ncar").value = String(A.carrelli.length);
+      var prec = meseCarPrima();
+      var br = document.getElementById("b-riprendi"); br.disabled = !prec; br.textContent = prec ? "Riprendi da " + nomeMese(prec) : "Riprendi dal mese prima";
+      app.innerHTML = carHTML();
+    } else app.innerHTML = sheetHTML();
     document.body.classList.toggle("editing", editMode);
     var bm = document.getElementById("b-mod");
     bm.hidden = !puoScrivere();
@@ -367,6 +456,7 @@ body.editing .tip{display:block;width:100%;order:8}
   /* ---------- salvataggio nel Foglio Google ---------- */
   function setDirty() {
     render();
+    if (tab === "car") { stato("Salvataggio tra pochi secondi…"); clearTimeout(tCar); tCar = setTimeout(salvaCar, 1500); return; }
     stato("Salvataggio tra pochi secondi…");
     clearTimeout(tSave); tSave = setTimeout(salva, 1500);
   }
@@ -394,6 +484,7 @@ body.editing .tip{display:block;width:100%;order:8}
   function apri(titolo, html, onOk, extra) {
     dlg.querySelector(".dt").textContent = titolo;
     dlg.querySelector(".db").innerHTML = html;
+    dlg.querySelector(".ok").textContent = "Applica"; dlg.querySelector(".ok").disabled = false; dlg.querySelector(".no").hidden = false;
     dlg.hidden = false;
     var ex = dlg.querySelector(".ex");
     ex.hidden = !extra; delete ex.dataset.sure;
@@ -522,6 +613,10 @@ body.editing .tip{display:block;width:100%;order:8}
     else if (el.dataset.edit === "post") modPost(el.dataset.id);
     else if (el.dataset.edit === "meta") modMeta();
     else if (el.dataset.edit === "alle") modAllestimento();
+    else if (el.dataset.edit === "cposter") scegli(+el.dataset.c, -1);
+    else if (el.dataset.edit === "cslot") scegli(+el.dataset.c, +el.dataset.s);
+    else if (el.dataset.edit === "cinfo") modCarrello(+el.dataset.c);
+    else if (el.dataset.edit === "cnota") modNota();
   });
 
   document.getElementById("b-nuovo").onclick = function () {
@@ -557,6 +652,7 @@ body.editing .tip{display:block;width:100%;order:8}
     var b = this;
     if (window.__oemPdf && navigator.share) { var f = window.__oemPdf; window.__oemPdf = null; navigator.share({ files: [f] }).catch(function () {}); return; }
     if (!window.html2canvas || !window.jspdf) { stato("PDF non disponibile: librerie non caricate. Ricarica la pagina.", "err"); return; }
+    if (tab === "car") { pdfCarrelli(b); return; }
     b.disabled = true; stato("Preparo il PDF…");
     var host = document.createElement("div");
     host.className = "export"; host.innerHTML = sheetHTML(); document.body.appendChild(host);
@@ -592,10 +688,266 @@ body.editing .tip{display:block;width:100%;order:8}
       .then(function () { b.disabled = false; });
   };
 
+
+  /* ---------- carrelli: allestimento per sala e mese ---------- */
+  var SALE = [{ id: "pianura", nome: "Pianura" }, { id: "soccavo", nome: "Soccavo" }];
+  var LATI = ["sinistra", "destra"], tCar = null, carVolo = false, carAncora = false;
+  function salaNome(id) { for (var i = 0; i < SALE.length; i++) if (SALE[i].id === id) return SALE[i].nome; return id; }
+  function nomeMese(k) { return cap(MESI[+k.slice(5, 7) - 1]) + " " + k.slice(0, 4); }
+  function carKey() { return sala + "|" + cur; }
+  function nuovoCarrello() { return { id: "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), nome: "", poster: null, posti: [null, null, null, null, null, null], obiettivo: "", suggerimenti: [], video: "", videoTitolo: "" }; }
+  /** The set-up of the selected hall in the selected month; a month with nothing saved starts with two empty carts. */
+  function allest() {
+    var k = carKey();
+    if (!S.car[k]) S.car[k] = { carrelli: [nuovoCarrello(), nuovoCarrello()], nota: "" };
+    return S.car[k];
+  }
+  function meseCarPrima() {
+    var best = null;
+    Object.keys(S.car).forEach(function (k) {
+      var q = k.split("|"); if (q[0] !== sala || q[1] >= cur) return;
+      var A = S.car[k]; if (!A.carrelli.some(function (c) { return c.poster || c.posti.some(Boolean) || c.obiettivo; })) return;
+      if (!best || q[1] > best) best = q[1];
+    });
+    return best;
+  }
+  function voce(id) { return id ? CAT[id] || { id: id, nome: "Voce eliminata", img: "" } : null; }
+  function imgVoce(id, cls) {
+    var x = voce(id);
+    if (!x) return '<span class="vuoto-c">' + (cls === "poster" ? "Poster" : "Vuoto") + "</span>";
+    return x.img ? '<img src="' + esc(x.img) + '" alt="' + esc(x.nome) + '">' : '<span class="vuoto-c">' + esc(x.nome) + "</span>";
+  }
+  /** One line per shelf under the cart: "Puoi vivere felice per sempre ×2" or "A · B". */
+  function didascalie(c) {
+    var out = [];
+    if (c.poster) out.push('<li class="ps"><b>P</b><span>' + esc(voce(c.poster).nome) + "</span></li>");
+    for (var r = 0; r < 3; r++) {
+      var a = c.posti[2 * r], b = c.posti[2 * r + 1];
+      if (!a && !b) continue;
+      var txt = a && b && a === b ? esc(voce(a).nome) + " ×2" : [a, b].filter(Boolean).map(function (x) { return esc(voce(x).nome); }).join(" · ");
+      out.push("<li><b>" + (r + 1) + "</b><span>" + txt + "</span></li>");
+    }
+    return out.length ? '<ul class="didas">' + out.join("") + "</ul>" : "";
+  }
+  function carHTML() {
+    var A = allest(), M = X ? X.meta : { congregazione: "", mese: "", anno: "" }, n = A.carrelli.length;
+    var h = '<article class="pgm car"><header class="pgm-head"><div class="cong">' + esc(M.congregazione) + '</div><div class="goldr"></div><h1>Allestimento dei carrelli</h1><div class="mese">Sala di ' + esc(salaNome(sala)) + " · " + esc(nomeMese(cur)) + "</div></header>";
+    h += '<section class="carts n' + n + '" style="--n:' + n + '">';
+    A.carrelli.forEach(function (c, i) {
+      var shelves = "";
+      for (var r = 0; r < 3; r++) {
+        shelves += '<div class="shelf">';
+        for (var s = 0; s < 2; s++) { var j = 2 * r + s; shelves += '<div class="slot" data-edit="cslot" data-c="' + i + '" data-s="' + j + '">' + imgVoce(c.posti[j]) + "</div>"; }
+        shelves += '<div class="lip"></div></div>';
+      }
+      var sug = (c.suggerimenti || []).filter(Boolean), info = "";
+      if (c.obiettivo) info += "<div><small>Obiettivo</small><div class=\"ob\">" + esc(c.obiettivo) + "</div></div>";
+      if (sug.length) info += "<div><small>Suggerimenti</small><ul>" + sug.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ul></div>";
+      if (c.video) info += '<a class="vid" href="' + esc(c.video) + '" target="_blank" rel="noopener"><i></i><span>' + esc(c.videoTitolo || "Guarda il video") + "</span></a>";
+      if (!info && editMode) info = '<span class="vuota">Tocca per obiettivo, suggerimenti e video</span>';
+      h += '<section class="cart"><h2><small>Carrello ' + (i + 1) + "</small>" + (c.nome ? esc(c.nome) : "&nbsp;") + '</h2><div class="frame"><div class="poster" data-edit="cposter" data-c="' + i + '">' + imgVoce(c.poster, "poster") + "</div>" + shelves + '<div class="base"><i></i><i></i></div></div>' + didascalie(c) + (info ? '<div class="cinfo" data-edit="cinfo" data-c="' + i + '">' + info + "</div>" : "") + "</section>";
+    });
+    h += "</section>";
+    if (A.nota) h += '<div class="nota-sala" data-edit="cnota"><small>Nota</small>' + esc(A.nota) + "</div>";
+    h += '<footer class="pgm-foot"><span class="l"><b>Allestimento dei carrelli</b><span>Sala di ' + esc(salaNome(sala)) + '</span></span><span class="code">' + esc(nomeMese(cur)) + "</span></footer></article>";
+    return h;
+  }
+
+  function salvaCar() {
+    clearTimeout(tCar);
+    if (!document.getElementById("dlg").hidden) { tCar = setTimeout(salvaCar, 1500); return; }
+    if (carVolo) { carAncora = true; return; }
+    carVolo = true; stato("Salvataggio…");
+    var key = carKey();
+    chiama("salvaCarrelli", key, JSON.stringify(S.car[key]), S.carRev[key] || 0).then(function (r) {
+      if (r.ok) { S.carRev[key] = r.rev; stato("Salvato", "ok"); }
+      else {
+        S.carRev[key] = r.rev; if (r.dati) S.car[key] = JSON.parse(r.dati);
+        render(); stato("Qualcun altro ha salvato questo allestimento poco fa: ho caricato la sua versione. Ripeti l'ultima modifica.", "warn");
+      }
+    }).catch(function (e) { stato("Salvataggio non riuscito (" + (e && e.message || e) + "). Riprovo tra poco.", "err"); tCar = setTimeout(salvaCar, 5000); })
+      .then(function () { carVolo = false; if (carAncora) { carAncora = false; salvaCar(); } });
+  }
+
+  /* Choose what goes in a place: i = cart, s = -1 poster, 0..5 shelf places (row-major, left/right). */
+  function scegli(i, s) {
+    var A = allest(), c = A.carrelli[i], poster = s < 0, sel = poster ? c.poster : c.posti[s], filtro = poster ? "poster" : "pubblicazione";
+    var titolo = "Carrello " + (i + 1) + " · " + (poster ? "poster" : "ripiano " + (Math.floor(s / 2) + 1) + ", " + LATI[s % 2]);
+    function corpo() {
+      var voci = Object.keys(CAT).map(function (k) { return CAT[k]; }).filter(function (x) { return filtro === "tutto" || x.tipo === filtro; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, "it"); });
+      var g = '<div class="cat-grid"><button type="button" class="cat-it' + (!sel ? " on" : "") + '" data-id=""><div class="im">∅</div><span>Vuoto</span></button>' +
+        voci.map(function (x) { return '<button type="button" class="cat-it' + (sel === x.id ? " on" : "") + '" data-id="' + esc(x.id) + '"><div class="im">' + (x.img ? '<img src="' + esc(x.img) + '" alt="">' : "?") + "</div><span>" + esc(x.nome) + "</span></button>"; }).join("") + "</div>";
+      var scope = poster ? "" : '<div class="scope"><label><input type="radio" name="sc" value="1" checked> Solo questo posto</label><label><input type="radio" name="sc" value="2"> Tutto il ripiano</label><label><input type="radio" name="sc" value="6"> Tutto il carrello</label></div>';
+      var vuoto = voci.length ? "" : '<p class="hint">Nel catalogo non c’è ancora ' + (poster ? "nessun poster" : "nessuna pubblicazione") + ": aggiungila qui sotto.</p>";
+      return scope + vuoto + g + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small" id="cnew">Aggiungi al catalogo</button><button type="button" class="btn small" id="call">' + (filtro === "tutto" ? "Solo " + (poster ? "poster" : "pubblicazioni") : "Mostra tutto il catalogo") + "</button></div>";
+    }
+    function wire() {
+      [].forEach.call(dlg.querySelectorAll(".cat-it"), function (b) { b.onclick = function () { sel = b.dataset.id || null; [].forEach.call(dlg.querySelectorAll(".cat-it"), function (x) { x.classList.toggle("on", x === b); }); }; });
+      document.getElementById("call").onclick = function () { filtro = filtro === "tutto" ? (poster ? "poster" : "pubblicazione") : "tutto"; dlg.querySelector(".db").innerHTML = corpo(); wire(); };
+      document.getElementById("cnew").onclick = function () { aggiungiVoce(poster ? "poster" : "pubblicazione", function (id) { sel = id; scegli2(); }); };
+    }
+    function scegli2() { apri(titolo, corpo(), applica); wire(); }
+    function applica() {
+      if (poster) { c.poster = sel; return; }
+      var r = dlg.querySelector('input[name="sc"]:checked'), quanti = r ? +r.value : 1;
+      if (quanti === 6) for (var j = 0; j < 6; j++) c.posti[j] = sel;
+      else if (quanti === 2) { var b0 = s - (s % 2); c.posti[b0] = sel; c.posti[b0 + 1] = sel; }
+      else c.posti[s] = sel;
+    }
+    scegli2();
+  }
+
+  function modCarrello(i) {
+    var A = allest(), c = A.carrelli[i];
+    var h = campo("knome", "Nome del carrello (facoltativo)", c.nome || "") +
+      '<label class="fld"><span>Obiettivo</span><textarea id="kob" placeholder="Per esempio: offrire il corso biblico a chi passa">' + esc(c.obiettivo || "") + "</textarea></label>" +
+      '<label class="fld"><span>Suggerimenti (uno per riga)</span><textarea id="ksug">' + esc((c.suggerimenti || []).join("\n")) + "</textarea></label>" +
+      campo("kvid", "Link del video su jw.org", c.video || "", "url") + campo("kvt", "Testo del pulsante del video", c.videoTitolo || "Guarda il video");
+    apri("Carrello " + (i + 1), h, function () {
+      var u = v("kvid");
+      if (u && !/^https?:\/\//i.test(u)) u = "https://" + u;
+      c.nome = v("knome"); c.obiettivo = document.getElementById("kob").value.trim();
+      c.suggerimenti = document.getElementById("ksug").value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+      c.video = u; c.videoTitolo = v("kvt");
+    }, { label: "Svuota il carrello", danger: true, fn: function () {
+      var b = dlg.querySelector(".ex");
+      if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Conferma: svuota"; return false; }
+      A.carrelli[i] = nuovoCarrello();
+    } });
+  }
+  function modNota() {
+    var A = allest();
+    apri("Nota per la sala di " + salaNome(sala), '<label class="fld"><span>Nota (compare sotto i carrelli)</span><textarea id="snota" placeholder="Per esempio: i carrelli si ritirano nell’armadio della Sala">' + esc(A.nota || "") + "</textarea></label>", function () { A.nota = document.getElementById("snota").value.trim(); });
+  }
+
+  /* ---------- catalogo di poster e pubblicazioni ---------- */
+  /** Shrinks an image (data URL) to a JPEG small enough for one cell of the Sheet. */
+  function riduci(src) {
+    return new Promise(function (ok, ko) {
+      var im = new Image();
+      im.onload = function () {
+        var max = 420, q = 0.8, out = "";
+        for (var tent = 0; tent < 8; tent++) {
+          var k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), cv = document.createElement("canvas");
+          cv.width = Math.max(1, Math.round(im.naturalWidth * k)); cv.height = Math.max(1, Math.round(im.naturalHeight * k));
+          var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+          out = cv.toDataURL("image/jpeg", q);
+          if (out.length < 44000) return ok(out);
+          if (q > 0.6) q -= 0.1; else max = Math.round(max * 0.82);
+        }
+        ok(out);
+      };
+      im.onerror = function () { ko(new Error("immagine non leggibile")); };
+      im.src = src;
+    });
+  }
+  function salvaVoce(x) {
+    return chiama("salvaCatalogo", JSON.stringify(x)).then(function () { CAT[x.id] = x; return x.id; });
+  }
+  /** Add a catalogue entry from jw.org or from a photo; then(id) receives the new id. */
+  function aggiungiVoce(tipo, then) {
+    var trovate = [], scelta = "";
+    function corpo() {
+      return '<p class="sez">Da jw.org</p><p class="hint">Apri la pubblicazione su jw.org o in JW Library, tocca <b>Condividi → Copia link</b> e incollalo qui.</p>' +
+        '<div class="frow" style="grid-template-columns:minmax(0,1fr) auto"><input id="jwl" type="url" placeholder="https://www.jw.org/it/…" aria-label="Link jw.org"><button type="button" class="btn small" id="jwgo">Cerca</button></div>' +
+        '<div id="jwris"></div>' +
+        '<p class="sez">Oppure da una foto</p><p class="hint">Per i poster: foto dritta e senza riflessi, ritagliata ai bordi, oppure l’immagine originale.</p>' +
+        '<label class="fld"><span>Foto o immagine</span><input id="vfile" type="file" accept="image/*"></label>' +
+        campo("vnome", "Nome", "") +
+        '<label class="fld"><span>Tipo</span><select id="vtipo"><option value="pubblicazione"' + (tipo === "pubblicazione" ? " selected" : "") + '>Pubblicazione</option><option value="poster"' + (tipo === "poster" ? " selected" : "") + ">Poster</option></select></label>";
+    }
+    function mostraTrovate(r) {
+      trovate = r.immagini || [];
+      if (r.titolo && !v("vnome")) document.getElementById("vnome").value = r.titolo;
+      document.getElementById("jwris").innerHTML = trovate.length ? '<p class="hint">Tocca la copertina giusta:</p><div class="cat-grid">' + trovate.map(function (u, i) { return '<button type="button" class="cat-it" data-u="' + i + '"><div class="im"><img src="' + esc(u) + '" alt="" loading="lazy"></div></button>'; }).join("") + "</div>" : '<p class="hint">Nessuna immagine trovata in questa pagina: usa una foto.</p>';
+      [].forEach.call(document.querySelectorAll("#jwris .cat-it"), function (b) { b.onclick = function () { scelta = trovate[+b.dataset.u]; [].forEach.call(document.querySelectorAll("#jwris .cat-it"), function (x) { x.classList.toggle("on", x === b); }); }; });
+    }
+    apri("Aggiungi al catalogo", corpo(), function () {
+      var nome = v("vnome"), tp = document.getElementById("vtipo").value, f = document.getElementById("vfile").files[0], link = v("jwl");
+      if (!nome) { document.getElementById("vnome").focus(); stato("Scrivi il nome.", "warn"); return false; }
+      if (!f && !scelta) { stato("Scegli una copertina da jw.org oppure una foto.", "warn"); return false; }
+      var okb = dlg.querySelector(".ok"); okb.disabled = true; stato("Preparo l’immagine…");
+      var src = f ? new Promise(function (ok, ko) { var fr = new FileReader(); fr.onload = function () { ok(fr.result); }; fr.onerror = ko; fr.readAsDataURL(f); }) : chiama("jwImmagine", scelta);
+      src.then(riduci).then(function (img) {
+        return salvaVoce({ id: "c" + Date.now().toString(36), nome: nome, tipo: tp, img: img, link: f ? "" : link });
+      }).then(function (id) { okb.disabled = false; chiudi(); stato("Aggiunto al catalogo: " + nome, "ok"); if (then) then(id); else render(); })
+        .catch(function (e) { okb.disabled = false; stato("Non aggiunto (" + (e && e.message || e) + ").", "err"); });
+      return false;
+    });
+    document.getElementById("jwgo").onclick = function () {
+      var u = v("jwl"); if (!u) return;
+      document.getElementById("jwris").innerHTML = '<p class="hint">Leggo la pagina…</p>';
+      chiama("jwPagina", u).then(mostraTrovate, function (e) { document.getElementById("jwris").innerHTML = '<p class="hint" style="color:#B3261E">' + esc(e && e.message || e) + "</p>"; });
+    };
+  }
+  function catalogo() {
+    var voci = Object.keys(CAT).map(function (k) { return CAT[k]; }).sort(function (a, b) { return (a.tipo + a.nome).localeCompare(b.tipo + b.nome, "it"); });
+    var h = voci.length ? voci.map(function (x) {
+      return '<div class="cat-row"><img src="' + esc(x.img) + '" alt=""><div><b>' + esc(x.nome) + "</b><small>" + (x.tipo === "poster" ? "Poster" : "Pubblicazione") + '</small></div><button type="button" class="btn small danger" data-del="' + esc(x.id) + '">Elimina</button></div>';
+    }).join("") : '<p class="hint">Il catalogo è vuoto. Aggiungi le pubblicazioni da jw.org e carica i poster.</p>';
+    apri("Catalogo", h + '<button type="button" class="btn" id="cadd">Aggiungi al catalogo</button>', function () { chiudi(); return false; });
+    dlg.querySelector(".ok").textContent = "Chiudi"; dlg.querySelector(".no").hidden = true;
+    document.getElementById("cadd").onclick = function () { aggiungiVoce("pubblicazione", function () { catalogo(); render(); }); };
+    [].forEach.call(dlg.querySelectorAll("[data-del]"), function (b) {
+      b.onclick = function () {
+        if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Conferma"; return; }
+        var id = b.dataset.del;
+        chiama("eliminaCatalogo", id).then(function () { delete CAT[id]; catalogo(); render(); stato("Eliminato dal catalogo", "ok"); }, function (e) { stato("Non eliminato: " + (e && e.message || e), "err"); });
+      };
+    });
+  }
+
+  /* ---------- PDF dei carrelli: una pagina A4 per sala, con il video cliccabile ---------- */
+  function pdfCarrelli(b) {
+    b.disabled = true; stato("Preparo il PDF…");
+    var host = document.createElement("div");
+    var em = editMode; editMode = false;
+    host.className = "export"; host.innerHTML = carHTML(); document.body.appendChild(host);
+    editMode = em;
+    var pgm = host.querySelector(".pgm"); pgm.style.padding = "28px 28px 18px";
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () {
+      return window.html2canvas(pgm, { scale: 2.4, backgroundColor: "#ffffff", logging: false });
+    }).then(function (cv) {
+      var W = pgm.offsetWidth, H = pgm.offsetHeight, M = 6, k = Math.min((210 - 2 * M) / W, (297 - 2 * M) / H), x0 = (210 - W * k) / 2, y0 = M;
+      var pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: true });
+      pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", x0, y0, W * k, H * k);
+      var base = pgm.getBoundingClientRect();
+      [].forEach.call(pgm.querySelectorAll("a.vid"), function (a) {
+        var r = a.getBoundingClientRect();
+        pdf.link(x0 + (r.left - base.left) * k, y0 + (r.top - base.top) * k, r.width * k, r.height * k, { url: a.href });
+      });
+      host.remove();
+      var nome = ("Carrelli " + salaNome(sala) + " " + nomeMese(cur) + ".pdf").replace(/[\/\\:*?"<>|]+/g, " ");
+      return consegna(pdf.output("blob"), nome).then(function () { if (!window.__oemPdf) stato("PDF pronto", "ok"); });
+    }).catch(function (e) { host.remove(); stato("Non sono riuscito a creare il PDF (" + (e && e.message || e) + "). Riprova.", "err"); })
+      .then(function () { b.disabled = false; });
+  }
+
+  [].forEach.call(document.querySelectorAll(".tabs [data-tab]"), function (b) {
+    b.onclick = function () { tab = b.dataset.tab; try { localStorage.setItem("oem-tab", tab); } catch (e) { /* no storage */ } render(); };
+  });
+  document.getElementById("b-sala").onchange = function () { sala = this.value; try { localStorage.setItem("oem-sala", sala); } catch (e) { /* no storage */ } render(); };
+  document.getElementById("b-ncar").onchange = function () {
+    var A = allest(), n = +this.value;
+    while (A.carrelli.length < n) A.carrelli.push(nuovoCarrello());
+    A.carrelli.length = n; setDirty();
+  };
+  document.getElementById("b-riprendi").onclick = function () {
+    var p = meseCarPrima(); if (!p) return;
+    var A = JSON.parse(JSON.stringify(S.car[sala + "|" + p]));
+    A.carrelli.forEach(function (c) { c.id = nuovoCarrello().id; });
+    S.car[carKey()] = A; setDirty(); stato("Ripreso l’allestimento di " + nomeMese(p) + ": cambia solo quello che serve.", "ok");
+  };
+  document.getElementById("b-cat").onclick = catalogo;
+  document.getElementById("b-nota").onclick = modNota;
+
   /* ---------- avvio ---------- */
   chiama("stato").then(function (r) {
     ruolo = r.ruolo;
     Object.keys(r.mesi || {}).forEach(function (k) { try { S.mesi[k] = JSON.parse(r.mesi[k].dati); S.rev[k] = r.mesi[k].rev; } catch (e) { /* skip a broken month */ } });
+    Object.keys(r.carrelli || {}).forEach(function (k) { try { S.car[k] = JSON.parse(r.carrelli[k].dati); S.carRev[k] = r.carrelli[k].rev; } catch (e) { /* skip */ } });
+    (r.catalogo || []).forEach(function (d) { try { var v = JSON.parse(d); CAT[v.id] = v; } catch (e) { /* skip */ } });
+    try { var t0 = localStorage.getItem("oem-tab"), s0 = localStorage.getItem("oem-sala"); if (t0 === "car") tab = "car"; if (s0 && SALE.some(function (s) { return s.id === s0; })) sala = s0; } catch (e) { /* no storage */ }
     var oggi = new Date(), keyOggi = oggi.getFullYear() + "-" + String(oggi.getMonth() + 1).padStart(2, "0");
     var chiavi = Object.keys(S.mesi).sort();
     if (!chiavi.length) {

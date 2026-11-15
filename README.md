@@ -31,3 +31,12 @@ Pagina separata per il programma dell'opera con espositori mobili, con la stessa
 persone non si sovrascrivono). Ruoli in *Accessi*: `compila`, `legge` (il proprietario del Foglio può tutto).
 Struttura di partenza: le postazioni della congregazione, senza nomi; «Nuovo mese» copia postazioni, orari e
 allestimento del mese prima con i nomi vuoti. I nomi stanno solo nel Foglio.
+
+### Carrelli (allestimento)
+
+Scheda **Carrelli** della stessa pagina: per ogni sala (Pianura, Soccavo) e mese, da 1 a 4 carrelli con poster e
+3 ripiani da 2 posti, obiettivo, suggerimenti e link al video di jw.org. Le immagini stanno nel Foglio (scheda
+`Catalogo`, una riga per voce, già rimpicciolite); le pubblicazioni si aggiungono incollando un link di jw.org
+(lo script legge la pagina con `jwPagina` e scarica la copertina scelta con `jwImmagine`), i poster da una foto.
+Gli allestimenti stanno nella scheda `Carrelli` (chiave `sala|AAAA-MM`). Il PDF è una pagina A4 per sala con il
+pulsante del video cliccabile.
