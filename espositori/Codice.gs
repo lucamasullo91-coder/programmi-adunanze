@@ -83,16 +83,36 @@ function stato() {
   const sh = foglio_('Mesi');
   const mesi = {};
   if (sh.getLastRow() > 1)
-    for (const [k, d, r] of sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues()) if (k) mesi[String(k)] = { dati: String(d), rev: Number(r) || 0 };
+    for (const [k, d, r] of sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues()) if (k) mesi[chiave_(k)] = { dati: String(d), rev: Number(r) || 0 };
   // Allestimento dei carrelli (una riga per sala e mese) e catalogo di poster e pubblicazioni (una riga per voce).
   const carrelli = {}, catalogo = [];
   const shc = foglio_('Carrelli');
   if (shc.getLastRow() > 1)
-    for (const [k, d, r] of shc.getRange(2, 1, shc.getLastRow() - 1, 3).getValues()) if (k) carrelli[String(k)] = { dati: String(d), rev: Number(r) || 0 };
+    for (const [k, d, r] of shc.getRange(2, 1, shc.getLastRow() - 1, 3).getValues()) if (k) carrelli[chiave_(k)] = { dati: String(d), rev: Number(r) || 0 };
   const shk = foglio_('Catalogo');
   if (shk.getLastRow() > 1)
     for (const [id, d] of shk.getRange(2, 1, shk.getLastRow() - 1, 2).getValues()) if (id) catalogo.push(String(d));
   return { email: io.email, ruolo: io.ruolo, mesi: mesi, carrelli: carrelli, catalogo: catalogo };
+}
+
+/** Google Fogli turns "2026-11" into a date: read it back as "2026-11". */
+function chiave_(k) {
+  if (Object.prototype.toString.call(k) === '[object Date]') return Utilities.formatDate(k, SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM');
+  return String(k).trim();
+}
+/** Row (1-based) of a key in column A, or 0; the last one wins when a month was saved twice. */
+function riga_(sh, chiave) {
+  const n = sh.getLastRow();
+  if (n < 2) return 0;
+  const col = sh.getRange(2, 1, n - 1, 1).getValues();
+  for (let i = col.length - 1; i >= 0; i--) if (col[i][0] !== '' && chiave_(col[i][0]) === chiave) return i + 2;
+  return 0;
+}
+/** Writes a row with the key kept as plain text. */
+function scrivi_(sh, r, riga) {
+  if (!r) r = sh.getLastRow() + 1;
+  sh.getRange(r, 1).setNumberFormat('@');
+  sh.getRange(r, 1, 1, riga.length).setValues([riga]);
 }
 
 const INTESTAZIONI_ = {
@@ -129,11 +149,10 @@ function salvaCarrelli(chiave, dati, rev) {
   lock.waitLock(20000);
   try {
     const sh = foglio_('Carrelli');
-    const t = sh.getRange('A:A').createTextFinder(String(chiave)).matchEntireCell(true).findNext();
-    const attuale = t ? Number(sh.getRange(t.getRow(), 3).getValue()) || 0 : 0;
-    if (Number(rev) !== attuale) return { ok: false, rev: attuale, dati: t ? String(sh.getRange(t.getRow(), 2).getValue()) : null };
-    const riga = [String(chiave), dati, attuale + 1, io.email, new Date()];
-    if (t) sh.getRange(t.getRow(), 1, 1, 5).setValues([riga]); else sh.appendRow(riga);
+    const r = riga_(sh, String(chiave));
+    const attuale = r ? Number(sh.getRange(r, 3).getValue()) || 0 : 0;
+    if (Number(rev) !== attuale) return { ok: false, rev: attuale, dati: r ? String(sh.getRange(r, 2).getValue()) : null };
+    scrivi_(sh, r, [String(chiave), dati, attuale + 1, io.email, new Date()]);
     return { ok: true, rev: attuale + 1 };
   } finally {
     lock.releaseLock();
@@ -150,9 +169,7 @@ function salvaCatalogo(voce) {
   lock.waitLock(20000);
   try {
     const sh = foglio_('Catalogo');
-    const t = sh.getRange('A:A').createTextFinder(v.id).matchEntireCell(true).findNext();
-    const riga = [v.id, voce, v.nome || '', v.tipo || '', io.email, new Date()];
-    if (t) sh.getRange(t.getRow(), 1, 1, 6).setValues([riga]); else sh.appendRow(riga);
+    scrivi_(sh, riga_(sh, v.id), [v.id, voce, v.nome || '', v.tipo || '', io.email, new Date()]);
     return true;
   } finally {
     lock.releaseLock();
@@ -161,8 +178,8 @@ function salvaCatalogo(voce) {
 function eliminaCatalogo(id) {
   scrittore_();
   const sh = foglio_('Catalogo');
-  const t = sh.getRange('A:A').createTextFinder(String(id)).matchEntireCell(true).findNext();
-  if (t) sh.deleteRow(t.getRow());
+  const r = riga_(sh, String(id));
+  if (r) sh.deleteRow(r);
   return true;
 }
 
@@ -209,12 +226,11 @@ function salvaMese(mese, dati, rev) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    const sh = SpreadsheetApp.getActive().getSheetByName('Mesi');
-    const t = sh.getRange('A:A').createTextFinder(String(mese)).matchEntireCell(true).findNext();
-    const attuale = t ? Number(sh.getRange(t.getRow(), 3).getValue()) || 0 : 0;
-    if (Number(rev) !== attuale) return { ok: false, rev: attuale, dati: t ? String(sh.getRange(t.getRow(), 2).getValue()) : null };
-    const riga = [String(mese), dati, attuale + 1, io.email, new Date()];
-    if (t) sh.getRange(t.getRow(), 1, 1, 5).setValues([riga]); else sh.appendRow(riga);
+    const sh = foglio_('Mesi');
+    const r = riga_(sh, String(mese));
+    const attuale = r ? Number(sh.getRange(r, 3).getValue()) || 0 : 0;
+    if (Number(rev) !== attuale) return { ok: false, rev: attuale, dati: r ? String(sh.getRange(r, 2).getValue()) : null };
+    scrivi_(sh, r, [String(mese), dati, attuale + 1, io.email, new Date()]);
     return { ok: true, rev: attuale + 1 };
   } finally {
     lock.releaseLock();
@@ -223,9 +239,9 @@ function salvaMese(mese, dati, rev) {
 
 function eliminaMese(mese) {
   if (utente_().ruolo !== 'tutto') throw new Error('Solo il proprietario può eliminare un mese');
-  const sh = SpreadsheetApp.getActive().getSheetByName('Mesi');
-  const t = sh.getRange('A:A').createTextFinder(String(mese)).matchEntireCell(true).findNext();
-  if (t) sh.deleteRow(t.getRow());
+  const sh = foglio_('Mesi');
+  let r;
+  while ((r = riga_(sh, String(mese)))) sh.deleteRow(r);
   return true;
 }
 

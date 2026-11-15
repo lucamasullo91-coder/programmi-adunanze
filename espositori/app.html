@@ -693,7 +693,7 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
   var SALE = [{ id: "pianura", nome: "Pianura" }, { id: "soccavo", nome: "Soccavo" }];
   var LATI = ["sinistra", "destra"], tCar = null, carVolo = false, carAncora = false;
   function salaNome(id) { for (var i = 0; i < SALE.length; i++) if (SALE[i].id === id) return SALE[i].nome; return id; }
-  function nomeMese(k) { return cap(MESI[+k.slice(5, 7) - 1]) + " " + k.slice(0, 4); }
+  function nomeMese(k) { var m = MESI[+String(k).slice(5, 7) - 1]; return m ? cap(m) + " " + String(k).slice(0, 4) : String(k); }
   function carKey() { return sala + "|" + cur; }
   function nuovoCarrello() { return { id: "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), nome: "", poster: null, posti: [null, null, null, null, null, null], obiettivo: "", suggerimenti: [], video: "", videoTitolo: "" }; }
   /** The set-up of the selected hall in the selected month; a month with nothing saved starts with two empty carts. */
@@ -944,7 +944,14 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
   /* ---------- avvio ---------- */
   chiama("stato").then(function (r) {
     ruolo = r.ruolo;
-    Object.keys(r.mesi || {}).forEach(function (k) { try { S.mesi[k] = JSON.parse(r.mesi[k].dati); S.rev[k] = r.mesi[k].rev; } catch (e) { /* skip a broken month */ } });
+    // Month keys are "2026-11"; an older script may hand back what Google Fogli turned into a date: rebuild the key.
+    function chiaveMese(k, m) {
+      if (/^\d{4}-\d{2}$/.test(k)) return k;
+      var i = m && m.meta ? MESI.indexOf(String(m.meta.mese || "").toLowerCase()) : -1;
+      if (i >= 0 && m.meta.anno) return m.meta.anno + "-" + String(i + 1).padStart(2, "0");
+      var d = new Date(k); return isNaN(d) ? null : d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    }
+    Object.keys(r.mesi || {}).forEach(function (k) { try { var m = JSON.parse(r.mesi[k].dati), kk = chiaveMese(k, m); if (!kk) return; if (S.mesi[kk] && (S.rev[kk] || 0) > (r.mesi[k].rev || 0)) return; S.mesi[kk] = m; S.rev[kk] = r.mesi[k].rev; } catch (e) { /* skip a broken month */ } });
     Object.keys(r.carrelli || {}).forEach(function (k) { try { S.car[k] = JSON.parse(r.carrelli[k].dati); S.carRev[k] = r.carrelli[k].rev; } catch (e) { /* skip */ } });
     (r.catalogo || []).forEach(function (d) { try { var v = JSON.parse(d); CAT[v.id] = v; } catch (e) { /* skip */ } });
     try { var t0 = localStorage.getItem("oem-tab"), s0 = localStorage.getItem("oem-sala"); if (t0 === "car") tab = "car"; if (s0 && SALE.some(function (s) { return s.id === s0; })) sala = s0; } catch (e) { /* no storage */ }
