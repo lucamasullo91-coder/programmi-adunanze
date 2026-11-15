@@ -82,7 +82,6 @@ export function dividiNome(s: string): [string, string] {
   return [p.slice(0, i).join(" "), p.slice(i).join(" ")];
 }
 
-
 /** One person on one line, all capitals, as on the printed program: role tag, then NAME SURNAME. */
 function Persona({ x }: { x: Nome }) {
   const vuoto = !x.v.trim();
@@ -134,7 +133,8 @@ function RigaVoce({ v, colore }: { v: Voce; colore: string }) {
 /** "Martedì 17 novembre · 19:30": the date big, the time a bit smaller on the same line. */
 function Data({ s }: { s: string }) {
   const i = s.lastIndexOf(" · ");
-  const [d, o] = i > 0 && /^\d{1,2}:\d{2}$/.test(s.slice(i + 3)) ? [s.slice(0, i), s.slice(i + 3)] : [s, ""];
+  const [d, o] =
+    i > 0 && /^\d{1,2}:\d{2}$/.test(s.slice(i + 3)) ? [s.slice(0, i), s.slice(i + 3)] : [s, ""];
   return (
     <div className={`wa-s${d.length > 26 ? " lunga" : ""}`}>
       {d}
