@@ -121,12 +121,21 @@ type Sel = { sel?: Selezione | undefined; edit?: boolean | undefined };
 
 /** A field the compiler fills in: the value, or a dotted line to write on. */
 function Campo({ r, k, t, lungo }: { r: Riga; k: "chi" | "chi2" | "titolo"; t: string | undefined; lungo?: boolean }) {
-  return (
+  const prima = k !== "titolo" ? r.prima?.[k] : undefined;
+  const campo = (
     <span
       className={cls("campo", !t && "vuoto", lungo && "lungo")}
       data-campo={`${r.id}:${k}`}
       dangerouslySetInnerHTML={ricco(t)}
     />
+  );
+  return prima ? (
+    <span className="fg-cambio">
+      <s className="fg-prima">{prima}</s>
+      {campo}
+    </span>
+  ) : (
+    campo
   );
 }
 const selAttr = (k: string, id: string, x: Sel) =>

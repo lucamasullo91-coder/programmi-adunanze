@@ -14,6 +14,22 @@ un’assemblea o un congresso al posto di un’adunanza, poi scarica il PDF.
   Serve la pagina, controlla chi può compilare (scheda *Accessi*) e salva i dati (scheda *Programma*).
 - `strumenti/` — script che leggono i PDF della guida e della rivista e generano `dati/`.
 
+## Immagini WhatsApp
+
+Pulsante **Immagini WhatsApp**: per ogni adunanza in arrivo, l’immagine per il presidente e quella per il reparto
+Audio/Video (1080×1350, `src/wa/`), fatte dal programma. Chi compila preme **Conferma** (le immagini vanno nella
+cartella «Programmi adunanze – immagini WhatsApp» accanto al Foglio) oppure **Modifica**: il nome cambiato resta
+barrato (chiave `<riga>:<campo>~prima`), anche sul programma, e le immagini si confermano di nuovo. Lo schema del
+discorso pubblico è la chiave `<riga>:schema`, il podio `<adunanza>:podio` (se scritto a mano) oppure quello letto da
+Congregation Manager (`ponte_podio`) e tenuto nella cache dello script. `src/wa/immagine.tsx` è lo stesso file di
+Congregation Manager (`src/components/whatsapp/immagine.tsx`): tenerli uguali.
+
+Invii su Telegram: il proprietario apre l’indirizzo della pagina con `?riservate` in fondo, scrive token e chat di
+Telegram, indirizzo e chiave pubblica di Supabase e la chiave del podio (presa da Congregation Manager → Programmi →
+Reparti → WhatsApp), poi preme «Attiva invii automatici». Le chiavi stanno nelle proprietà utente del proprietario:
+chi compila non le vede. Ogni 15 minuti lo script manda le immagini confermate N giorni prima alle ore scelte (3 e
+19:00), di nuovo con «Aggiornamento» se vengono riconfermate, e un avviso se all’ora dell’invio non sono confermate.
+
 ## Nuovo bimestre
 
 1. Leggere i PDF (guida `mwb_I_AAAAMM.pdf`, riviste `w_I_AAAAMM.pdf`) con `strumenti/parse_mwb.py` e `parse_w.py`.

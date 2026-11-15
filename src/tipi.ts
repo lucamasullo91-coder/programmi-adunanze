@@ -41,6 +41,8 @@ export type Riga = {
   colore?: string;
   /** Fields the people who compile the program fill in (names, theme, song number). */
   campi?: ("chi" | "chi2" | "titolo")[];
+  /** Names replaced after the program was made (struck through, smaller, before the new one). */
+  prima?: Partial<Record<"chi" | "chi2", string>>;
 };
 
 export type Sezione = {

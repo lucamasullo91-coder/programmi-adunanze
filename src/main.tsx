@@ -18,6 +18,8 @@ import {
 } from "./Rendering";
 import { normalizza, GIORNI_IT, MESI_IT, cap, type Carta, type Evento, type Foglio, type Riga } from "./tipi";
 import { jpegDaDataUrl, pdfDaJpeg, scarica } from "./pdfzip";
+import { CSS_IMMAGINE } from "./wa/immagine";
+import { CSS_PANNELLO, PannelloWhatsApp } from "./wa/Pannello";
 
 // Any error is shown on the page (otherwise a failure inside the Google page is just a blank screen).
 const mostraErrore = (m: string) => {
@@ -28,7 +30,7 @@ const mostraErrore = (m: string) => {
 };
 window.addEventListener("error", (e) => mostraErrore(`${e.message} (${e.filename}:${e.lineno})`));
 window.addEventListener("unhandledrejection", (e) => mostraErrore(String((e.reason as Error)?.message ?? e.reason)));
-for (const c of [fogliCss, appCss]) {
+for (const c of [fogliCss, appCss, CSS_IMMAGINE, CSS_PANNELLO]) {
   const st = document.createElement("style");
   st.textContent = c;
   document.head.appendChild(st);
@@ -40,6 +42,8 @@ type Stato = {
   ruolo: Ruolo;
   impostazioni: Record<string, string>;
   valori: Record<string, string>;
+  /** Podium of each meeting ("2026-11-03|INFRA" → name), from the rotation of the departments. */
+  podio?: Record<string, string>;
 };
 type Bimestre = { id: string; nome: string; mesi: string[] };
 
@@ -74,6 +78,7 @@ function chiama<T>(fn: string, ...args: unknown[]): Promise<T> {
     localStorage.setItem("pa-valori", JSON.stringify(v));
     return Promise.resolve(true as T);
   }
+  if (fn === "caricaImmagine") return Promise.resolve(("img" + Date.now()) as T);
   if (fn === "caricaFoto") {
     const id = "f" + Date.now();
     localStorage.setItem("pa-foto-" + id, args[0] as string);
@@ -151,6 +156,8 @@ function applica(f: Foglio, valori: Record<string, string>, foto: Record<string,
           for (const k of r.campi ?? []) {
             const v = valori[`${r.id}:${k}`];
             if (v != null) (r as Record<string, unknown>)[k] = v;
+            const prima = k !== "titolo" ? valori[`${r.id}:${k}~prima`] : undefined;
+            if (prima) r.prima = { ...r.prima, [k]: prima };
           }
     }
   // Header ("Mercoledì 19:30"): day and time of the first meeting of each kind in the month
@@ -200,6 +207,7 @@ function App() {
   const [mod, setMod] = useState<Modifica | null>(null);
   const [lavoro, setLavoro] = useState("");
   const [stampa, setStampa] = useState(false);
+  const [wa, setWa] = useState(false);
   const pagine = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -383,10 +391,13 @@ function App() {
               </button>
             ))}
           </div>
-          <button className="pa-btn" onClick={() => void pdf()} disabled={!!lavoro}>
+          <button className={`pa-btn${wa ? "" : " sec"}`} onClick={() => setWa((x) => !x)} aria-pressed={wa}>
+            {wa ? "Torna al programma" : "Immagini WhatsApp"}
+          </button>
+          <button className="pa-btn" onClick={() => void pdf()} disabled={!!lavoro || wa}>
             {lavoro || "Scarica PDF"}
           </button>
-          <button className="pa-btn sec" onClick={() => setStampa(true)}>
+          <button className="pa-btn sec" onClick={() => setStampa(true)} disabled={wa}>
             Stampa o salva PDF
           </button>
         </div>
@@ -395,7 +406,20 @@ function App() {
           al suo posto un’assemblea o un congresso. Si salva da solo.
         </p>
       </header>
-      <Pagine2 fogli={fogli} vista={vista} ruolo={stato.ruolo} tocca={tocca} rif={pagine} stampa={stampa} />
+      {wa ? (
+        <PannelloWhatsApp
+          fogli={fogli}
+          valori={stato.valori}
+          podio={stato.podio ?? {}}
+          email={stato.email}
+          puo={(c) => puo(stato.ruolo, c.id)}
+          tipi={vista === "inf" ? ["INFRA"] : vista === "fs" ? ["FINE"] : ["INFRA", "FINE"]}
+          salva={salva}
+          carica={(b64, nome) => chiama<string>("caricaImmagine", b64, nome)}
+        />
+      ) : (
+        <Pagine2 fogli={fogli} vista={vista} ruolo={stato.ruolo} tocca={tocca} rif={pagine} stampa={stampa} />
+      )}
       {mod?.k === "nome" && (
         <FinestraNome
           m={mod}
