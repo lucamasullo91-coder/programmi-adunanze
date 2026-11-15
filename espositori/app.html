@@ -154,6 +154,7 @@ body.editing .tip{display:block;width:100%;order:8}
 .hint{margin:0;font-size:13px;color:#4D5A68;line-height:1.4}
 .export{position:fixed;left:-12000px;top:0;width:794px;background:#fff}
 .export .pgm{width:794px;max-width:none;padding:0 22px;box-shadow:none;border-radius:0;outline:0}
+.export .pgm.car{padding:10px 12px 8px}
 
 /* ---------- carrelli ---------- */
 .tabs{display:flex;gap:4px;width:100%;background:var(--neu);border-radius:6px;padding:3px}
@@ -161,18 +162,26 @@ body.editing .tip{display:block;width:100%;order:8}
 .tabs button[aria-selected="true"]{background:#fff;color:var(--title);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 body.tab-car .solo-pgm{display:none!important}
 body:not(.tab-car) .solo-car{display:none!important}
-.car .carts{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:18px 16px;margin-top:16px;align-items:start}
-.car .carts.n1{grid-template-columns:minmax(0,560px);justify-content:center}
-.cart{display:grid;gap:8px;min-width:0;break-inside:avoid;align-content:start}
-/* one or two carts: the cart on the left, what to know beside it (keeps the A4 page readable) */
-.car .carts.n1 .cart,.car .carts.n2 .cart{grid-template-columns:minmax(0,190px) minmax(0,1fr);grid-template-areas:"h h" "f d" "f i" "f .";grid-template-rows:auto auto auto 1fr;column-gap:14px}
-.car .carts.n1 .cart{grid-template-columns:minmax(0,230px) minmax(0,1fr)}
-.car .carts.n1 .cart>h2,.car .carts.n2 .cart>h2{grid-area:h}
-.car .carts.n1 .frame,.car .carts.n2 .frame{grid-area:f;align-self:start}
-.car .carts.n1 .didas,.car .carts.n2 .didas{grid-area:d;margin-top:0}
-.car .carts.n1 .cinfo,.car .carts.n2 .cinfo{grid-area:i}
-.cart h2{margin:0;display:flex;align-items:baseline;gap:8px;font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--title);border-bottom:2px solid var(--gold);padding-bottom:4px}
-.cart h2 small{white-space:nowrap;font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--slate)}
+.car .carts{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:16px 14px;margin-top:14px;align-items:start}
+.cart{display:grid;gap:10px;min-width:0;break-inside:avoid;align-content:start;grid-template-areas:"v" "f" "i"}
+.cart>.vblk{grid-area:v}.cart>.frame{grid-area:f}.cart>.cinfo{grid-area:i}
+/* two carts: video across the column, the cart on the left and what to know beside it */
+.car .carts.n2 .cart{grid-template-columns:minmax(0,var(--fw,232px)) minmax(0,1fr);grid-template-areas:"v v" "f i";column-gap:12px}
+/* one cart: the cart on the left, video and the rest beside it */
+.car .carts.n1 .cart{grid-template-columns:minmax(0,var(--fw,300px)) minmax(0,1fr);grid-template-areas:"f v" "f i";grid-template-rows:auto 1fr;column-gap:18px}
+.car .carts.n1 .cart,.car .carts.n2 .cart{align-items:start}
+/* one cart: there is room, so everything beside it is bigger */
+.car .carts.n1 .cinfo .cn{font-size:22px}.car .carts.n1 .cinfo small,.car .carts.n1 .vblk small{font-size:13px}
+.car .carts.n1 .cinfo .ob{font-size:20px}.car .carts.n1 .cinfo ul{font-size:18px;gap:6px}
+.car .carts.n1 .vid{font-size:24px;padding:16px 18px}.car .carts.n1 .vblk .vt{font-size:15px}
+.vblk{display:grid;gap:5px;min-width:0}
+.vblk small{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--slate)}
+.vid{display:flex;align-items:center;justify-content:center;gap:12px;background:var(--title);color:#fff;text-decoration:none;border-radius:12px;padding:12px 16px;font-size:20px;font-weight:800;letter-spacing:.01em;min-width:0;box-shadow:0 2px 0 #7d5300}
+.vid i{width:34px;height:34px;border-radius:50%;background:#fff;position:relative;flex:none}
+.vid i:after{content:"";position:absolute;left:13px;top:9px;border-left:12px solid var(--title);border-top:8px solid transparent;border-bottom:8px solid transparent}
+.vid span{min-width:0;line-height:1.15}
+.vblk .vt{font-size:12.5px;color:var(--slate);line-height:1.25}
+.vblk .vuota{font-size:13px;color:#9AA3AD;border:1.5px dashed var(--rule);border-radius:10px;padding:12px;text-align:center}
 .frame{background:#23272D;border-radius:7px 7px 4px 4px;padding:7px 7px 0;display:grid;gap:6px;position:relative}
 .frame .poster{background:#fff;border-radius:3px;aspect-ratio:3/4.4;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .frame .poster img{width:100%;height:100%;object-fit:cover;display:block}
@@ -185,21 +194,15 @@ body:not(.tab-car) .solo-car{display:none!important}
 .frame .base{height:16px;position:relative;margin:0 -7px}
 .frame .base i{position:absolute;bottom:-9px;width:22px;height:22px;border-radius:50%;background:#1A1D21;border:3px solid #3A4048}
 .frame .base i:first-child{left:14%} .frame .base i:last-child{right:14%}
-.didas{min-width:0;margin:6px 0 0;padding:0;list-style:none;display:grid;gap:2px}
-.didas li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:4px;font-size:11px;line-height:1.25;color:var(--ink2)}
-.didas li b{font-size:9.5px;font-weight:800;color:#fff;background:var(--slate);border-radius:3px;text-align:center;height:15px;line-height:15px}
-.didas li.ps b{background:var(--title)}
-.cinfo{display:grid;gap:5px;min-width:0;border-left:3px solid var(--gold);padding:2px 0 2px 9px}
-.cinfo small{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
-.cinfo .ob{font-size:12.5px;font-weight:600;color:var(--ink2);line-height:1.3}
-.cinfo>div{min-width:0}.cinfo ul{overflow-wrap:anywhere;margin:0;padding-left:16px;font-size:11.5px;color:var(--ink2);display:grid;gap:2px}
-.cinfo .vid{justify-self:start;max-width:100%;min-width:0;display:inline-flex;align-items:center;gap:7px;background:var(--title);color:#fff;text-decoration:none;border-radius:999px;padding:5px 12px 5px 6px;font-size:12px;font-weight:700;letter-spacing:.02em}
-.cinfo .vid i{width:18px;height:18px;border-radius:50%;background:#fff;position:relative;flex:none}
-.cinfo .vid i:after{content:"";position:absolute;left:7px;top:5px;border-left:6px solid var(--title);border-top:4px solid transparent;border-bottom:4px solid transparent}
-.cinfo .vid span{min-width:0;line-height:1.2}
-.cinfo .vuota{font-size:12px;color:#9AA3AD}
-.car .nota-sala{margin-top:14px;border:1px solid var(--rule);border-radius:5px;padding:9px 12px;font-size:12.5px;color:var(--ink2)}
-.car .nota-sala small{display:block;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin-bottom:3px}
+.cinfo{display:grid;gap:9px;min-width:0;border-left:4px solid var(--gold);padding:2px 0 2px 11px}
+.cinfo>div{min-width:0;display:grid;gap:3px}
+.cinfo .cn{font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--title);line-height:1.1}
+.cinfo small{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+.cinfo .ob{font-size:15px;font-weight:700;color:var(--ink2);line-height:1.3}
+.cinfo ul{overflow-wrap:anywhere;margin:0;padding-left:18px;font-size:14px;line-height:1.3;color:var(--ink2);display:grid;gap:4px}
+.cinfo .vuota{font-size:13px;color:#9AA3AD}
+.car .nota-sala{margin-top:14px;border:1px solid var(--rule);border-radius:5px;padding:10px 12px;font-size:15px;color:var(--ink2)}
+.car .nota-sala small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin-bottom:3px}
 .car .pgm-foot{justify-content:space-between}
 body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
 /* catalogo e scelta */
@@ -219,9 +222,10 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
 .sez{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4D5A68;margin:4px 0 0}
 @media (max-width:700px){
   .car .carts{grid-template-columns:repeat(min(var(--n),2),minmax(0,1fr))}
+  .car .carts.n2 .cart,.car .carts.n1 .cart{grid-template-columns:minmax(0,1fr);grid-template-areas:"v" "f" "i";grid-template-rows:auto}
+  .car .carts.n1 .frame{max-width:300px;width:100%;justify-self:center}
   .car .carts.n1{grid-template-columns:minmax(0,1fr)}
-  .car .carts.n2 .cart{grid-template-columns:minmax(0,1fr);grid-template-areas:"h" "f" "d" "i";grid-template-rows:auto}
-  .car .carts.n1 .cart{grid-template-columns:minmax(0,170px) minmax(0,1fr)}
+  .vid{font-size:17px;padding:10px 12px}
 }
 @media (min-width:701px){ .bar{position:sticky;top:0} }
 @media (max-width:700px){
@@ -252,7 +256,7 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
 <div class="bar">
 <div class="tabs" role="tablist"><button type="button" role="tab" data-tab="pgm" aria-selected="true">Programma</button><button type="button" role="tab" data-tab="car" aria-selected="false">Carrelli</button></div>
 <label class="sel"><span>Mese</span><select id="b-mese" aria-label="Mese"></select></label>
-<label class="sel solo-car"><span>Sala</span><select id="b-sala" aria-label="Sala del Regno"></select></label>
+<label class="sel solo-car"><span>Zona</span><select id="b-sala" aria-label="Zona"></select></label>
 <label class="sel solo-pgm"><span>Vista</span><select id="b-pers" aria-label="Programma generale o personale"></select></label>
 <span class="sp"></span>
 <button class="btn" id="b-mod" type="button" aria-pressed="false">Modifica</button>
@@ -265,7 +269,7 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
 <label class="sel solo-car"><span>Carrelli</span><select id="b-ncar" aria-label="Quanti carrelli"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
 <button class="btn solo-car" id="b-riprendi" type="button">Riprendi dal mese prima</button>
 <button class="btn solo-car" id="b-cat" type="button">Catalogo</button>
-<button class="btn solo-car" id="b-nota" type="button">Nota per la sala</button>
+<button class="btn solo-car" id="b-nota" type="button">Nota</button>
 </div>
 <p class="tip solo-car">Tocca il poster o un posto del ripiano per scegliere cosa esporre, il testo sotto un carrello per obiettivo, suggerimenti e video. Le modifiche si salvano da sole.</p>
 <p class="tip solo-pgm">Tocca un turno per scrivere i nomi (nome e cognome per esteso), una postazione per cambiarne giorni e orari, la testata o il piè di pagina per le impostazioni. Le modifiche si salvano da sole.</p>
@@ -608,6 +612,7 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
 
   app.addEventListener("click", function (e) {
     if (!editMode) return;
+    if (e.target.closest("a.vid")) e.preventDefault();
     var el = e.target.closest("[data-edit]"); if (!el) return;
     if (el.dataset.edit === "slot") modSlot(el.dataset.k);
     else if (el.dataset.edit === "post") modPost(el.dataset.id);
@@ -717,21 +722,9 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
     if (!x) return '<span class="vuoto-c">' + (cls === "poster" ? "Poster" : "Vuoto") + "</span>";
     return x.img ? '<img src="' + esc(x.img) + '" alt="' + esc(x.nome) + '">' : '<span class="vuoto-c">' + esc(x.nome) + "</span>";
   }
-  /** One line per shelf under the cart: "Puoi vivere felice per sempre ×2" or "A · B". */
-  function didascalie(c) {
-    var out = [];
-    if (c.poster) out.push('<li class="ps"><b>P</b><span>' + esc(voce(c.poster).nome) + "</span></li>");
-    for (var r = 0; r < 3; r++) {
-      var a = c.posti[2 * r], b = c.posti[2 * r + 1];
-      if (!a && !b) continue;
-      var txt = a && b && a === b ? esc(voce(a).nome) + " ×2" : [a, b].filter(Boolean).map(function (x) { return esc(voce(x).nome); }).join(" · ");
-      out.push("<li><b>" + (r + 1) + "</b><span>" + txt + "</span></li>");
-    }
-    return out.length ? '<ul class="didas">' + out.join("") + "</ul>" : "";
-  }
   function carHTML() {
     var A = allest(), M = X ? X.meta : { congregazione: "", mese: "", anno: "" }, n = A.carrelli.length;
-    var h = '<article class="pgm car"><header class="pgm-head"><div class="cong">' + esc(M.congregazione) + '</div><div class="goldr"></div><h1>Allestimento dei carrelli</h1><div class="mese">Sala di ' + esc(salaNome(sala)) + " · " + esc(nomeMese(cur)) + "</div></header>";
+    var h = '<article class="pgm car"><header class="pgm-head"><div class="cong">' + esc(M.congregazione) + '</div><div class="goldr"></div><h1>Allestimento dei carrelli</h1><div class="mese">' + esc(salaNome(sala)) + " · " + esc(nomeMese(cur)) + "</div></header>";
     h += '<section class="carts n' + n + '" style="--n:' + n + '">';
     A.carrelli.forEach(function (c, i) {
       var shelves = "";
@@ -740,16 +733,18 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
         for (var s = 0; s < 2; s++) { var j = 2 * r + s; shelves += '<div class="slot" data-edit="cslot" data-c="' + i + '" data-s="' + j + '">' + imgVoce(c.posti[j]) + "</div>"; }
         shelves += '<div class="lip"></div></div>';
       }
-      var sug = (c.suggerimenti || []).filter(Boolean), info = "";
+      var sug = (c.suggerimenti || []).filter(Boolean), info = "", vb = "";
+      if (c.nome) info += '<div class="cn">' + esc(c.nome) + "</div>";
       if (c.obiettivo) info += "<div><small>Obiettivo</small><div class=\"ob\">" + esc(c.obiettivo) + "</div></div>";
       if (sug.length) info += "<div><small>Suggerimenti</small><ul>" + sug.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ul></div>";
-      if (c.video) info += '<a class="vid" href="' + esc(c.video) + '" target="_blank" rel="noopener"><i></i><span>' + esc(c.videoTitolo || "Guarda il video") + "</span></a>";
-      if (!info && editMode) info = '<span class="vuota">Tocca per obiettivo, suggerimenti e video</span>';
-      h += '<section class="cart"><h2><small>Carrello ' + (i + 1) + "</small>" + (c.nome ? esc(c.nome) : "&nbsp;") + '</h2><div class="frame"><div class="poster" data-edit="cposter" data-c="' + i + '">' + imgVoce(c.poster, "poster") + "</div>" + shelves + '<div class="base"><i></i><i></i></div></div>' + didascalie(c) + (info ? '<div class="cinfo" data-edit="cinfo" data-c="' + i + '">' + info + "</div>" : "") + "</section>";
+      if (!info && editMode) info = '<span class="vuota">Tocca per obiettivo e suggerimenti</span>';
+      if (c.video) vb = "<small>Video suggerito</small>" + '<a class="vid" href="' + esc(c.video) + '" target="_blank" rel="noopener"><i></i><span>Guarda il video</span></a>' + (c.videoTitolo ? '<span class="vt">' + esc(c.videoTitolo) + "</span>" : "");
+      else if (editMode) vb = '<span class="vuota">Tocca per aggiungere il video suggerito</span>';
+      h += '<section class="cart">' + (vb ? '<div class="vblk" data-edit="cinfo" data-c="' + i + '">' + vb + "</div>" : "") + '<div class="frame"><div class="poster" data-edit="cposter" data-c="' + i + '">' + imgVoce(c.poster, "poster") + "</div>" + shelves + '<div class="base"><i></i><i></i></div></div>' + (info ? '<div class="cinfo" data-edit="cinfo" data-c="' + i + '">' + info + "</div>" : "") + "</section>";
     });
     h += "</section>";
     if (A.nota) h += '<div class="nota-sala" data-edit="cnota"><small>Nota</small>' + esc(A.nota) + "</div>";
-    h += '<footer class="pgm-foot"><span class="l"><b>Allestimento dei carrelli</b><span>Sala di ' + esc(salaNome(sala)) + '</span></span><span class="code">' + esc(nomeMese(cur)) + "</span></footer></article>";
+    h += '<footer class="pgm-foot"><span class="l"><b>Allestimento dei carrelli</b><span>' + esc(salaNome(sala)) + '</span></span><span class="code">' + esc(nomeMese(cur)) + "</span></footer></article>";
     return h;
   }
 
@@ -802,7 +797,7 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
     var h = campo("knome", "Nome del carrello (facoltativo)", c.nome || "") +
       '<label class="fld"><span>Obiettivo</span><textarea id="kob" placeholder="Per esempio: offrire il corso biblico a chi passa">' + esc(c.obiettivo || "") + "</textarea></label>" +
       '<label class="fld"><span>Suggerimenti (uno per riga)</span><textarea id="ksug">' + esc((c.suggerimenti || []).join("\n")) + "</textarea></label>" +
-      campo("kvid", "Link del video su jw.org", c.video || "", "url") + campo("kvt", "Testo del pulsante del video", c.videoTitolo || "Guarda il video");
+      campo("kvid", "Link del video suggerito (jw.org)", c.video || "", "url") + campo("kvt", "Titolo del video (facoltativo, sotto il pulsante)", c.videoTitolo || "");
     apri("Carrello " + (i + 1), h, function () {
       var u = v("kvid");
       if (u && !/^https?:\/\//i.test(u)) u = "https://" + u;
@@ -817,7 +812,7 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
   }
   function modNota() {
     var A = allest();
-    apri("Nota per la sala di " + salaNome(sala), '<label class="fld"><span>Nota (compare sotto i carrelli)</span><textarea id="snota" placeholder="Per esempio: i carrelli si ritirano nell’armadio della Sala">' + esc(A.nota || "") + "</textarea></label>", function () { A.nota = document.getElementById("snota").value.trim(); });
+    apri("Nota · " + salaNome(sala), '<label class="fld"><span>Nota (compare sotto i carrelli)</span><textarea id="snota" placeholder="Per esempio: i carrelli si ritirano nell’armadio della Sala">' + esc(A.nota || "") + "</textarea></label>", function () { A.nota = document.getElementById("snota").value.trim(); });
   }
 
   /* ---------- catalogo di poster e pubblicazioni ---------- */
@@ -904,11 +899,18 @@ body.editing .car [data-edit]:hover{box-shadow:0 0 0 2px var(--gold)}
     var em = editMode; editMode = false;
     host.className = "export"; host.innerHTML = carHTML(); document.body.appendChild(host);
     editMode = em;
-    var pgm = host.querySelector(".pgm"); pgm.style.padding = "28px 28px 18px";
+    var pgm = host.querySelector(".pgm");
+    // With one or two carts, widen the carts until the page is as tall as an A4 sheet: bigger pictures, no empty band.
+    var cs = pgm.querySelector(".carts"), n = allest().carrelli.length, R = (297 - 8) / (210 - 8);
+    if (n <= 2) {
+      var fw = n === 1 ? 300 : 232, max = n === 1 ? 420 : 330;
+      while (fw < max) { cs.style.setProperty("--fw", (fw + 6) + "px"); if (pgm.offsetHeight / pgm.offsetWidth > R) break; fw += 6; }
+      cs.style.setProperty("--fw", fw + "px");
+    }
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () {
       return window.html2canvas(pgm, { scale: 2.4, backgroundColor: "#ffffff", logging: false });
     }).then(function (cv) {
-      var W = pgm.offsetWidth, H = pgm.offsetHeight, M = 6, k = Math.min((210 - 2 * M) / W, (297 - 2 * M) / H), x0 = (210 - W * k) / 2, y0 = M;
+      var W = pgm.offsetWidth, H = pgm.offsetHeight, M = 4, k = Math.min((210 - 2 * M) / W, (297 - 2 * M) / H), x0 = (210 - W * k) / 2, y0 = M;
       var pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: true });
       pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", x0, y0, W * k, H * k);
       var base = pgm.getBoundingClientRect();
