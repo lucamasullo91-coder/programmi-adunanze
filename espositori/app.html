@@ -148,6 +148,7 @@ body.editing .tip{display:block;width:100%;order:8}
 .fld>span{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#4D5A68}
 .fld input,.fld select,.fld textarea,.frow input,.frow select{font:16px var(--f);padding:9px 10px;border:1px solid #D0CBC0;border-radius:5px;background:#F9F8F5;color:#1F2630;width:100%;min-width:0}
 .fld textarea{min-height:90px;resize:vertical}
+.fld.chk{display:flex;align-items:center;gap:8px}.fld.chk input{width:auto}.fld.chk>span{text-transform:none;letter-spacing:0;font-size:14px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .frow{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:6px;margin-bottom:6px}
 .hint{margin:0;font-size:13px;color:#4D5A68;line-height:1.4}
@@ -293,6 +294,7 @@ body.editing .tip{display:block;width:100%;order:8}
   }
   function boxAllestimento() {
     var a = X.allestimento || {};
+    if (!a.mostra) return ""; // hidden unless switched on in "Allestimento del mese"
     var sug = (a.suggerimenti || []).filter(Boolean);
     if (!a.obiettivo && !sug.length && !a.carrello) return editMode ? '<section class="alle" data-edit="alle"><h3>Allestimento del mese</h3><p class="hint">Tocca per scrivere obiettivo e suggerimenti.</p></section>' : "";
     return '<section class="alle" data-edit="alle"><h3>Allestimento del mese' + (a.carrello ? " · " + esc(a.carrello) : "") + "</h3>" + (a.obiettivo ? '<div class="ob">' + esc(a.obiettivo) + "</div>" : "") + (sug.length ? "<ul>" + sug.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ul>" : "") + "</section>";
@@ -500,11 +502,13 @@ body.editing .tip{display:block;width:100%;order:8}
 
   function modAllestimento() {
     var a = X.allestimento || (X.allestimento = { obiettivo: "", suggerimenti: [] });
-    var h = '<p class="hint">Compare nel programma che si invia: ricorda a tutti come allestire il carrello e come usare al meglio le pubblicazioni del mese.</p>' +
+    var h = '<label class="fld chk"><input type="checkbox" id="amostra"' + (a.mostra ? " checked" : "") + '> <span>Mostra il riquadro nel programma</span></label>' +
+      '<p class="hint">Se attivo, compare nel programma che si invia. Di base è nascosto.</p>' +
       campo("acar", "Modello del carrello in uso", a.carrello || "") +
       '<label class="fld"><span>Obiettivo del mese</span><textarea id="aob">' + esc(a.obiettivo || "") + "</textarea></label>" +
       '<label class="fld"><span>Suggerimenti (uno per riga)</span><textarea id="asug">' + esc((a.suggerimenti || []).join("\n")) + "</textarea></label>";
     apri("Allestimento del mese", h, function () {
+      a.mostra = document.getElementById("amostra").checked;
       a.carrello = v("acar");
       a.obiettivo = document.getElementById("aob").value.trim();
       a.suggerimenti = document.getElementById("asug").value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
