@@ -184,6 +184,11 @@ function portale(k) {
   return out;
 }
 
+function rigaOggetto_(riga, r, col) {
+  const v = {};
+  col.forEach((x) => { const val = r[x.c - 1]; v[x.c] = x.tipo === 'check' ? val === true : (val === null ? '' : String(val)); });
+  return { riga: riga, id: String(r[C.id - 1]), v: v };
+}
 function leggiFratelli_(sh, col, tutto) {
   const n = sh.getLastRow() - RIGA_DATI + 1;
   if (n < 1) return [];
@@ -193,9 +198,7 @@ function leggiFratelli_(sh, col, tutto) {
   dati.forEach((r, i) => {
     if (!r[C.nome - 1]) return;
     if (!tutto && r[C.stato - 1] !== 'Attivo') return;
-    const v = {};
-    col.forEach((x) => { const val = r[x.c - 1]; v[x.c] = x.tipo === 'check' ? val === true : (val === null ? '' : String(val)); });
-    out.push({ riga: RIGA_DATI + i, id: String(r[C.id - 1]), v: v });
+    out.push(rigaOggetto_(RIGA_DATI + i, r, col));
   });
   return out;
 }
@@ -214,8 +217,8 @@ function salva(k, modifiche) {
     const perC = {}; colTutte.forEach((x) => { perC[x.c] = x; });
     const nc = sh.getLastColumn();
     const toccate = {};
-    const registro = [];
-    (modifiche || []).forEach((m) => {
+    const registro = [], errori = [];
+    (modifiche || []).forEach((m) => { try {
       const x = perC[Number(m.c)];
       if (!x) throw new Error('Colonna sconosciuta.');
       if (x.tipo === 'calc') throw new Error('«' + x.titolo + '» si calcola da sola.');
@@ -240,15 +243,18 @@ function salva(k, modifiche) {
       const prima = r[x.c - 1];
       if (String(prima) === String(val)) return;
       sh.getRange(riga, x.c).setValue(val);
-      toccate[riga] = toccate[riga] || x.c === C.nomina;
+      const t = toccate[riga] || (toccate[riga] = { base: false, nomina: false });
+      if ([C.sesso, C.nomina, C.servizio, C.ruolo].indexOf(x.c) >= 0) t.base = true;
+      if (x.c === C.nomina) t.nomina = true;
       registro.push([new Date(), io.id, io.nome, 'modifica', r[C.nome - 1] + ' · ' + etichetta_(x) + ': ' + mostra_(prima) + ' → ' + mostra_(val)]);
-    });
-    Object.keys(toccate).forEach((riga) => sistemaRiga_(sh, Number(riga), colTutte, registro, io, toccate[riga] === true));
-    if (registro.length) scheda_('Registro').getRange(scheda_('Registro').getLastRow() + 1, 1, registro.length, 5).setValues(registro);
+    } catch (err) { errori.push(err.message); } });
+    // Sigla, spunte non più ammesse e colori servono solo se cambiano sesso, nomina, servizio o ruolo
+    Object.keys(toccate).forEach((riga) => { if (toccate[riga].base) sistemaRiga_(sh, Number(riga), colTutte, registro, io, toccate[riga].nomina); });
+    if (registro.length) { const reg = scheda_('Registro'); reg.getRange(reg.getLastRow() + 1, 1, registro.length, 5).setValues(registro); }
     const col = colTutte.filter((x) => io.tutto || !x.riservata);
-    const tutte = leggiFratelli_(sh, col, io.tutto);
-    const ids = (modifiche || []).map((m) => String(m.id));
-    return tutte.filter((f) => ids.indexOf(f.id) >= 0);
+    const righe = {};
+    (modifiche || []).forEach((m) => { const r = rigaDi_(sh, m.id); if (r) righe[r] = true; });
+    return { righe: Object.keys(righe).map((r) => rigaOggetto_(Number(r), sh.getRange(Number(r), 1, 1, nc).getValues()[0], col)), errori: errori };
   } finally {
     lock.releaseLock();
   }

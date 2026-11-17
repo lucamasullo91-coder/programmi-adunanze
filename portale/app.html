@@ -360,15 +360,18 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
   /* ── disegno ed eventi ── */
   function disegna() {
     var v = S.vista;
-    var y = window.scrollY;
+    var y = window.scrollY, tw0 = app.querySelector('.tw');
+    if (tw0 && S.vista === 'anagrafica') { S._twx = tw0.scrollLeft; S._twy = tw0.scrollTop; }
     app.innerHTML = v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
     if (v === 'anagrafica' || v === 'accessi') window.scrollTo(0, y);
     var tw = app.querySelector('.tw');
+    if (tw && S._tw) { tw.scrollLeft = S._twx || 0; tw.scrollTop = S._twy || 0; }
     if (tw && !S.dati.io.tutto && !S._tw) {
       var own = tw.querySelector('td.k.own'), fix = tw.querySelector('td.fix');
       if (own && fix) tw.scrollLeft = Math.max(0, own.offsetLeft - fix.offsetWidth - 8);
       S._tw = true;
     }
+    if (tw) S._tw = true;
     var q = document.getElementById('q');
     if (q && S._focus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
   }
@@ -379,15 +382,65 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
   }
   function cambia(id, c, valore, el) {
     if (el) el.classList.add('busy');
-    return srv('salva', [{ id: id, c: c, valore: valore }]).then(function (righe) {
-      sostituisci(righe); disegna(); toast('Salvato');
+    return srv('salva', [{ id: id, c: c, valore: valore }]).then(function (ris) {
+      var righe = ris.righe || ris, err = ris.errori || [];
+      sostituisci(righe); disegna(); if (err.length) toast(err[0], true); else toast('Salvato');
     }).catch(function (e) { disegna(); toast(e.message, true); });
   }
+
+  /* Spunte: cambiano subito sullo schermo, si salvano insieme dopo un attimo. Niente ridisegno, niente salti. */
+  var coda = [], timer = null, inVolo = false;
+  var stato = document.createElement('div');
+  stato.style.cssText = 'position:fixed;right:12px;bottom:12px;background:#1F2630;color:#fff;padding:6px 12px;border-radius:999px;font:600 12.5px var(--f);z-index:30;display:none';
+  document.body.appendChild(stato);
+  function mostraStato(t) { stato.textContent = t; stato.style.display = t ? 'block' : 'none'; }
+  function spunta(f, x) {
+    var nuovo = !(f.v[x.c] === true);
+    f.v[x.c] = nuovo;
+    app.querySelectorAll('[data-id="' + f.id + '"][data-c="' + x.c + '"] .ck').forEach(function (ck) { ck.classList.toggle('on', nuovo); });
+    coda = coda.filter(function (m) { return !(m.id === f.id && m.c === x.c); });
+    coda.push({ id: f.id, c: x.c, valore: nuovo, prima: !nuovo });
+    mostraStato('Da salvare: ' + coda.length);
+    clearTimeout(timer); timer = setTimeout(invia, 900);
+  }
+  function invia() {
+    if (inVolo || !coda.length) return;
+    inVolo = true;
+    var pacco = coda; coda = [];
+    mostraStato('Salvo ' + pacco.length + '…');
+    srv('salva', pacco.map(function (m) { return { id: m.id, c: m.c, valore: m.valore }; })).then(function (ris) {
+      inVolo = false;
+      var righe = ris.righe || ris, err = ris.errori || [];
+      if (err.length) toast(err[0] + (err.length > 1 ? ' (e altri ' + (err.length - 1) + ')' : ''), true);
+      // Allinea i dati con il server senza ridisegnare, salvo che il server abbia cambiato qualcosa da solo
+      var diverso = false;
+      righe.forEach(function (n) {
+        var f = S.dati.fratelli.filter(function (y) { return y.id === n.id; })[0];
+        if (!f) return;
+        Object.keys(n.v).forEach(function (k) {
+          var inCoda = coda.some(function (m) { return m.id === n.id && String(m.c) === k; });
+          if (!inCoda && f.v[k] !== n.v[k]) { f.v[k] = n.v[k]; diverso = true; }
+        });
+      });
+      if (diverso) disegna();
+      if (coda.length) return invia();
+      mostraStato('Salvato'); setTimeout(function () { if (!coda.length && !inVolo) mostraStato(''); }, 1200);
+    }).catch(function (e) {
+      inVolo = false;
+      pacco.forEach(function (m) {
+        var f = S.dati.fratelli.filter(function (y) { return y.id === m.id; })[0];
+        if (f) f.v[m.c] = m.prima;
+      });
+      mostraStato(''); disegna(); toast(e.message + ' — modifiche annullate', true);
+      if (coda.length) invia();
+    });
+  }
+  window.addEventListener('beforeunload', function (e) { if (coda.length || inVolo) { e.preventDefault(); e.returnValue = ''; } });
 
   app.addEventListener('click', function (e) {
     var t = e.target.closest('[data-go],[data-id],[data-modo],[data-pid],[data-copia],[data-wa],[data-rig],[data-att],[data-collab],#nOk');
     if (!t) return;
-    if (t.dataset.go) return vai(t.dataset.go);
+    if (t.dataset.go) { clearTimeout(timer); invia(); return vai(t.dataset.go); }
     if (t.dataset.modo) { S.modo = t.dataset.modo; return disegna(); }
     if (t.dataset.collab) { S.soloCollab = t.dataset.collab === '1'; return disegna(); }
     if (t.id === 'nOk') {
@@ -437,7 +490,7 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
       if (!x || !f) return;
       if (!puo(x)) return toast('Non è del tuo ambito: sola lettura', true);
       if (!sbloccato(x, f)) return toast('«' + x.titolo + '» è solo per ' + x.regola, true);
-      return cambia(f.id, cc, !(f.v[cc] === true), t);
+      return spunta(f, x);
     }
     if (t.dataset.id) { S.id = t.dataset.id; return vai('scheda'); }
   });
