@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Portale della congregazione: stessa grafica dei programmi (foglio bianco su scrivania, testata con riga oro). Pensato prima per il telefono. */
+:root{
+  --desk:#EEF0EE; --ink:#1F2630; --ink2:#2A3140; --slate:#4D5A68; --muted:#7A8590; --gold:#F2C66D;
+  --rule:#D9D6D0; --neu:#F4F3EF; --base:#3E4A59; --ok:#2E7D4F; --err:#B3261E; --lock:#E3E3E3;
+  --f:"Fira Sans","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--desk);color:var(--ink2);font-family:var(--f);font-size:14px;line-height:1.35;padding:12px 10px 64px}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto}
+.pgm{background:#fff;border-radius:3px;box-shadow:0 1px 0 var(--rule),0 14px 30px -18px rgba(0,0,0,.4);padding:20px 18px 18px}
+/* testata */
+.head{border-bottom:2px solid var(--slate);padding-bottom:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.head .cong{font-size:10px;font-weight:600;letter-spacing:.32em;color:var(--slate);text-transform:uppercase}
+.head .goldr{width:116px;height:3px;background:var(--gold);border-radius:2px;margin:6px 0 7px}
+.head h1{margin:0;font-weight:800;font-size:30px;line-height:1;color:var(--base);text-transform:uppercase;letter-spacing:.005em}
+.head .sub{margin-top:6px;font-weight:600;font-size:12.5px;letter-spacing:.1em;color:var(--slate);text-transform:uppercase}
+.back{border:1px solid var(--rule);background:var(--neu);border-radius:999px;padding:6px 13px;font-weight:600;font-size:13px;cursor:pointer;color:var(--slate)}
+/* pagina iniziale */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.tile{border:1px solid var(--rule);border-top:5px solid var(--c,#3E4A59);border-radius:5px;padding:14px 14px 13px;background:#fff;text-align:left;cursor:pointer;display:grid;gap:5px}
+.tile b{font-size:19px;font-weight:800;text-transform:uppercase;color:var(--c,#3E4A59);letter-spacing:.01em}
+.tile span{font-size:13px;color:var(--slate)}
+.tile.off{cursor:default;opacity:.45}
+.tile.off b::after{content:" · in arrivo";font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:700;letter-spacing:.04em;background:var(--neu);color:var(--slate);border:1px solid var(--rule)}
+.chip.on{background:var(--c,#3E4A59);border-color:var(--c,#3E4A59);color:#fff}
+.nota{font-size:12.5px;color:var(--slate);margin:2px 0 12px}
+.nota b{color:var(--ink2)}
+/* barra filtri */
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.bar input[type=search]{flex:1 1 200px;min-width:0;border:1px solid var(--rule);border-radius:6px;padding:9px 11px;background:#fff}
+.bar select{border:1px solid var(--rule);border-radius:6px;padding:8px 8px;background:#fff}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:8px 12px;font-weight:600;cursor:pointer;color:var(--slate)}
+.seg button.on{background:var(--base);color:#fff}
+.btn{border:1px solid var(--base);background:var(--base);color:#fff;border-radius:6px;padding:8px 13px;font-weight:600;cursor:pointer}
+.btn.soft{background:#fff;color:var(--base)}
+.btn.small{padding:5px 10px;font-size:12.5px}
+.count{font-size:12px;color:var(--muted);margin-left:auto}
+/* elenco (telefono) */
+.list{display:grid;gap:6px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;border:1px solid var(--rule);border-left:4px solid var(--base);border-radius:5px;padding:9px 11px;background:#fff;cursor:pointer}
+.row .nm{font-size:15px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm .ln{font-weight:700;color:var(--ink)} .nm .fn{font-weight:500;color:var(--slate)}
+.row .meta{font-size:12px;color:var(--slate);grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.sig{font-size:11.5px;font-weight:800;color:var(--base);background:var(--neu);border-radius:4px;padding:2px 6px;white-space:nowrap}
+.row.spento{opacity:.5}
+/* tabella (PC) */
+.tw{overflow:auto;max-height:calc(100vh - 230px);border:1px solid var(--rule);border-radius:4px}
+table{border-collapse:separate;border-spacing:0;font-size:12.5px}
+th,td{border-bottom:1px solid #ECEAE5;border-right:1px solid #F2F0EC;padding:0;white-space:nowrap}
+thead th{position:sticky;background:#fff;z-index:2}
+thead tr.s th{top:0;height:26px;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:0 8px;text-align:center;background:var(--c)}
+thead tr.t th{top:26px;height:58px;background:var(--cb);color:var(--c);font-size:10.5px;font-weight:700;white-space:normal;line-height:1.15;padding:4px 5px;width:76px;min-width:76px;max-width:76px;text-align:center;vertical-align:middle}
+thead tr.r th{top:84px;height:18px;background:var(--cb);color:var(--c);opacity:.8;font-size:9px;font-style:italic;font-weight:500;padding:0 3px;text-align:center;border-bottom:1px solid #BDB8AE}
+th.fix,td.fix{position:sticky;left:0;z-index:3;background:#fff;text-align:left;box-shadow:1px 0 0 var(--rule)}
+thead th.fix{z-index:4}
+td.fix{padding:5px 10px;min-width:175px;max-width:210px;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+td.fix .ln{font-weight:700} td.fix .fn{color:var(--slate)}
+td.b{padding:0 7px;color:var(--slate);font-size:12px}
+tbody tr:nth-child(even) td{background:#FAF9F6}
+tbody tr:nth-child(even) td.fix{background:#FAF9F6}
+tbody tr:hover td{background:#FFF6DA}
+td.k{text-align:center;height:30px}
+.ck{display:inline-flex;width:19px;height:19px;border:2px solid var(--c);border-radius:4px;align-items:center;justify-content:center;background:#fff;vertical-align:middle}
+.ck.on{background:var(--c)}
+.ck.on::after{content:"";width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+td.k.own{cursor:pointer}
+td.k.ro .ck{opacity:.32}
+td.k.lock{background:var(--lock)!important}
+td.k.lock .ck{display:none}
+td.k.busy .ck{opacity:.5}
+th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
+/* scheda della persona */
+.sheet h2{margin:0 0 2px;font-size:24px;text-transform:uppercase;letter-spacing:.02em;line-height:1.05}
+.sheet h2 .fn{font-weight:500;color:var(--slate)} .sheet h2 .ln{font-weight:800;color:var(--ink)}
+.dati{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 12px;margin:12px 0 16px;padding:12px;background:var(--neu);border-radius:5px}
+.dati label{display:grid;gap:3px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.dati label>span{font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink)}
+.dati input,.dati select{font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;border:1px solid var(--rule);border-radius:5px;padding:6px 7px;background:#fff;width:100%}
+.sez{border:1px solid var(--rule);border-radius:5px;overflow:hidden;margin-bottom:10px}
+.sez h3{margin:0;padding:7px 11px;background:var(--c);color:#fff;font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
+.sez h3 small{font-weight:600;letter-spacing:.06em;opacity:.9;text-transform:none}
+.sez.ro{opacity:.55}
+.voce{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-top:1px solid #EFEDE8;background:#fff}
+.voce:first-of-type{border-top:0}
+.voce span{font-weight:600;color:var(--ink)} .voce em{font-style:normal;font-size:11.5px;color:var(--muted);margin-left:6px;font-weight:500}
+.voce.own{cursor:pointer}
+.voce.lock{background:#F4F4F4} .voce.lock span{color:#A0A0A0;font-weight:500}
+.voce.lock .ck{border-color:#C9C9C9;background:#F4F4F4}
+.voce.lock .ck::before{content:"🔒";font-size:10px}
+.toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:13.5px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:20;max-width:92vw}
+.toast.err{background:var(--err)}
+/* accessi */
+.acc{display:grid;gap:8px}
+.acc .p{border:1px solid var(--rule);border-radius:5px;padding:10px 11px;display:grid;gap:7px;background:#fff}
+.acc .p.spento{opacity:.55}
+.acc .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.acc .top b{font-size:14.5px;text-transform:uppercase;letter-spacing:.02em}
+.acc .ult{font-size:11.5px;color:var(--muted)}
+.acc .az{display:flex;flex-wrap:wrap;gap:6px}
+.chip.t{cursor:pointer}
+.reg{display:grid;gap:0;border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+.reg div{display:grid;grid-template-columns:118px 120px minmax(0,1fr);gap:8px;padding:7px 10px;border-top:1px solid #EFEDE8;font-size:12.5px}
+.reg div:first-child{border-top:0}
+.reg i{font-style:normal;color:var(--muted)} .reg b{font-weight:600}
+@media (max-width:640px){
+  .pgm{padding:16px 12px}
+  .head h1{font-size:25px}
+  .reg div{grid-template-columns:1fr;gap:1px}
+}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="pgm" id="app"><p style="text-align:center;color:#7A8590">Carico…</p></div></div>
+<script>
+(function () {
+  'use strict';
+  var K = window.__K || '';
+  var S = { dati: null, vista: 'home', id: null, q: '', gruppo: '', nomina: '', modo: null, acc: null, reg: null, soloCollab: true };
+  var app = document.getElementById('app');
+  var AMB = ['inf', 'fs', 'reparti', 'comitive', 'oem'];
+  var COL_AMB = { tutto: '#3E4A59', inf: '#A8432B', fs: '#521F46', reparti: '#4D5A68', comitive: '#A86F00', oem: '#A86F00' };
+  var ABBR = { 'Anziano': 'Anziano', 'Servitore di ministero': 'Servitore', 'Nessuna': '' };
+
+  /* ── server ── */
+  function srv(fn) {
+    var args = [].slice.call(arguments, 1);
+    return new Promise(function (ok, ko) {
+      if (window.google && google.script && google.script.run) {
+        var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { ko(new Error(e && e.message || String(e))); });
+        r[fn].apply(r, [K].concat(args));
+      } else if (window.__MOCK) {
+        try { ok(JSON.parse(JSON.stringify(window.__MOCK[fn].apply(null, [K].concat(args))))); } catch (e) { ko(e); }
+      } else ko(new Error('Server non raggiungibile'));
+    });
+  }
+  function toast(msg, err) {
+    var t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg;
+    document.body.appendChild(t); setTimeout(function () { t.remove(); }, err ? 4200 : 1600);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function tint(hex, a) {
+    var h = hex.replace('#', ''); var c = [0, 2, 4].map(function (i) { return parseInt(h.substr(i, 2), 16); });
+    return 'rgb(' + c.map(function (x) { return Math.round(x + (255 - x) * a); }).join(',') + ')';
+  }
+
+  /* ── dati ── */
+  function col(c) { return S.dati.colonne.filter(function (x) { return x.c === c; })[0]; }
+  function colByTitolo(t) { return S.dati.colonne.filter(function (x) { return x.titolo === t && x.c < 17; })[0]; }
+  function val(f, titolo) { var x = colByTitolo(titolo); return x ? f.v[x.c] : ''; }
+  function puo(x) { var io = S.dati.io; return io.tutto || (x.ambito !== 'tutto' && io.ambiti.indexOf(x.ambito) >= 0); }
+  function sbloccato(x, f) {
+    var sesso = val(f, 'Sesso'), nomina = val(f, 'Nomina'), servizio = val(f, 'Servizio');
+    var anz = nomina === 'Anziano', nom = anz || nomina === 'Servitore di ministero', fr = sesso === 'Uomo';
+    switch (x.regola) {
+      case 'anziani': return anz; case 'nominati': return nom; case 'fratelli': return fr;
+      case 'fratelli battezzati': return fr && servizio !== 'NB'; default: return true;
+    }
+  }
+  function nome(f) {
+    var cg = val(f, 'Cognome'), n = val(f, 'Nome');
+    if (cg && n) return { ln: cg, fn: n, full: val(f, 'Cognome Nome') };
+    var full = val(f, 'Cognome Nome'); return { ln: full, fn: '', full: full };
+  }
+  function abilitazioni() { return S.dati.colonne.filter(function (x) { return x.tipo === 'check'; }); }
+  function sezioni() {
+    var out = [], cur = null;
+    abilitazioni().forEach(function (x) {
+      var s = x.c < 17 ? 'PARTECIPA A' : x.sezione;
+      if (!cur || cur.nome !== s) { cur = { nome: s, colore: x.c < 17 ? '#4D5A68' : x.colore, voci: [] }; out.push(cur); }
+      cur.voci.push(x);
+    });
+    return out;
+  }
+  function filtrati() {
+    var q = S.q.trim().toLowerCase();
+    return S.dati.fratelli.filter(function (f) {
+      if (q && val(f, 'Cognome Nome').toLowerCase().indexOf(q) < 0 && String(val(f, 'Altri modi di scrivere')).toLowerCase().indexOf(q) < 0) return false;
+      if (S.gruppo && val(f, 'Gruppo') !== S.gruppo) return false;
+      if (S.nomina === 'nominati' && !(val(f, 'Nomina') === 'Anziano' || val(f, 'Nomina') === 'Servitore di ministero')) return false;
+      if (S.nomina === 'PR' || S.nomina === 'PA' || S.nomina === 'NB') { if (val(f, 'Servizio') !== S.nomina) return false; }
+      if (S.nomina === 'fratelli' && val(f, 'Sesso') !== 'Uomo') return false;
+      if (S.nomina === 'sorelle' && val(f, 'Sesso') !== 'Donna') return false;
+      return true;
+    });
+  }
+
+  /* ── testata ── */
+  function testata(titolo, sub, indietro) {
+    return '<div class="head"><div><div class="cong">Napoli Pianura Trencia</div><div class="goldr"></div><h1>' + esc(titolo) + '</h1>' +
+      (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>' +
+      (indietro ? '<button class="back" data-go="' + indietro + '">‹ ' + (indietro === 'home' ? 'Portale' : 'Anagrafica') + '</button>' : '') + '</div>';
+  }
+  function chipsAmbiti(a) {
+    var io = S.dati.io, nomi = S.dati.nomiAmbiti;
+    var lista = io.tutto ? ['tutto'] : a;
+    return '<div class="chips">' + lista.map(function (x) { return '<span class="chip on" style="--c:' + COL_AMB[x] + '">' + esc(nomi[x]) + '</span>'; }).join('') + '</div>';
+  }
+
+  /* ── viste ── */
+  function home() {
+    var io = S.dati.io, h = testata('Portale', 'Ciao ' + esc(io.nome.split(' ').slice(1).join(' ') || io.nome));
+    if (!io.ambiti.length) {
+      return h + '<p class="nota">Qui troverai il <b>sondaggio delle disponibilità</b> del mese. Lo apri sempre da questo link, quindi salvalo.</p>' +
+        '<div class="tiles"><div class="tile off" style="--c:#A8432B"><b>Disponibilità</b><span>Le tue assenze e disponibilità del mese</span></div></div>';
+    }
+    var t = '<div class="tiles">' +
+      '<button class="tile" data-go="anagrafica"><b>Anagrafica</b><span>' + S.dati.fratelli.length + ' proclamatori · abilitazioni</span></button>';
+    if (io.tutto) {
+      t += '<button class="tile" data-go="accessi" style="--c:#4D5A68"><b>Accessi</b><span>Link personali e permessi</span></button>' +
+        '<button class="tile" data-go="registro" style="--c:#7A7A7A"><b>Registro</b><span>Chi ha fatto cosa e quando</span></button>';
+    }
+    var futuri = [['Disponibilità', '#A8432B', 'tutto'], ['Programma infrasettimanale', '#A8432B', 'inf'], ['Programma fine settimana', '#521F46', 'fs'],
+      ['Turnazione reparti', '#4D5A68', 'reparti'], ['Comitive', '#A86F00', 'comitive'], ['Espositori OEM', '#A86F00', 'oem']];
+    futuri.forEach(function (m) { if (io.tutto || io.ambiti.indexOf(m[2]) >= 0) t += '<div class="tile off" style="--c:' + m[1] + '"><b>' + m[0] + '</b><span>Nel portale tra poco</span></div>'; });
+    return h + '<p class="nota">I tuoi ambiti:</p>' + chipsAmbiti(io.ambiti) + '<div style="height:14px"></div>' + t + '</div>';
+  }
+
+  function barra(n) {
+    var gr = (col(8) && col(8).opzioni) || [];
+    var modo = S.modo || (window.innerWidth >= 900 ? 'tab' : 'lista');
+    return '<div class="bar"><input type="search" id="q" placeholder="Cerca un nome" value="' + esc(S.q) + '">' +
+      '<select id="fg"><option value="">Tutti i gruppi</option>' + gr.map(function (g) { return '<option' + (S.gruppo === g ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join('') + '</select>' +
+      '<select id="fn"><option value="">Tutti</option>' + [['nominati', 'Nominati'], ['fratelli', 'Fratelli'], ['sorelle', 'Sorelle'], ['PR', 'Pionieri regolari'], ['PA', 'Pionieri ausiliari'], ['NB', 'Non battezzati']]
+        .map(function (o) { return '<option value="' + o[0] + '"' + (S.nomina === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+      '<span class="seg"><button data-modo="lista" class="' + (modo === 'lista' ? 'on' : '') + '">Elenco</button><button data-modo="tab" class="' + (modo === 'tab' ? 'on' : '') + '">Tabella</button></span>' +
+      (S.dati.io.tutto ? '<button class="btn soft" data-go="nuovo">+ Nuovo</button>' : '') +
+      '<span class="count">' + n + ' su ' + S.dati.fratelli.length + '</span></div>';
+  }
+
+  function anagrafica() {
+    var io = S.dati.io, lista = filtrati();
+    var modo = S.modo || (window.innerWidth >= 900 ? 'tab' : 'lista');
+    var h = testata('Anagrafica', io.tutto ? 'Puoi modificare tutto' : 'Modifichi solo il tuo ambito', 'home');
+    h += io.tutto ? '' : '<p class="nota">Le colonne colorate sono del tuo ambito e le puoi spuntare. Il resto lo vedi <b>in sola lettura</b>. Le caselle grigie non sono ammesse per quella persona.</p>';
+    h += barra(lista.length);
+    if (modo === 'lista') {
+      h += '<div class="list">' + lista.map(function (f) {
+        var n = nome(f), sg = val(f, 'Sigla'), st = val(f, 'Stato');
+        return '<div class="row' + (st && st !== 'Attivo' ? ' spento' : '') + '" data-id="' + esc(f.id) + '"><div class="nm"><span class="ln">' + esc(n.ln) + '</span> <span class="fn">' + esc(n.fn) + '</span></div>' +
+          (sg ? '<span class="sig">' + esc(sg) + '</span>' : '<span></span>') +
+          '<div class="meta"><span>' + esc(val(f, 'Gruppo')) + '</span>' + (ABBR[val(f, 'Nomina')] ? '<span>' + ABBR[val(f, 'Nomina')] + '</span>' : '') + (st && st !== 'Attivo' ? '<span>' + esc(st) + '</span>' : '') + '</div></div>';
+      }).join('') + '</div>';
+      return h;
+    }
+    // tabella
+    var sz = sezioni(), r1 = '', r2 = '', r3 = '';
+    var base = [['Gruppo', 92], ['Sigla', 74], ['Nomina', 84]];
+    r1 += '<th class="fix" rowspan="3" style="background:#3E4A59;color:#fff;font-size:11px;letter-spacing:.1em;padding:0 10px">COGNOME NOME</th>';
+    r1 += '<th colspan="' + base.length + '" style="--c:#3E4A59">Anagrafica</th>';
+    base.forEach(function (b) { r2 += '<th style="--c:#3E4A59;--cb:' + tint('#3E4A59', .88) + ';width:' + b[1] + 'px;min-width:' + b[1] + 'px">' + b[0] + '</th>'; r3 += '<th style="--c:#3E4A59;--cb:' + tint('#3E4A59', .88) + '"></th>'; });
+    sz.forEach(function (s) {
+      var tuo = s.voci.some(puo);
+      r1 += '<th colspan="' + s.voci.length + '" class="' + (tuo ? '' : 'ro') + '" style="--c:' + s.colore + '">' + esc(s.nome) + '</th>';
+      s.voci.forEach(function (x) {
+        var st = '--c:' + x.colore + ';--cb:' + tint(x.colore, .88);
+        r2 += '<th class="' + (puo(x) ? '' : 'ro') + '" style="' + st + '">' + esc(x.titolo) + '</th>';
+        r3 += '<th class="' + (puo(x) ? '' : 'ro') + '" style="' + st + '">' + esc(x.regola === 'tutti' ? '' : x.regola) + '</th>';
+      });
+    });
+    var body = lista.map(function (f) {
+      var n = nome(f), tr = '<tr><td class="fix" data-id="' + esc(f.id) + '"><span class="ln">' + esc(n.ln) + '</span> <span class="fn">' + esc(n.fn) + '</span></td>';
+      tr += '<td class="b">' + esc(val(f, 'Gruppo')) + '</td><td class="b"><b>' + esc(val(f, 'Sigla')) + '</b></td><td class="b">' + esc(ABBR[val(f, 'Nomina')] || '') + '</td>';
+      sz.forEach(function (s) {
+        s.voci.forEach(function (x) {
+          var ok = sbloccato(x, f), mio = puo(x), on = f.v[x.c] === true;
+          var cls = 'k ' + (!ok ? 'lock' : mio ? 'own' : 'ro');
+          tr += '<td class="' + cls + '" style="--c:' + x.colore + '" data-id="' + esc(f.id) + '" data-c="' + x.c + '"' + (!ok ? ' title="Solo ' + esc(x.regola) + '"' : '') + '><span class="ck' + (on ? ' on' : '') + '"></span></td>';
+        });
+      });
+      return tr + '</tr>';
+    }).join('');
+    return h + '<div class="tw"><table><thead><tr class="s">' + r1 + '</tr><tr class="t">' + r2 + '</tr><tr class="r">' + r3 + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+  function scheda() {
+    var io = S.dati.io, f = S.dati.fratelli.filter(function (x) { return x.id === S.id; })[0];
+    if (!f) { S.vista = 'anagrafica'; return anagrafica(); }
+    var n = nome(f);
+    var h = testata('Scheda', esc(f.id) + (val(f, 'Sigla') ? ' · ' + esc(val(f, 'Sigla')) : ''), 'anagrafica');
+    h += '<div class="sheet"><h2><span class="ln">' + esc(n.ln) + '</span> <span class="fn">' + esc(n.fn) + '</span></h2>';
+    var campi = S.dati.colonne.filter(function (x) { return x.c < 15 && x.titolo !== 'Cognome Nome'; });
+    h += '<div class="dati">' + campi.map(function (x) {
+      var v = f.v[x.c];
+      if (io.tutto && x.tipo === 'lista') return '<label>' + esc(x.titolo) + '<select data-id="' + f.id + '" data-c="' + x.c + '">' + x.opzioni.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>';
+      if (io.tutto && x.tipo === 'testo') return '<label>' + esc(x.titolo) + '<input data-id="' + f.id + '" data-c="' + x.c + '" value="' + esc(v) + '"' + (x.c === 7 ? ' inputmode="tel"' : '') + '></label>';
+      return '<label>' + esc(x.titolo) + '<span>' + (v ? esc(v) : '—') + '</span></label>';
+    }).join('') + '</div>';
+    var sz = sezioni();
+    if (!io.tutto) sz = sz.filter(function (s) { return s.voci.some(puo); }).concat(sz.filter(function (s) { return !s.voci.some(puo); }));
+    sz.forEach(function (s) {
+      var tuo = s.voci.some(puo);
+      h += '<div class="sez' + (tuo ? '' : ' ro') + '" style="--c:' + s.colore + '"><h3>' + esc(s.nome) + (tuo ? '' : '<small>sola lettura</small>') + '</h3>';
+      s.voci.forEach(function (x) {
+        var ok = sbloccato(x, f), mio = puo(x), on = f.v[x.c] === true;
+        h += '<div class="voce ' + (!ok ? 'lock' : mio ? 'own' : '') + '" style="--c:' + x.colore + '" data-id="' + esc(f.id) + '" data-c="' + x.c + '"><span>' + esc(x.titolo) +
+          (!ok ? '<em>solo ' + esc(x.regola) + '</em>' : '') + '</span><span class="ck' + (on && ok ? ' on' : '') + '"></span></div>';
+      });
+      h += '</div>';
+    });
+    var note = S.dati.colonne.filter(function (x) { return x.titolo === 'Note'; })[0];
+    if (note && io.tutto) h += '<div class="dati" style="grid-template-columns:1fr"><label>Note<input data-id="' + f.id + '" data-c="' + note.c + '" value="' + esc(f.v[note.c]) + '"></label></div>';
+    return h + '</div>';
+  }
+
+  function nuovo() {
+    var h = testata('Nuovo proclamatore', 'Entra in ordine alfabetico, con il suo link', 'anagrafica');
+    var sel = function (id, c, def) { var o = (col(c) && col(c).opzioni) || []; return '<select id="' + id + '">' + o.filter(Boolean).map(function (x) { return '<option' + (x === def ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>'; };
+    return h + '<div class="dati" style="background:#fff;border:1px solid var(--rule)">' +
+      '<label>Cognome<input id="nCog"></label><label>Nome<input id="nNom"></label>' +
+      '<label>Sesso' + sel('nSes', 6, 'Uomo') + '</label><label>Gruppo' + sel('nGru', 8) + '</label>' +
+      '<label>Nomina' + sel('nNomi', 9, 'Nessuna') + '</label><label>Servizio' + sel('nSer', 10, 'P') + '</label></div>' +
+      '<button class="btn" id="nOk">Aggiungi</button>';
+  }
+
+  function accessiV() {
+    var h = testata('Accessi', 'Link personali e ambiti', 'home');
+    if (!S.acc) { srv('accessi').then(function (a) { S.acc = a; disegna(); }).catch(function (e) { toast(e.message, true); }); return h + '<p class="nota">Carico…</p>'; }
+    var nomi = S.dati.nomiAmbiti, q = S.q.trim().toLowerCase();
+    var lista = S.acc.persone.filter(function (p) {
+      if (q && p.nome.toLowerCase().indexOf(q) < 0) return false;
+      if (S.soloCollab && !p.ambiti.length) return false;
+      return true;
+    });
+    h += '<p class="nota">Ogni persona ha un suo link. Con gli <b>ambiti</b> decidi cosa può modificare. Chi non ha ambiti vedrà solo il sondaggio. <b>Nuovo codice</b> fa smettere di funzionare il link vecchio.</p>';
+    h += '<div class="bar"><input type="search" id="q" placeholder="Cerca un nome" value="' + esc(S.q) + '">' +
+      '<span class="seg"><button data-collab="1" class="' + (S.soloCollab ? 'on' : '') + '">Collaboratori</button><button data-collab="0" class="' + (!S.soloCollab ? 'on' : '') + '">Tutti</button></span>' +
+      '<span class="count">' + lista.length + '</span></div>';
+    h += '<div class="acc">' + lista.map(function (p) {
+      var me = p.id === S.dati.io.id;
+      return '<div class="p' + (p.attivo ? '' : ' spento') + '"><div class="top"><b>' + esc(p.nome) + '</b><span class="ult">' + (p.ultimo ? 'Ultimo accesso ' + esc(p.ultimo) : 'Mai entrato') + '</span></div>' +
+        '<div class="chips">' + (me ? '<span class="chip on" style="--c:#3E4A59">Tutto</span>' : AMB.map(function (a) {
+          return '<span class="chip t' + (p.ambiti.indexOf(a) >= 0 ? ' on' : '') + '" style="--c:' + COL_AMB[a] + '" data-pid="' + esc(p.id) + '" data-amb="' + a + '">' + esc(nomi[a]) + '</span>';
+        }).join('')) + '</div>' +
+        '<div class="az"><button class="btn small soft" data-copia="' + esc(p.id) + '">Copia link</button><button class="btn small soft" data-wa="' + esc(p.id) + '">WhatsApp</button>' +
+        (me ? '' : '<button class="btn small soft" data-rig="' + esc(p.id) + '">Nuovo codice</button><button class="btn small soft" data-att="' + esc(p.id) + '">' + (p.attivo ? 'Disattiva' : 'Riattiva') + '</button>') + '</div></div>';
+    }).join('') + '</div>';
+    return h;
+  }
+
+  function registroV() {
+    var h = testata('Registro', 'Ultime 300 voci', 'home');
+    if (!S.reg) { srv('registro', 300).then(function (r) { S.reg = r; disegna(); }).catch(function (e) { toast(e.message, true); }); return h + '<p class="nota">Carico…</p>'; }
+    if (!S.reg.length) return h + '<p class="nota">Ancora niente.</p>';
+    return h + '<div class="reg">' + S.reg.map(function (r) {
+      return '<div><i>' + esc(r.quando) + '</i><b>' + esc(r.chi) + '</b><span><b>' + esc(r.azione) + '</b>' + (r.cosa ? ' · ' + esc(r.cosa) : '') + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  /* ── disegno ed eventi ── */
+  function disegna() {
+    var v = S.vista;
+    var y = window.scrollY;
+    app.innerHTML = v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
+    if (v === 'anagrafica' || v === 'accessi') window.scrollTo(0, y);
+    var tw = app.querySelector('.tw');
+    if (tw && !S.dati.io.tutto && !S._tw) {
+      var own = tw.querySelector('td.k.own'), fix = tw.querySelector('td.fix');
+      if (own && fix) tw.scrollLeft = Math.max(0, own.offsetLeft - fix.offsetWidth - 8);
+      S._tw = true;
+    }
+    var q = document.getElementById('q');
+    if (q && S._focus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  }
+  function vai(v) { S.vista = v; S._focus = false; if (v === 'anagrafica' || v === 'accessi') S.q = S.q; window.scrollTo(0, 0); disegna(); }
+
+  function sostituisci(righe) {
+    righe.forEach(function (n) { S.dati.fratelli = S.dati.fratelli.map(function (f) { return f.id === n.id ? n : f; }); });
+  }
+  function cambia(id, c, valore, el) {
+    if (el) el.classList.add('busy');
+    return srv('salva', [{ id: id, c: c, valore: valore }]).then(function (righe) {
+      sostituisci(righe); disegna(); toast('Salvato');
+    }).catch(function (e) { disegna(); toast(e.message, true); });
+  }
+
+  app.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-go],[data-id],[data-modo],[data-pid],[data-copia],[data-wa],[data-rig],[data-att],[data-collab],#nOk');
+    if (!t) return;
+    if (t.dataset.go) return vai(t.dataset.go);
+    if (t.dataset.modo) { S.modo = t.dataset.modo; return disegna(); }
+    if (t.dataset.collab) { S.soloCollab = t.dataset.collab === '1'; return disegna(); }
+    if (t.id === 'nOk') {
+      var g = function (i) { return document.getElementById(i).value; };
+      t.disabled = true;
+      return srv('aggiungi', { cognome: g('nCog'), nome: g('nNom'), sesso: g('nSes'), gruppo: g('nGru'), nomina: g('nNomi'), servizio: g('nSer') })
+        .then(function (d) { S.dati = d; S.acc = null; vai('anagrafica'); toast('Aggiunto'); })
+        .catch(function (err) { t.disabled = false; toast(err.message, true); });
+    }
+    if (t.dataset.pid) {
+      var p = S.acc.persone.filter(function (x) { return x.id === t.dataset.pid; })[0];
+      var a = p.ambiti.slice(), i = a.indexOf(t.dataset.amb);
+      if (i >= 0) a.splice(i, 1); else a.push(t.dataset.amb);
+      return srv('impostaAccesso', { id: p.id, ambiti: a }).then(function (r) { S.acc = r; disegna(); toast('Ambiti aggiornati'); }).catch(function (err) { toast(err.message, true); });
+    }
+    if (t.dataset.copia || t.dataset.wa) {
+      var pid = t.dataset.copia || t.dataset.wa, pp = S.acc.persone.filter(function (x) { return x.id === pid; })[0];
+      var link = S.acc.link + '?k=' + pp.codice;
+      if (t.dataset.copia) { (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () { toast('Link copiato'); }).catch(function () { window.prompt('Copia il link', link); }); return; }
+      var nomeP = pp.nome.split(' ').slice(1).join(' ') || pp.nome;
+      var testo = 'Ciao ' + nomeP + ', questo è il tuo link personale al portale della congregazione. Salvalo e non inoltrarlo a nessuno:\n' + link;
+      window.open('https://wa.me/?text=' + encodeURIComponent(testo), '_blank');
+      return;
+    }
+    if (t.dataset.rig) {
+      if (!window.confirm('Il link vecchio smetterà di funzionare. Continuo?')) return;
+      return srv('impostaAccesso', { id: t.dataset.rig, rigenera: true }).then(function (r) { S.acc = r; disegna(); toast('Nuovo codice creato'); }).catch(function (err) { toast(err.message, true); });
+    }
+    if (t.dataset.att) {
+      var px = S.acc.persone.filter(function (x) { return x.id === t.dataset.att; })[0];
+      return srv('impostaAccesso', { id: px.id, attivo: !px.attivo }).then(function (r) { S.acc = r; disegna(); }).catch(function (err) { toast(err.message, true); });
+    }
+    if (t.dataset.id && t.dataset.c) {
+      if (t.tagName === 'SELECT' || t.tagName === 'INPUT') return;
+      var cc = Number(t.dataset.c), x = col(cc), f = S.dati.fratelli.filter(function (y) { return y.id === t.dataset.id; })[0];
+      if (!x || !f) return;
+      if (!puo(x)) return toast('Non è del tuo ambito: sola lettura', true);
+      if (!sbloccato(x, f)) return toast('«' + x.titolo + '» è solo per ' + x.regola, true);
+      return cambia(f.id, cc, !(f.v[cc] === true), t);
+    }
+    if (t.dataset.id) { S.id = t.dataset.id; return vai('scheda'); }
+  });
+  app.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.id === 'fg') { S.gruppo = t.value; return disegna(); }
+    if (t.id === 'fn') { S.nomina = t.value; return disegna(); }
+    if (t.dataset && t.dataset.id && t.dataset.c) cambia(t.dataset.id, Number(t.dataset.c), t.value, null);
+  });
+  app.addEventListener('input', function (e) {
+    if (e.target.id === 'q') { S.q = e.target.value; S._focus = true; disegna(); }
+  });
+
+  srv('portale').then(function (d) { S.dati = d; disegna(); }).catch(function (e) {
+    app.innerHTML = '<p style="color:#B3261E;padding:20px">' + esc(e.message) + '</p>';
+  });
+})();
+</script>
+</body>
+</html>

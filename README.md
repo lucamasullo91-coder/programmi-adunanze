@@ -56,3 +56,19 @@ Scheda **Carrelli** della stessa pagina: per ogni sala (Pianura, Soccavo) e mese
 (lo script legge la pagina con `jwPagina` e scarica la copertina scelta con `jwImmagine`), i poster da una foto.
 Gli allestimenti stanno nella scheda `Carrelli` (chiave `sala|AAAA-MM`). Il PDF è una pagina A4 per sala con il
 pulsante del video cliccabile.
+
+## Portale della congregazione
+
+Un'unica pagina per tutto l'ecosistema, con un link personale per persona (`…/exec?k=CODICE`) e senza account
+Google: `portale/app.html` (pagina completa, nessuna compilazione) caricata da `portale/Codice.gs`, da incollare nel
+Foglio «Congregazione – dati». L'app web gira **come il proprietario** (Esegui come: Io · Chi ha accesso: Chiunque):
+il Foglio non si condivide con nessuno e lo script manda a ciascuno solo i dati del suo ambito.
+
+- Scheda **Fratelli**: riga 1 sezioni, riga 2 intestazioni, riga 3 regola di sblocco (anziani, nominati, fratelli,
+  fratelli battezzati, tutti), dati dalla riga 4. Anagrafica A–P, abilitazioni da Q, Note in fondo.
+- Scheda **Accessi**: una riga per persona con codice segreto, ambiti (`tutto`, `inf`, `fs`, `reparti`, `comitive`,
+  `oem`) e casella Attivo. Chi non ha ambiti vedrà solo il sondaggio.
+- Scheda **Registro**: accessi (uno al giorno per persona) e ogni modifica, con chi e quando.
+- Blocchi controllati dal server a ogni salvataggio; la sigla e le spunte non più ammesse si sistemano da sole.
+- Backup settimanale del Foglio nella cartella «Congregazione – backup» (ultime 8 copie).
+- Nessun nome su GitHub: i dati stanno solo nel Foglio.
