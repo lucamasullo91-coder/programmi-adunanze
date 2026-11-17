@@ -343,7 +343,7 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
           return '<span class="chip t' + (p.ambiti.indexOf(a) >= 0 ? ' on' : '') + '" style="--c:' + COL_AMB[a] + '" data-pid="' + esc(p.id) + '" data-amb="' + a + '">' + esc(nomi[a]) + '</span>';
         }).join('')) + '</div>' +
         '<div class="az"><button class="btn small soft" data-copia="' + esc(p.id) + '">Copia link</button><button class="btn small soft" data-wa="' + esc(p.id) + '">WhatsApp</button>' +
-        (me ? '' : '<button class="btn small soft" data-rig="' + esc(p.id) + '">Nuovo codice</button><button class="btn small soft" data-att="' + esc(p.id) + '">' + (p.attivo ? 'Disattiva' : 'Riattiva') + '</button>') + '</div></div>';
+        '<button class="btn small soft" data-rig="' + esc(p.id) + '">Nuovo codice</button>' + (me ? '' : '<button class="btn small soft" data-att="' + esc(p.id) + '">' + (p.attivo ? 'Disattiva' : 'Riattiva') + '</button>') + '</div></div>';
     }).join('') + '</div>';
     return h;
   }
@@ -413,8 +413,19 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
       return;
     }
     if (t.dataset.rig) {
-      if (!window.confirm('Il link vecchio smetterà di funzionare. Continuo?')) return;
-      return srv('impostaAccesso', { id: t.dataset.rig, rigenera: true }).then(function (r) { S.acc = r; disegna(); toast('Nuovo codice creato'); }).catch(function (err) { toast(err.message, true); });
+      var mio = t.dataset.rig === S.dati.io.id;
+      if (!window.confirm(mio ? 'Cambi il TUO link: quello che stai usando smetterà di funzionare e dovrai salvare quello nuovo. Continuo?' : 'Il link vecchio smetterà di funzionare. Continuo?')) return;
+      return srv('impostaAccesso', { id: t.dataset.rig, rigenera: true }).then(function (r) {
+        S.acc = r;
+        if (mio) {
+          var nuovo = r.persone.filter(function (x) { return x.id === S.dati.io.id; })[0];
+          var l = r.link + '?k=' + nuovo.codice;
+          app.innerHTML = testata('Il tuo nuovo link', 'Salvalo adesso', '') + '<p class="nota">Il link vecchio non funziona più. Copia questo, aprilo e salvalo al posto del vecchio:</p>' +
+            '<p style="word-break:break-all;font-weight:600;background:#F4F3EF;padding:12px;border-radius:5px">' + esc(l) + '</p><a class="btn" target="_top" href="' + esc(l) + '" style="display:inline-block;text-decoration:none">Apri il nuovo link</a>';
+          return;
+        }
+        disegna(); toast('Nuovo codice creato');
+      }).catch(function (err) { toast(err.message, true); });
     }
     if (t.dataset.att) {
       var px = S.acc.persone.filter(function (x) { return x.id === t.dataset.att; })[0];

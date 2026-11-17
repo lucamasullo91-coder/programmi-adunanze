@@ -406,6 +406,17 @@ function segnaAccesso_(io) {
   if (!prima || giorno(prima) !== giorno(ora)) scheda_('Registro').appendRow([ora, io.id, io.nome, 'accesso', '']);
 }
 
+
+/**
+ * Le funzioni di servizio (impostazione, sblocchi, backup, il mio link) partono solo dall'editor, dal menu del Foglio
+ * o dal backup automatico, cioè dal tuo account. Chi usa il portale con un link, anche valido, non può avviarle.
+ */
+function soloProprietario_() {
+  const chi = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  const io = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  if (!chi || chi !== io) throw new Error('Operazione riservata al proprietario del Foglio.');
+}
+
 /* ───────────────────────── Schede, impostazione, backup ───────────────────────── */
 
 const INTESTAZIONI_ = {
@@ -426,6 +437,7 @@ function scheda_(nome) {
 
 /** Da eseguire una volta dall'editor (e di nuovo senza problemi: non duplica niente). */
 function impostazione() {
+  soloProprietario_();
   const ss = SpreadsheetApp.getActive();
   const sh = ss.getSheetByName(FOGLIO);
   if (!sh) throw new Error('Manca la scheda «' + FOGLIO + '».');
@@ -460,6 +472,7 @@ function impostazione() {
 
 /** Copia del Foglio in «Congregazione – backup»; tiene le ultime 8. */
 function backupSettimanale() {
+  soloProprietario_();
   const ss = SpreadsheetApp.getActive();
   const nomeCartella = 'Congregazione – backup';
   const it = DriveApp.getFoldersByName(nomeCartella);
@@ -483,6 +496,7 @@ function onOpen() {
 }
 
 function mioLink() {
+  soloProprietario_();
   const url = ScriptApp.getService().getUrl();
   const acc = scheda_('Accessi');
   const r = acc.getLastRow() > 1 ? acc.getRange(2, 1, acc.getLastRow() - 1, 4).getValues().find((x) => /tutto/.test(String(x[3]))) : null;
@@ -494,6 +508,7 @@ function mioLink() {
 
 /** Ricolora tutte le righe e toglie le spunte non ammesse. */
 function aggiornaSblocchi() {
+  soloProprietario_();
   const sh = SpreadsheetApp.getActive().getSheetByName(FOGLIO);
   const col = struttura_(sh);
   const abil = col.filter((x) => x.tipo === 'check' && x.c >= PRIMA_ABIL);
