@@ -113,6 +113,59 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
 .reg div{display:grid;grid-template-columns:118px 120px minmax(0,1fr);gap:8px;padding:7px 10px;border-top:1px solid #EFEDE8;font-size:12.5px}
 .reg div:first-child{border-top:0}
 .reg i{font-style:normal;color:var(--muted)} .reg b{font-weight:600}
+
+/* sondaggio (grafica approvata il 16 nov) */
+.sd-head{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:18px 18px 16px;border-bottom:3px solid var(--slate);margin-bottom:14px}
+.sd-head h1{margin:0;font-size:26px;color:#A8432B;font-weight:700}
+.sd-intro{font-size:15px;line-height:1.5;color:var(--slate);margin:6px 0 0}
+.sd-scad{display:inline-block;margin-top:10px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);background:var(--neu);border-radius:999px;padding:5px 10px}
+.sd-weeks{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:760px){.sd-weeks{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1050px){.sd-weeks{grid-template-columns:repeat(3,1fr)}}
+.sd-wk{background:#fff;border:1px solid var(--rule);border-radius:16px;overflow:hidden;align-self:start}
+.sd-wh{display:flex;justify-content:space-between;gap:8px;padding:9px 14px;background:var(--neu);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--slate)}
+.sd-sp{padding:9px 14px;font-size:13px;font-weight:600;color:#521F46;background:#F3ECF1;border-top:1px solid #efece7}
+.sd-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid #efece7}
+.sd-box{width:154px;flex:none;border-radius:10px;padding:8px 11px;color:#fff;min-height:62px;display:flex;flex-direction:column;justify-content:center;white-space:nowrap}
+.sd-box small{display:block;font-size:10px;font-weight:600;letter-spacing:.12em;opacity:.92}
+.sd-box b{display:block;font-size:18px;font-weight:700;letter-spacing:.02em;line-height:1.15}
+.sd-box .det{display:block;font-size:10.5px;font-weight:600;letter-spacing:.08em;margin-top:2px;text-transform:uppercase}
+.sd-inf{background:#A8432B}.sd-fs{background:#521F46}.sd-com{background:#A86F00}
+.sd-btn{margin-left:auto;font:inherit;font-size:12.5px;font-weight:700;letter-spacing:.06em;border-radius:10px;padding:11px 12px;min-width:132px;border:1.5px solid #c9c3ba;background:#fff;color:var(--slate);cursor:pointer}
+.sd-btn.no.on{background:#B3261E;border-color:#B3261E;color:#fff}
+.sd-btn.si.on{background:#A86F00;border-color:#A86F00;color:#fff}
+.sd-sep{display:flex;align-items:center;gap:10px;padding:12px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#A86F00}
+.sd-sep:after{content:"";flex:1;height:1px;background:#ecd9b3}
+.sd-sep+.sd-row{border-top:none}
+.sd-via{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:12px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13.5px;color:var(--slate)}
+.sd-via input{border:1px solid var(--rule);border-radius:8px;padding:7px 8px;font-size:14px}
+.sd-end{max-width:520px;margin:18px auto 0;display:grid;gap:10px}
+.sd-big{font:inherit;font-size:16px;font-weight:600;border-radius:14px;padding:15px;cursor:pointer}
+.sd-sempre{background:#fff;border:1.5px solid var(--slate);color:var(--slate)}
+.sd-invia{background:#A8432B;border:none;color:#fff}
+.sd-err{font-size:13px;color:#B3261E;min-height:18px;text-align:center}
+.sd-ok{background:#EAF3DE;color:#27500A;border-radius:14px;padding:14px;font-size:15px;line-height:1.5}
+/* gestione sondaggi */
+.gs{display:grid;gap:8px}
+.gs .p{border:1px solid var(--rule);border-left:4px solid var(--c,#4D5A68);border-radius:5px;padding:10px 11px;display:grid;gap:6px;background:#fff}
+.gs .p.fuori{opacity:.5}
+.gs .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.gs .top b{font-size:14.5px;text-transform:uppercase;letter-spacing:.02em}
+.st{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--neu);color:var(--slate)}
+.st.ok{background:#E5F4E4;color:#2E7D4F}.st.wait{background:#FFF1D6;color:#8A5A00}.st.late{background:#FBEBEB;color:#B3261E}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;padding:12px;background:var(--neu);border-radius:5px;margin-bottom:12px}
+.form label{display:grid;gap:4px;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate)}
+.form input,.form select{font-size:14px;font-weight:500;letter-spacing:0;text-transform:none;border:1px solid var(--rule);border-radius:5px;padding:7px;background:#fff}
+.res{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.res .w{border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:#fff}
+.res .w h4{margin:0;padding:7px 11px;background:var(--neu);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate)}
+.res .i{padding:7px 11px;border-top:1px solid #EFEDE8;font-size:13px;display:grid;gap:2px}
+.res .i b{color:var(--c);font-size:12px;letter-spacing:.06em}
+.res .i span{color:var(--ink)}
+.cal{display:grid;gap:6px;margin-bottom:14px}
+.cal .r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--rule);border-radius:6px;padding:8px;background:#fff;font-size:13px}
+.cal input,.cal select{border:1px solid var(--rule);border-radius:5px;padding:6px;font-size:13.5px}
+h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
 @media (max-width:640px){
   .pgm{padding:16px 12px}
   .head h1{font-size:25px}
@@ -199,7 +252,7 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
   function testata(titolo, sub, indietro) {
     return '<div class="head"><div><div class="cong">Napoli Pianura Trencia</div><div class="goldr"></div><h1>' + esc(titolo) + '</h1>' +
       (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>' +
-      (indietro ? '<button class="back" data-go="' + indietro + '">‹ ' + (indietro === 'home' ? 'Portale' : 'Anagrafica') + '</button>' : '') + '</div>';
+      (indietro ? '<button class="back" data-go="' + indietro + '">‹ ' + ({ home: 'Portale', anagrafica: 'Anagrafica', sondaggi: 'Sondaggi' }[indietro] || 'Indietro') + '</button>' : '') + '</div>';
   }
   function chipsAmbiti(a) {
     var io = S.dati.io, nomi = S.dati.nomiAmbiti;
@@ -208,22 +261,205 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
   }
 
   /* ── viste ── */
+  function tileSondaggi() {
+    return (S.dati.sondaggi || []).map(function (x) {
+      return '<button class="tile" data-sid="' + esc(x.id) + '" style="--c:#A8432B"><b>Disponibilità</b><span>' + esc(x.titolo) + ' · ' +
+        (x.risposto ? 'hai già risposto, puoi correggere' : 'da compilare') + '</span></button>';
+    }).join('');
+  }
   function home() {
     var io = S.dati.io, h = testata('Portale', 'Ciao ' + esc(io.nome.split(' ').slice(1).join(' ') || io.nome));
     if (!io.ambiti.length) {
-      return h + '<p class="nota">Qui troverai il <b>sondaggio delle disponibilità</b> del mese. Lo apri sempre da questo link, quindi salvalo.</p>' +
-        '<div class="tiles"><div class="tile off" style="--c:#A8432B"><b>Disponibilità</b><span>Le tue assenze e disponibilità del mese</span></div></div>';
+      var ts = tileSondaggi();
+      return h + (ts ? '<div class="tiles">' + ts + '</div>' : '<p class="nota">Per ora non c\'è nessun sondaggio da compilare. Quando ce ne sarà uno, lo trovi qui: salva questo link.</p>');
     }
-    var t = '<div class="tiles">' +
+    var t = '<div class="tiles">' + tileSondaggi() +
       '<button class="tile" data-go="anagrafica"><b>Anagrafica</b><span>' + S.dati.fratelli.length + ' proclamatori · abilitazioni</span></button>';
     if (io.tutto) {
-      t += '<button class="tile" data-go="accessi" style="--c:#4D5A68"><b>Accessi</b><span>Link personali e permessi</span></button>' +
+      t += '<button class="tile" data-go="sondaggi" style="--c:#A8432B"><b>Sondaggi</b><span>Crea, invia i link, vedi le risposte</span></button>' +
+        '<button class="tile" data-go="calendario" style="--c:#521F46"><b>Calendario</b><span>Orari, settimane speciali, comitive</span></button>' +
+        '<button class="tile" data-go="accessi" style="--c:#4D5A68"><b>Accessi</b><span>Link personali e permessi</span></button>' +
         '<button class="tile" data-go="registro" style="--c:#7A7A7A"><b>Registro</b><span>Chi ha fatto cosa e quando</span></button>';
     }
-    var futuri = [['Disponibilità', '#A8432B', 'tutto'], ['Programma infrasettimanale', '#A8432B', 'inf'], ['Programma fine settimana', '#521F46', 'fs'],
+    var futuri = [['Programma infrasettimanale', '#A8432B', 'inf'], ['Programma fine settimana', '#521F46', 'fs'],
       ['Turnazione reparti', '#4D5A68', 'reparti'], ['Comitive', '#A86F00', 'comitive'], ['Espositori OEM', '#A86F00', 'oem']];
     futuri.forEach(function (m) { if (io.tutto || io.ambiti.indexOf(m[2]) >= 0) t += '<div class="tile off" style="--c:' + m[1] + '"><b>' + m[0] + '</b><span>Nel portale tra poco</span></div>'; });
     return h + '<p class="nota">I tuoi ambiti:</p>' + chipsAmbiti(io.ambiti) + '<div style="height:14px"></div>' + t + '</div>';
+  }
+
+  /* ── il modulo del sondaggio ── */
+  function moduloV() {
+    var M = S.mod;
+    if (!M) {
+      srv('modulo', S.sid, S.perConto || null).then(function (m) {
+        S.mod = m; S.scelte = {};
+        if (m.risposta) { m.risposta.assenze.forEach(function (x) { S.scelte[x] = true; }); m.risposta.comitive.forEach(function (x) { S.scelte[x] = true; }); }
+        disegna();
+      }).catch(function (e) { toast(e.message, true); });
+      return '<p class="nota">Carico il sondaggio…</p>';
+    }
+    var indietro = S.perConto ? '<button class="back" data-go="invio">‹ Invio</button>' : (S.dati.io.ambiti.length || (S.dati.sondaggi || []).length > 1 ? '<button class="back" data-go="home">‹ Portale</button>' : '');
+    var sc = S.scelte;
+    var h = '<div class="sd-head"><div class="head" style="border:0;margin:0;padding:0"><div><div class="cong">Napoli Pianura Trencia</div><div class="goldr"></div></div>' + indietro + '</div>' +
+      '<h1>Ciao ' + esc(M.persona.nome) + '</h1>' +
+      (S.perConto ? '<p class="sd-intro"><b>Stai compilando per suo conto.</b></p>' : '') +
+      '<p class="sd-intro">' + (M.periodo ? esc(cap(M.periodo)) + '. Sei già segnato presente: tocca «Non ci sono» solo dove sai già che mancherai.' : '') +
+      (M.comitive ? ' Comitive di ' + esc(M.comitive) + ': tocca «Posso condurre» dove puoi.' : '') + '</p>' +
+      '<span class="sd-scad">' + (M.chiuso ? 'Scaduto il ' : 'Rispondi entro ') + esc(M.scadenzaTesto) + '</span></div>';
+    if (M.periodo) h += '<div class="sd-via">Sarai via per qualche giorno? Dal <input type="date" id="via1"> al <input type="date" id="via2"> <button class="btn small" id="viaOk">Segna «non ci sono»</button></div>';
+    h += '<div class="sd-weeks">' + M.settimane.map(function (w, i) {
+      var r = '<section class="sd-wk"><div class="sd-wh"><span>' + (i + 1) + 'ª settimana</span><span>' + giorni(w.dal, w.al) + '</span></div>';
+      if (w.speciale) r += '<div class="sd-sp">' + esc(w.speciale.nome) + (w.speciale.luogo ? ' · ' + esc(w.speciale.luogo) : '') + (w.speciale.adunanze === false ? ' · nessuna adunanza in Sala' : '') + '</div>';
+      w.adunanze.forEach(function (a) {
+        r += '<div class="sd-row"><div class="sd-box ' + (a.tipo === 'inf' ? 'sd-inf' : 'sd-fs') + '"><small>' + (a.tipo === 'inf' ? 'INFRASETTIMANALE' : 'FINE SETTIMANA') + '</small><b>' + esc(a.etichetta) + '</b>' +
+          (a.ora ? '<span class="det">' + esc(a.ora) + '</span>' : '') + '</div><button class="sd-btn no' + (sc[a.k] ? ' on' : '') + '" data-sk="' + esc(a.k) + '">NON CI SONO</button></div>';
+      });
+      if (w.comitive.length) {
+        r += '<div class="sd-sep">Disponibilità comitive</div>' + w.comitive.map(function (c) {
+          return '<div class="sd-row"><div class="sd-box sd-com"><small>COMITIVA · ' + esc(c.ora) + '</small><b>' + esc(c.etichetta) + '</b><span class="det">' + esc(c.luogo) + '</span></div>' +
+            '<button class="sd-btn si' + (sc[c.k] ? ' on' : '') + '" data-sk="' + esc(c.k) + '">POSSO CONDURRE</button></div>';
+        }).join('');
+      }
+      return r + '</section>';
+    }).join('') + '</div>';
+    h += '<div class="sd-end">' + (S.fatto ? '<div class="sd-ok">' + esc(S.fatto) + '</div>' : '') + '<div class="sd-err" id="sdErr"></div>' +
+      (M.periodo ? '<button class="sd-big sd-sempre" id="sdSempre">Ci sono sempre</button>' : '') +
+      '<button class="sd-big sd-invia" id="sdInvia">' + (M.risposta ? 'Salva le modifiche' : 'Invia') + '</button></div>';
+    return h;
+  }
+  function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  var MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  function giorni(a, b) {
+    var ma = Number(a.slice(5, 7)) - 1, mb = Number(b.slice(5, 7)) - 1;
+    return Number(a.slice(8)) + (ma !== mb ? ' ' + MESI[ma] : '') + '–' + Number(b.slice(8)) + ' ' + MESI[mb];
+  }
+  function inviaRisposta(sempre) {
+    var M = S.mod, a = [], c = [];
+    M.settimane.forEach(function (w) {
+      w.adunanze.forEach(function (x) { if (!sempre && S.scelte[x.k]) a.push(x.k); });
+      w.comitive.forEach(function (x) { if (S.scelte[x.k]) c.push(x.k); });
+    });
+    if (!sempre && !a.length && !c.length && M.periodo && !M.risposta) { document.getElementById('sdErr').textContent = 'Segna almeno una scelta, oppure premi «Ci sono sempre».'; return; }
+    if (sempre) M.settimane.forEach(function (w) { w.adunanze.forEach(function (x) { delete S.scelte[x.k]; }); });
+    var b = document.getElementById('sdInvia'); if (b) b.disabled = true;
+    srv('rispondi', M.id, { assenze: a, comitive: c }, S.perConto || null).then(function (r) {
+      M.risposta = { assenze: a, comitive: c };
+      var nome = M.persona.nome;
+      S.fatto = (S.perConto ? 'Salvato per ' + nome + '. ' : 'Grazie ' + nome + '. ') +
+        (M.periodo ? (a.length ? 'Adunanze in cui non ci sei: ' + a.length + '. ' : 'Risulti presente a tutte le adunanze. ') : '') +
+        (M.comitive ? 'Comitive in cui puoi condurre: ' + c.length + '. ' : '') +
+        (S.perConto ? '' : 'Puoi correggere fino a ' + M.scadenzaTesto.toLowerCase() + ' dallo stesso link.') + (r.tardi ? ' (Risposta arrivata dopo la scadenza.)' : '');
+      (S.dati.sondaggi || []).forEach(function (x) { if (x.id === M.id) x.risposto = true; });
+      disegna(); window.scrollTo(0, document.body.scrollHeight);
+    }).catch(function (e) { if (b) b.disabled = false; toast(e.message, true); });
+  }
+
+  /* ── gestione dei sondaggi (solo Luca) ── */
+  function mesiOpz(sel, vuoto) {
+    var out = vuoto ? '<option value="">—</option>' : '', d = new Date();
+    for (var i = -1; i < 14; i++) {
+      var x = new Date(d.getFullYear(), d.getMonth() + i, 1), v = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0');
+      out += '<option value="' + v + '"' + (v === sel ? ' selected' : '') + '>' + cap(MESI[x.getMonth()]) + ' ' + x.getFullYear() + '</option>';
+    }
+    return out;
+  }
+  function prossimo(n) { var d = new Date(), x = new Date(d.getFullYear(), d.getMonth() + n, 1); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); }
+  function sondaggiV() {
+    var h = testata('Sondaggi', 'Disponibilità', 'home');
+    if (!S.sond) { srv('sondaggiGestione').then(function (r) { S.sond = r; disegna(); }).catch(function (e) { toast(e.message, true); }); return h + '<p class="nota">Carico…</p>'; }
+    h += '<h3 class="t">Nuovo sondaggio</h3><div class="form">' +
+      '<label>Titolo<input id="gTit" value="Disponibilità di ' + cap(MESI[Number(prossimo(1).slice(5)) - 1]) + '"></label>' +
+      '<label>Nominati · adunanze, 1° mese<select id="gN1">' + mesiOpz(prossimo(1), true) + '</select></label>' +
+      '<label>Nominati · adunanze, 2° mese<select id="gN2">' + mesiOpz(prossimo(2), true) + '</select></label>' +
+      '<label>Fratelli in turnazione · adunanze<select id="gR">' + mesiOpz(prossimo(1), true) + '</select></label>' +
+      '<label>Comitive (nominati)<select id="gC">' + mesiOpz(prossimo(1), true) + '</select></label>' +
+      '<label>Scadenza<input type="date" id="gScad"></label>' +
+      '<label>Destinatari<select id="gDest"><option value="tutti">Tutti i previsti</option><option value="nessuno">Nessuno: li scelgo io (prova)</option></select></label>' +
+      '</div><button class="btn" id="gCrea">Crea il sondaggio</button>';
+    h += '<h3 class="t">Sondaggi</h3>' + (S.sond.length ? '<div class="gs">' + S.sond.map(function (x) {
+      return '<div class="p" style="--c:' + (x.stato === 'aperto' ? '#A8432B' : '#9AA3AD') + '"><div class="top"><b>' + esc(x.titolo) + '</b><span class="st ' + (x.stato === 'aperto' ? 'ok' : '') + '">' + esc(x.stato) + '</span></div>' +
+        '<div class="nota" style="margin:0">Scadenza ' + esc(x.dati.scadenza) + ' · risposte ' + x.risposte + ' su ' + x.destinatari + '</div>' +
+        '<div class="az" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small" data-inv="' + esc(x.id) + '">Invio dei link</button><button class="btn small soft" data-ris="' + esc(x.id) + '">Risultati</button></div></div>';
+    }).join('') + '</div>' : '<p class="nota">Ancora nessuno.</p>');
+    return h;
+  }
+  function invioV() {
+    var h = testata('Invio dei link', '', 'sondaggi');
+    if (!S.inv) { srv('invio', S.sidG).then(function (r) { S.inv = r; disegna(); }).catch(function (e) { toast(e.message, true); }); return h + '<p class="nota">Carico…</p>'; }
+    var I = S.inv, f = S.filtroInv || 'inclusi';
+    var dentro = I.persone.filter(function (p) { return p.incluso; });
+    var risp = dentro.filter(function (p) { return p.risposto; }).length, inv = dentro.filter(function (p) { return p.inviato.length; }).length;
+    h = testata('Invio dei link', esc(I.titolo), 'sondaggi');
+    h += '<div class="form"><label>Scadenza<input type="date" id="iScad" value="' + esc(I.scadenza) + '"></label>' +
+      '<label>Stato<select id="iStato"><option value="aperto"' + (I.stato === 'aperto' ? ' selected' : '') + '>Aperto</option><option value="chiuso"' + (I.stato !== 'aperto' ? ' selected' : '') + '>Chiuso</option></select></label></div>';
+    h += '<p class="nota"><b>' + dentro.length + '</b> destinatari · inviati <b>' + inv + '</b> · hanno risposto <b>' + risp + '</b> · mancano <b>' + (dentro.length - risp) + '</b></p>';
+    h += '<div class="bar"><span class="seg">' + [['inclusi', 'Destinatari'], ['mancano', 'Non hanno risposto'], ['risposto', 'Hanno risposto'], ['esclusi', 'Esclusi']].map(function (o) {
+      return '<button data-fi="' + o[0] + '" class="' + (f === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span>' +
+      (f === 'esclusi' ? '<button class="btn small soft" data-tutti="1">Includi tutti</button>' : '<button class="btn small soft" data-tutti="0">Escludi tutti</button>') + '</div>';
+    var lista = I.persone.filter(function (p) {
+      if (f === 'esclusi') return !p.incluso;
+      if (!p.incluso) return false;
+      if (f === 'mancano') return !p.risposto;
+      if (f === 'risposto') return p.risposto;
+      return true;
+    });
+    h += '<div class="gs">' + lista.map(function (p) {
+      var st = p.risposto ? '<span class="st ' + (p.tardi ? 'late' : 'ok') + '">' + (p.tardi ? 'risposto dopo la scadenza' : 'risposto') + ' ' + esc(p.quando) + '</span>' :
+        p.inviato.length ? '<span class="st wait">inviato ' + esc(p.inviato[p.inviato.length - 1].slice(8) + '/' + p.inviato[p.inviato.length - 1].slice(5, 7)) + (p.inviato.length > 1 ? ' · ' + p.inviato.length + ' volte' : '') + '</span>' : '<span class="st">da inviare</span>';
+      return '<div class="p' + (p.incluso ? '' : ' fuori') + '" style="--c:' + (p.risposto ? '#2E7D4F' : '#A8432B') + '"><div class="top"><b>' + esc(p.nome) + '</b>' + st + '</div>' +
+        '<div class="nota" style="margin:0">' + p.sezioni.map(esc).join(' · ') + (p.risposto ? ' — assenze ' + p.assenze + (p.comitive ? ', comitive ' + p.comitive : '') : '') + (p.tel ? '' : ' · <i>senza telefono</i>') + '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (p.incluso ? '<button class="btn small" data-wai="' + esc(p.id) + '">' + (p.inviato.length && !p.risposto ? 'Promemoria WhatsApp' : 'WhatsApp') + '</button>' +
+        '<button class="btn small soft" data-cpi="' + esc(p.id) + '">Copia link</button><button class="btn small soft" data-per="' + esc(p.id) + '">Compila per lui</button>' : '') +
+        '<button class="btn small soft" data-inc="' + esc(p.id) + '">' + (p.incluso ? 'Escludi' : 'Includi') + '</button></div></div>';
+    }).join('') + '</div>';
+    return h;
+  }
+  function risultatiV() {
+    var h = testata('Risultati', '', 'sondaggi');
+    if (!S.ris) { srv('risultati', S.sidG).then(function (r) { S.ris = r; disegna(); }).catch(function (e) { toast(e.message, true); }); return h + '<p class="nota">Carico…</p>'; }
+    var R = S.ris;
+    h = testata('Risultati', esc(R.titolo) + ' · ' + R.risposte + ' risposte su ' + R.destinatari, 'sondaggi');
+    return h + '<div class="res">' + R.settimane.map(function (w) {
+      var r = '<div class="w"><h4>' + giorni(w.dal, w.al) + (w.speciale ? ' · ' + esc(w.speciale.nome) : '') + '</h4>';
+      w.adunanze.forEach(function (a) { r += '<div class="i" style="--c:' + (a.tipo === 'inf' ? '#A8432B' : '#521F46') + '"><b>' + (a.tipo === 'inf' ? 'INFRASETTIMANALE' : 'FINE SETTIMANA') + ' · ' + esc(a.etichetta) + '</b><span>' + (a.assenti.length ? 'Non ci sono: ' + a.assenti.map(esc).join(', ') : 'Nessuna assenza segnalata') + '</span></div>'; });
+      w.comitive.forEach(function (c) { r += '<div class="i" style="--c:#A86F00"><b>COMITIVA · ' + esc(c.etichetta) + ' · ' + esc(c.ora) + ' · ' + esc(c.luogo) + '</b><span>' + (c.offerte.length ? 'Possono condurre: ' + c.offerte.map(esc).join(', ') : 'Nessuna offerta') + '</span></div>'; });
+      return r + '</div>';
+    }).join('') + '</div>';
+  }
+
+  /* ── calendario (solo Luca) ── */
+  var GG = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+  function selG(id, g) { return '<select data-cf="' + id + '">' + GG.map(function (x, i) { return '<option value="' + i + '"' + (Number(g) === i ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>'; }
+  function calendarioV() {
+    var h = testata('Calendario', 'Orari e settimane speciali', 'home');
+    if (!S.cal) { srv('calendario').then(function (r) { S.cal = r; disegna(); }).catch(function (e) { toast(e.message, true); }); return h + '<p class="nota">Carico…</p>'; }
+    var C = S.cal;
+    h += '<h3 class="t">Orari delle adunanze</h3><p class="nota">Ogni riga vale dalla data indicata in poi. Se l\'orario non è ancora deciso, lascialo vuoto.</p><div class="cal">' +
+      C.periodi.map(function (p, i) {
+        return '<div class="r">Dal <input type="date" data-cf="p' + i + '.dal" value="' + esc(p.dal) + '"> · infrasettimanale ' + selG('p' + i + '.infra.g', p.infra.g) + ' <input size="5" data-cf="p' + i + '.infra.ora" value="' + esc(p.infra.ora) + '" placeholder="19:30">' +
+          ' · fine settimana ' + selG('p' + i + '.fs.g', p.fs.g) + ' <input size="5" data-cf="p' + i + '.fs.ora" value="' + esc(p.fs.ora) + '" placeholder="da definire">' +
+          ' <button class="btn small soft" data-crm="periodi.' + i + '">Togli</button></div>';
+      }).join('') + '</div><button class="btn small soft" data-cadd="periodi">+ Nuovo periodo</button>';
+    h += '<h3 class="t">Settimane speciali</h3><p class="nota">Indica il lunedì della settimana. Togli la spunta «adunanze» se in Sala non c\'è adunanza (assemblea, congresso).</p><div class="cal">' +
+      (C.speciali || []).map(function (p, i) {
+        return '<div class="r">Settimana del <input type="date" data-cf="s' + i + '.lunedi" value="' + esc(p.lunedi) + '"> <input data-cf="s' + i + '.nome" value="' + esc(p.nome) + '" placeholder="Assemblea, visita…">' +
+          ' <input data-cf="s' + i + '.luogo" value="' + esc(p.luogo || '') + '" placeholder="Luogo"> <label><input type="checkbox" data-cf="s' + i + '.adunanze"' + (p.adunanze !== false ? ' checked' : '') + '> adunanze</label>' +
+          ' <label><input type="checkbox" data-cf="s' + i + '.comitive"' + (p.comitive !== false ? ' checked' : '') + '> comitive</label> <button class="btn small soft" data-crm="speciali.' + i + '">Togli</button></div>';
+      }).join('') + '</div><button class="btn small soft" data-cadd="speciali">+ Settimana speciale</button>';
+    h += '<h3 class="t">Comitive di congregazione</h3><div class="cal">' +
+      (C.comitive || []).map(function (p, i) {
+        return '<div class="r">' + selG('c' + i + '.g', p.g) + ' ore <input size="5" data-cf="c' + i + '.ora" value="' + esc(p.ora) + '"> · <input data-cf="c' + i + '.luogo" value="' + esc(p.luogo) + '"> <button class="btn small soft" data-crm="comitive.' + i + '">Togli</button></div>';
+      }).join('') + '</div><button class="btn small soft" data-cadd="comitive">+ Comitiva</button>';
+    return h + '<div style="height:16px"></div><button class="btn" id="calSalva">Salva il calendario</button>';
+  }
+  function leggiCal() {
+    var C = S.cal;
+    app.querySelectorAll('[data-cf]').forEach(function (el) {
+      var k = el.dataset.cf, m = /^([psc])(\d+)\.(.+)$/.exec(k); if (!m) return;
+      var arr = m[1] === 'p' ? C.periodi : m[1] === 's' ? C.speciali : C.comitive, o = arr[Number(m[2])], path = m[3].split('.');
+      var v = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? Number(el.value) : el.value;
+      if (path.length === 2) o[path[0]][path[1]] = v; else o[path[0]] = v;
+    });
   }
 
   function barra(n) {
@@ -362,7 +598,7 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
     var v = S.vista;
     var y = window.scrollY, tw0 = app.querySelector('.tw');
     if (tw0 && S.vista === 'anagrafica') { S._twx = tw0.scrollLeft; S._twy = tw0.scrollTop; }
-    app.innerHTML = v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
+    app.innerHTML = v === 'modulo' ? moduloV() : v === 'sondaggi' ? sondaggiV() : v === 'invio' ? invioV() : v === 'risultati' ? risultatiV() : v === 'calendario' ? calendarioV() : v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
     if (v === 'anagrafica' || v === 'accessi') window.scrollTo(0, y);
     var tw = app.querySelector('.tw');
     if (tw && S._tw) { tw.scrollLeft = S._twx || 0; tw.scrollTop = S._twy || 0; }
@@ -375,7 +611,7 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
     var q = document.getElementById('q');
     if (q && S._focus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
   }
-  function vai(v) { S.vista = v; S._focus = false; if (v === 'anagrafica' || v === 'accessi') S.q = S.q; window.scrollTo(0, 0); disegna(); }
+  function vai(v) { if (v === 'sondaggi') S.sond = null; if (v === 'calendario') S.cal = null; if (v === 'invio') S.inv = null; S.vista = v; S._focus = false; if (v === 'anagrafica' || v === 'accessi') S.q = S.q; window.scrollTo(0, 0); disegna(); }
 
   function sostituisci(righe) {
     righe.forEach(function (n) { S.dati.fratelli = S.dati.fratelli.map(function (f) { return f.id === n.id ? n : f; }); });
@@ -436,6 +672,66 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
     });
   }
   window.addEventListener('beforeunload', function (e) { if (coda.length || inVolo) { e.preventDefault(); e.returnValue = ''; } });
+
+  app.addEventListener('click', function (e) {
+    var u = e.target.closest('[data-sid],[data-sk],#sdSempre,#sdInvia,#viaOk,#gCrea,[data-inv],[data-ris],[data-fi],[data-tutti],[data-wai],[data-cpi],[data-per],[data-inc],[data-crm],[data-cadd],#calSalva');
+    if (!u) return;
+    e.stopImmediatePropagation();
+    if (u.dataset.sid) { S.sid = u.dataset.sid; S.mod = null; S.perConto = null; S.fatto = ''; return vai('modulo'); }
+    if (u.dataset.sk) { var k = u.dataset.sk; S.scelte[k] = !S.scelte[k]; u.classList.toggle('on', !!S.scelte[k]); var er = document.getElementById('sdErr'); if (er) er.textContent = ''; S.fatto = ''; return; }
+    if (u.id === 'sdSempre') { app.querySelectorAll('.sd-btn.no').forEach(function (b) { b.classList.remove('on'); }); return inviaRisposta(true); }
+    if (u.id === 'sdInvia') return inviaRisposta(false);
+    if (u.id === 'viaOk') {
+      var a = document.getElementById('via1').value, b = document.getElementById('via2').value || a;
+      if (!a) return toast('Scegli almeno la data di inizio', true);
+      var n = 0;
+      S.mod.settimane.forEach(function (w) { w.adunanze.forEach(function (x) { if (x.data >= a && x.data <= b) { S.scelte[x.k] = true; n++; } }); });
+      disegna(); return toast(n ? 'Segnate ' + n + ' adunanze' : 'Nessuna adunanza in quei giorni');
+    }
+    if (u.id === 'gCrea') {
+      var g = function (i) { return document.getElementById(i).value; };
+      var d = { titolo: g('gTit'), mesiNominati: [g('gN1'), g('gN2')].filter(Boolean), mesiReparti: [g('gR')].filter(Boolean), comitive: g('gC'), scadenza: g('gScad'), soloQuesti: g('gDest') === 'nessuno' ? ['-'] : [] };
+      u.disabled = true;
+      return srv('creaSondaggio', d).then(function (r) { S.sond = r; disegna(); toast('Sondaggio creato'); }).catch(function (err) { u.disabled = false; toast(err.message, true); });
+    }
+    if (u.dataset.inv) { S.sidG = u.dataset.inv; S.inv = null; S.filtroInv = 'inclusi'; return vai('invio'); }
+    if (u.dataset.ris) { S.sidG = u.dataset.ris; S.ris = null; return vai('risultati'); }
+    if (u.dataset.fi) { S.filtroInv = u.dataset.fi; return disegna(); }
+    if (u.dataset.tutti) {
+      var ids = S.inv.persone.map(function (p) { return p.id; });
+      if (!window.confirm(u.dataset.tutti === '1' ? 'Includo tutti i previsti?' : 'Escludo tutti? Poi includi tu chi vuoi.')) return;
+      return srv('impostaSondaggio', S.sidG, u.dataset.tutti === '1' ? { aggiungi: ids } : { togli: ids }).then(function (r) { S.inv = r; S.sond = null; disegna(); });
+    }
+    if (u.dataset.inc) {
+      var pi = S.inv.persone.filter(function (p) { return p.id === u.dataset.inc; })[0];
+      return srv('impostaSondaggio', S.sidG, pi.incluso ? { togli: [pi.id] } : { aggiungi: [pi.id] }).then(function (r) { S.inv = r; S.sond = null; disegna(); }).catch(function (err) { toast(err.message, true); });
+    }
+    if (u.dataset.wai || u.dataset.cpi) {
+      var pp = S.inv.persone.filter(function (p) { return p.id === (u.dataset.wai || u.dataset.cpi); })[0];
+      if (!pp.link) return toast('Questa persona non ha un link attivo (vedi Accessi)', true);
+      if (u.dataset.cpi) { (navigator.clipboard ? navigator.clipboard.writeText(pp.link) : Promise.reject()).then(function () { toast('Link copiato'); }).catch(function () { window.prompt('Copia il link', pp.link); }); return; }
+      var nome = pp.n || pp.nome.split(' ').slice(1).join(' ');
+      var promem = pp.inviato.length && !pp.risposto;
+      var testo = promem ? 'Ciao ' + nome + ', ti ricordo il sondaggio delle disponibilità (' + S.inv.titolo.toLowerCase() + '): scade ' + S.inv.scadenzaTesto.toLowerCase() + '. Il tuo link personale:\n' + pp.link
+        : 'Ciao ' + nome + ', è aperto il sondaggio delle disponibilità (' + S.inv.titolo.toLowerCase() + '). Scadenza: ' + S.inv.scadenzaTesto.toLowerCase() + '. Il tuo link personale (non inoltrarlo):\n' + pp.link;
+      var tel = String(pp.tel || '').replace(/\D/g, ''); if (tel.length === 10 && tel[0] === '3') tel = '39' + tel;
+      window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(testo), '_blank');
+      return srv('impostaSondaggio', S.sidG, { inviato: pp.id }).then(function (r) { S.inv = r; disegna(); });
+    }
+    if (u.dataset.per) { S.sid = S.sidG; S.perConto = u.dataset.per; S.mod = null; S.fatto = ''; return vai('modulo'); }
+    if (u.dataset.cadd) {
+      leggiCal();
+      var nuovo = { periodi: { dal: '', infra: { g: 3, ora: '19:30' }, fs: { g: 0, ora: '' } }, speciali: { lunedi: '', nome: '', luogo: '', adunanze: false, comitive: true }, comitive: { g: 4, ora: '9:30', luogo: '' } }[u.dataset.cadd];
+      (S.cal[u.dataset.cadd] = S.cal[u.dataset.cadd] || []).push(nuovo); return disegna();
+    }
+    if (u.dataset.crm) { leggiCal(); var pz = u.dataset.crm.split('.'); S.cal[pz[0]].splice(Number(pz[1]), 1); return disegna(); }
+    if (u.id === 'calSalva') { leggiCal(); return srv('salvaCalendario', S.cal).then(function (r) { S.cal = r; disegna(); toast('Calendario salvato'); }).catch(function (err) { toast(err.message, true); }); }
+  }, true);
+  app.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.id === 'iScad' && t.value) return srv('impostaSondaggio', S.sidG, { scadenza: t.value }).then(function (r) { S.inv = r; S.sond = null; disegna(); toast('Scadenza aggiornata'); });
+    if (t.id === 'iStato') return srv('impostaSondaggio', S.sidG, { stato: t.value }).then(function (r) { S.inv = r; S.sond = null; disegna(); toast('Sondaggio ' + t.value); });
+  }, true);
 
   app.addEventListener('click', function (e) {
     var t = e.target.closest('[data-go],[data-id],[data-modo],[data-pid],[data-copia],[data-wa],[data-rig],[data-att],[data-collab],#nOk');
@@ -504,7 +800,7 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
     if (e.target.id === 'q') { S.q = e.target.value; S._focus = true; disegna(); }
   });
 
-  srv('portale').then(function (d) { S.dati = d; disegna(); }).catch(function (e) {
+  srv('portale').then(function (d) { S.dati = d; if (!d.io.ambiti.length && (d.sondaggi || []).length === 1) { S.sid = d.sondaggi[0].id; S.vista = 'modulo'; } disegna(); }).catch(function (e) {
     app.innerHTML = '<p style="color:#B3261E;padding:20px">' + esc(e.message) + '</p>';
   });
 })();

@@ -72,3 +72,10 @@ il Foglio non si condivide con nessuno e lo script manda a ciascuno solo i dati 
 - Blocchi controllati dal server a ogni salvataggio; la sigla e le spunte non più ammesse si sistemano da sole.
 - Backup settimanale del Foglio nella cartella «Congregazione – backup» (ultime 8 copie).
 - Nessun nome su GitHub: i dati stanno solo nel Foglio.
+- **Calendario** (scheda *Impostazioni*, chiave `calendario`): periodi con giorno e ora delle adunanze (ognuno vale dalla
+  sua data), settimane speciali (lunedì, nome, luogo, adunanze sì/no, comitive sì/no), comitive di congregazione.
+  Le settimane appartengono al mese del loro lunedì.
+- **Sondaggio** (schede *Sondaggi* e *Risposte*): un sondaggio ha mesi delle adunanze per i nominati, mese per i fratelli
+  in turnazione, mese delle comitive, scadenza e destinatari. Ognuno vede solo le sezioni che lo riguardano. Chiavi:
+  adunanza `<lunedì>-INFRA|FINE`, comitiva `<data>|<ora>`. Le risposte dopo la scadenza sono segnate.
+  Pagine per Luca: Sondaggi (crea), Invio dei link (WhatsApp, promemoria, compila per conto), Risultati.
