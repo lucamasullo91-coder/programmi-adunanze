@@ -46,9 +46,12 @@ function doGet(e) {
         'disattivato. Chiedi a chi gestisce il portale di mandartene uno nuovo.</p></div>'
     ).setTitle('Portale della congregazione').addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
+  // Link diretti: ?k=…&s=<sondaggio> apre il sondaggio, ?k=…&v=bacheca la bacheca (sempre con i permessi di chi apre)
+  const par = (e && e.parameter) || {};
+  const apri = { s: /^S\w{6,20}$/.test(par.s || '') ? par.s : '', v: ['bacheca', 'whatsapp'].indexOf(par.v) >= 0 ? par.v : '' };
   const boot =
     '<p id="pc-boot" style="font-family:sans-serif;padding:32px 16px;text-align:center;color:#5f6b77">Carico il portale…</p>' +
-    '<script>window.__K=' + JSON.stringify(k) + ';(' + function (base) {
+    '<script>window.__K=' + JSON.stringify(k) + ';window.__APRI=' + JSON.stringify(apri) + ';(' + function (base) {
       function errore(m) {
         var d = document.getElementById('pc-boot') || document.body.appendChild(document.createElement('p'));
         d.style.cssText = 'font-family:monospace;padding:16px;color:#A8432B;white-space:pre-wrap';
@@ -1014,7 +1017,7 @@ function invio(k, sid) {
     const x = r[p.id];
     const uv = x ? ultimaVar(z) : '';
     return {
-      id: p.id, nome: p.nome, n: p.n, tel: p.tel, incluso: s.dati.destinatari.indexOf(p.id) >= 0, link: codici[p.id] ? url + '?k=' + codici[p.id] : '',
+      id: p.id, nome: p.nome, n: p.n, tel: p.tel, incluso: s.dati.destinatari.indexOf(p.id) >= 0, link: codici[p.id] ? url + '?k=' + codici[p.id] + '&s=' + s.id : '',
       sezioni: (z.mesi.length ? ['Adunanze: ' + z.mesi.map(nomeMese_).join(', ')] : []).concat(z.comitive.length ? ['Comitive: ' + z.comitive.map(nomeMese_).join(', ')] : []).concat(z.oem ? ['Opera pubblica: ' + nomeMese_(z.oem)] : []),
       inviato: (s.dati.inviati || {})[p.id] || [], risposto: !!x, tardi: x ? x.tardi : false,
       quando: x ? Utilities.formatDate(new Date(x.ultima), 'Europe/Rome', 'dd/MM HH:mm') : '',
