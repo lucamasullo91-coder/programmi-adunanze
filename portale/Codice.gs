@@ -749,8 +749,36 @@ const POSTAZIONI_BASE_ = [
   { id: 'so', nome: 'Soccavo', colore: '#A8432B', sfondo: '#F7ECE8', fasce: [{ g: 1, ora: '9:00–10:30' }, { g: 1, ora: '17:00–18:30' }, { g: 2, ora: '9:00–10:30' }, { g: 3, ora: '9:00–10:30' }, { g: 4, ora: '17:00–18:30' }, { g: 5, ora: '9:00–10:30' }] },
   { id: 'pv', nome: 'Piazza Vittoria', colore: '#6B2A5C', sfondo: '#F3ECF1', fasce: [{ g: 0, ora: '17:00–19:00' }] },
 ];
-function turniOem_(lun) {
-  const post = leggiImpostazione_('postazioni', POSTAZIONI_BASE_);
+/** Le postazioni di un mese come le ha impostate chi compila il programma espositori (nomi, giorni, orari, colori):
+ *  quelle del mese, se il mese è già preparato, altrimenti quelle dell'ultimo mese prima; senza programma, quelle di base. */
+const OEM_COLORI_ = { teal: ['#2F7F8C', '#E6F0F2'], blu: ['#2E75B5', '#EAF2FA'], mattone: ['#A8432B', '#F7ECE8'], prugna: ['#6B2A5C', '#F3ECF1'], verde: ['#3E7A3A', '#E9F2E7'], ardesia: ['#4D5A68', '#ECEEF1'] };
+const OEM_GIORNI_ = { dom: 0, lun: 1, mar: 2, mer: 3, gio: 4, ven: 5, sab: 6 };
+function postazioniMese_(mese) {
+  MEMO_.postazioni = MEMO_.postazioni || {};
+  if (MEMO_.postazioni[mese]) return MEMO_.postazioni[mese];
+  let out = null;
+  try {
+    if (leggiImpostazione_('foglioEspositori', '')) {
+      const ss = foglioEspositori_(), sh = ss.getSheetByName('Mesi');
+      if (sh && sh.getLastRow() > 1) {
+        const righe = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().map((r) => [oemChiave_(ss, r[0]), r[1]]).filter((r) => r[0] && r[0] <= mese).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+        if (righe.length) {
+          const x = JSON.parse(String(righe[0][1]));
+          out = { da: righe[0][0], lista: (x.postazioni || []).map((p) => {
+            const c = OEM_COLORI_[p.colore] || OEM_COLORI_.ardesia;
+            return { id: String(p.id), nome: String(p.nome || ''), colore: c[0], sfondo: c[1], fasce: (p.fasce || []).map((f) => ({ g: typeof f.g === 'number' ? f.g : OEM_GIORNI_[f.g], ora: String(f.ora || '') })).filter((f) => f.g >= 0 && f.ora) };
+          }).filter((p) => p.nome && p.fasce.length) };
+        }
+      }
+    }
+  } catch (e) { out = null; }
+  if (!out || !out.lista.length) out = { da: '', lista: leggiImpostazione_('postazioni', POSTAZIONI_BASE_) };
+  return MEMO_.postazioni[mese] = out;
+}
+/** Solo Luca, quando crea il sondaggio OEM: quali postazioni e orari userà (e da quale mese del programma). */
+function postazioniSondaggio(k, mese) { richiedi_(k, true); return postazioniMese_(String(mese)); }
+function turniOem_(lun, mese) {
+  const post = postazioniMese_(mese || lun.slice(0, 7)).lista;
   const out = [];
   for (let i = 0; i < 7; i++) {
     const data = piu_(lun, i), g = d_(data).getUTCDay();
@@ -817,7 +845,7 @@ function modulo(k, sid, perConto) {
     w.mese = m;
     if (z.mesi.indexOf(m) < 0) w.adunanze = [];
     if (z.comitive.indexOf(m) < 0) w.comitive = [];
-    w.turni = z.oem === m ? turniOem_(w.lunedi) : [];
+    w.turni = z.oem === m ? turniOem_(w.lunedi, m) : [];
     if (w.adunanze.length || w.comitive.length || w.turni.length || (w.speciale && !z.oem)) sett.push(w);
   }));
   const r = risposte_(sid)[chi];
@@ -885,7 +913,7 @@ function sondaggiGestione(k) {
 function chiaviMese_(cal, m, cache) {
   if (cache[m]) return cache[m];
   const out = { a: {}, c: {}, t: {} };
-  settimane_(cal, m).forEach((w) => { w.adunanze.forEach((a) => { out.a[a.k] = 1; }); w.comitive.forEach((c) => { out.c[c.k] = 1; }); turniOem_(w.lunedi).forEach((t) => { out.t[t.k] = 1; }); });
+  settimane_(cal, m).forEach((w) => { w.adunanze.forEach((a) => { out.a[a.k] = 1; }); w.comitive.forEach((c) => { out.c[c.k] = 1; }); turniOem_(w.lunedi, m).forEach((t) => { out.t[t.k] = 1; }); });
   return cache[m] = out;
 }
 /** Di una risposta, quello che sta fuori dalle sezioni attuali della persona (conservato ma non usato). */
@@ -1045,7 +1073,7 @@ function risultati(k, sid) {
   });
   const sett = [];
   Object.keys(mesi).sort().forEach((m) => settimane_(cal, m).forEach((w) => {
-    if (s.dati.tipo === 'oem') { w.adunanze = []; w.comitive = []; w.turni = turniOem_(w.lunedi); w.turni.forEach((t) => { t.offerte = turni[t.k] || []; }); sett.push(w); return; }
+    if (s.dati.tipo === 'oem') { w.adunanze = []; w.comitive = []; w.turni = turniOem_(w.lunedi, m); w.turni.forEach((t) => { t.offerte = turni[t.k] || []; }); sett.push(w); return; }
     if (adMesi.indexOf(m) < 0) w.adunanze = [];
     w.adunanze.forEach((a) => { a.assenti = assenti[a.k] || []; });
     w.comitive = mesiComitive_(s.dati).indexOf(m) >= 0 ? w.comitive : [];

@@ -121,7 +121,14 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
 .sd-tit{font-size:17px;font-weight:600;color:var(--ink,#1F2630);margin-top:2px}
 .sd-page .sd-invia{background:var(--tc,#A8432B)}
 .sd-oe{display:grid;gap:6px;padding:6px 10px 10px}
-.sd-oeg{margin:6px 2px 0;padding:7px 10px;border-radius:8px;background:#EEEBE5;color:#1F2630;font-size:14px;font-weight:700;letter-spacing:.01em}
+.sd-oeg{margin:10px 0 0;padding:9px 10px;border-radius:8px;background:#1F2630;color:#fff;font-size:13.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-align:center;position:relative}
+.sd-oeg:after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#1F2630}
+.sd-oe .sd-oeg:first-child{margin-top:2px}
+.sg-post{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:10px 12px;margin:0 0 12px;display:grid;gap:6px;font-size:13px}
+.sg-post>span{color:var(--slate);font-size:12px}
+.sg-post div{border-left:4px solid var(--pc);padding-left:8px}
+.sg-post div i{font-style:normal;font-weight:700;color:var(--pc);margin-right:8px}
+.sg-post small{color:var(--slate)}
 .sd-oer{display:grid;grid-template-columns:1fr auto 34px;align-items:center;gap:12px;width:100%;border:0;border-radius:10px;padding:10px 12px;background:var(--pc);color:#fff;font:inherit;text-align:left;cursor:pointer;min-height:52px}
 .sd-oep{font-size:16px;font-weight:700;letter-spacing:.01em}
 .sd-oeo{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -454,10 +461,11 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       '<label>Comitive · 1° mese<select id="gC1">' + mesiOpz(prossimo(1), true) + '</select></label>' +
       '<label>Comitive · 2° mese<select id="gC2">' + mesiOpz('', true) + '</select></label>';
     if (nt === 'oem') h += '<label class="w2">Titolo<input id="gTit" value="Opera pubblica · ' + nomeMese(prossimo(1)) + '"></label>' +
-      '<label>Mese<select id="gM">' + mesiOpz(prossimo(1), false) + '</select></label>';
+      '<label>Mese<select id="gM" data-pmese="1">' + mesiOpz(S.meseOem || prossimo(1), false) + '</select></label>';
     h += '<label>Scadenza<input type="date" id="gScad"></label>' + dest + '</div>' +
       '<p class="nota">' + (nt === 'adunanze' ? 'I nominati indicano le adunanze in cui mancano (per le parti); i fratelli in turnazione quelle in cui mancano per i reparti.' :
         nt === 'comitive' ? 'Va a chi ha la spunta «conduce le comitive» in anagrafica: indica le comitive che può condurre.' : 'Va agli abilitati OEM: indicano i turni alle postazioni a cui possono esserci.') + '</p>' +
+      (nt === 'oem' ? '<div id="sgPost">' + postazioniBox() + '</div>' : '') +
       '<button class="btn" id="gCrea" style="background:' + col + ';border-color:' + col + '">Crea il sondaggio</button>';
     var fs = S.filtroS || 'aperto';
     var conta = function (st) { return S.sond.filter(function (x) { return st === 'aperto' ? x.stato === 'aperto' : x.stato === st; }).length; };
@@ -476,6 +484,15 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     }).join('') + '</div>' : '<p class="nota">Nessun sondaggio ' + (fs === 'aperto' ? 'aperto' : fs === 'chiuso' ? 'chiuso' : 'archiviato') + '.</p>';
     if (fs === 'archiviato') h += '<p class="nota">Gli archiviati non hanno più link attivi e non compaiono a nessuno; le risposte restano nel Foglio (scheda Risposte).</p>';
     return h;
+  }
+  /** Le postazioni che userà il sondaggio OEM: le prende dal programma espositori del mese. */
+  function postazioniBox() {
+    var m = S.meseOem || prossimo(1), P = (S.postOem || {})[m];
+    if (!P) { srv('postazioniSondaggio', m).then(function (r) { S.postOem = S.postOem || {}; S.postOem[m] = r; var el = document.getElementById('sgPost'); if (el) el.innerHTML = postazioniBox(); }).catch(function (e) { toast(e.message, true); }); return '<p class="nota">Carico le postazioni…</p>'; }
+    var GGc = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+    return '<div class="sg-post"><b>Postazioni e orari</b> <span>' + (P.da === m ? 'dal programma espositori di ' + esc(nomeMese(m).toLowerCase()) : P.da ? 'dal programma di ' + esc(nomeMese(P.da).toLowerCase()) + ' (quello di ' + esc(nomeMese(m).toLowerCase()) + ' non è ancora preparato)' : 'quelle di base (programma espositori non collegato)') + '</span>' +
+      P.lista.map(function (p) { return '<div style="--pc:' + esc(p.colore) + '"><i>' + esc(p.nome) + '</i>' + p.fasce.map(function (f) { return GGc[f.g] + ' ' + esc(f.ora); }).join(' · ') + '</div>'; }).join('') +
+      '<small>Per cambiare nomi, giorni o orari: apri <b>Espositori</b>, prepara il mese e tocca la postazione. Il sondaggio li prende da lì.</small></div>';
   }
   /** Modifica di un sondaggio: titolo, scadenza, stato, sezioni. */
   function modSondV() {
@@ -916,6 +933,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   }, true);
   app.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.dataset && t.dataset.pmese) { S.meseOem = t.value; var bx = document.getElementById('sgPost'); if (bx) bx.innerHTML = postazioniBox(); return; }
     if (t.id === 'iScad' && t.value) return srv('impostaSondaggio', S.sidG, { scadenza: t.value }).then(function (r) { S.inv = r; S.sond = null; disegna(); toast('Scadenza aggiornata'); });
     if (t.id === 'iStato') return srv('impostaSondaggio', S.sidG, { stato: t.value }).then(function (r) { S.inv = r; S.sond = null; disegna(); toast('Sondaggio ' + t.value); });
   }, true);

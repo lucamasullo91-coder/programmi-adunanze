@@ -8,7 +8,7 @@
   const FN = { stato: 'pa_stato', salva: 'pa_salva', caricaFoto: 'pa_caricaFoto', caricaImmagine: 'pa_caricaImmagine', foto: 'pa_foto' };
   const FN_OEM = { stato: 'oem_stato', salvaMese: 'oem_salvaMese', eliminaMese: 'oem_eliminaMese', salvaCarrelli: 'oem_salvaCarrelli',
     salvaCatalogo: 'oem_salvaCatalogo', eliminaCatalogo: 'oem_eliminaCatalogo', jwPagina: 'oem_jwPagina', jwImmagine: 'oem_jwImmagine' };
-  const FN_WA = { stato: 'wa_stato', salva: 'pa_salva', caricaImmagine: 'pa_caricaImmagine', confermaReparti: 'wa_confermaReparti' };
+  const FN_WA = { stato: 'wa_stato', salva: 'pa_salva', caricaImmagine: 'pa_caricaImmagine', confermaReparti: 'wa_confermaReparti', foto: 'pa_foto' };
   const codice = {};
 
   const css = document.createElement('style');
