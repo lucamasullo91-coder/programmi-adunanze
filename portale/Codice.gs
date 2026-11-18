@@ -1935,6 +1935,9 @@ function bacheca(k, mese) {
     if (e.r === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Referente pulizie' + sett });
     if (e.gc === io.id || e.gr === io.id) out.impegni.push({ data: e.gd || w.lunedi, tipo: 'pul', testo: 'Pulizia generale · ' + (e.gc === io.id ? 'coordinatore' : 'referente') });
   });
+  const pp = puliziePubblicate_(mese);
+  if (pp) out.pulizie = pp;
+  out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   // comitive
   const cm = comitivePubblicate_(mese);
   if (cm) {
@@ -1958,6 +1961,7 @@ function bacheca(k, mese) {
   }
   out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   out.mieiPub = { reparti: !!rp, comitive: !!cm };
+  out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   return out;
 }
 

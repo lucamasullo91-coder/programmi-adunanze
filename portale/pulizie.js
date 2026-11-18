@@ -49,6 +49,7 @@
     .pu-t td.g2{border-top:1px dashed var(--rule);padding-top:6px}
     .pu-t td.nota,.pu-t td.sp{grid-column:1/-1}
   }
+  .pu4 .pgm-fit{width:100%;overflow:hidden;margin:0 auto;max-width:794px}.pu4 .pgm-scale{transform-origin:top left;width:794px}
   .pu4{--ink2:#1F2630;--slate:#4D5A68;--gold:#F2C66D;--rule:#D9D6D0;--mgold:#A86F00}
   .pu4 .pgm.pul{width:794px;min-height:1123px;background:#fff;color:var(--ink2);font-family:"Fira Sans","Segoe UI",system-ui,sans-serif;padding:26px 36px 16px;display:flex;flex-direction:column;margin:0 auto;box-sizing:border-box}
   .pu4 .pgm.pul *{box-sizing:border-box}

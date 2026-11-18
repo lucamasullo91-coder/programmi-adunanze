@@ -57,7 +57,7 @@ type Stato = {
 };
 type Bimestre = { id: string; nome: string; mesi: string[] };
 
-const conf = (window as unknown as { __CONF?: { base?: string; genera?: boolean } }).__CONF ?? {};
+const conf = (window as unknown as { __CONF?: { base?: string; genera?: boolean; vista?: string; anteprima?: boolean } }).__CONF ?? {};
 const BASE = (conf.base ?? "./").replace(/\/?$/, "/");
 const gs = (window as unknown as { google?: { script?: { run: Record<string, unknown> } } }).google
   ?.script?.run;
@@ -227,7 +227,7 @@ function App() {
   const [base, setBase] = useState<Record<string, Foglio>>({});
   const [vista, setVista] = useState(() => {
     try {
-      return localStorage.getItem("pa-vista") ?? "inf";
+      return conf.vista ?? localStorage.getItem("pa-vista") ?? "inf";
     } catch {
       return "inf";
     }
@@ -271,7 +271,7 @@ function App() {
   }, [bim]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     try {
-      localStorage.setItem("pa-vista", vista);
+      if (!conf.anteprima && !conf.vista) localStorage.setItem("pa-vista", vista);
     } catch {
       /* no storage */
     }
@@ -453,6 +453,13 @@ function App() {
       </div>
     );
   }
+  // Bacheca: piccola anteprima del foglio, senza barra (non si tocca niente)
+  if (conf.anteprima)
+    return (
+      <div className="pa anteprima" style={{ pointerEvents: "none" }}>
+        <Pagine2 fogli={fogli} vista={vista} ruolo="legge" tocca={() => undefined} rif={pagine} stampa={false} />
+      </div>
+    );
   const nomeRuolo = { inf: "adunanza infrasettimanale", fs: "adunanza del fine settimana", tutto: "tutte le adunanze", legge: "" }[stato.ruolo];
   const viste = VISTE.concat(stato.conReparti ? [["rep", "Adunanze e reparti"]] : []);
   return (

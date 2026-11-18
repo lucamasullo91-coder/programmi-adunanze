@@ -43,21 +43,22 @@
   }
   /** La pagina degli espositori è già un HTML completo: le aggiungo solo il ponte in testa. */
   function paginaOem(html) { return html.replace(/<head>/i, '<head><script>' + ponte() + '<\/script>'); }
-  function pagina(js, genera) {
-    const ponteP = 'window.__CONF={base:' + JSON.stringify(REPO) + (genera ? ',genera:true' : '') + '};' + ponte();
+  function pagina(js, genera, extra) {
+    const ponteP = 'window.__CONF=' + JSON.stringify(Object.assign({ base: REPO }, genera ? { genera: true } : {}, extra || {})) + ';' + ponte();
     return '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fira+Sans+Extra+Condensed:wght@400;500;600;700;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap">' +
       '</head><body><div id="root"></div><script>' + ponteP + '<\/script><script>' + js.replace(/<\/script/gi, '<\\/script') + '<\/script></body></html>';
   }
-  function monta(quale) {
-    const fr = document.getElementById(quale === 'genera' ? 'waGen' : 'paFrame'), st = document.getElementById('paSt');
+  function monta(quale, el, extra) {
+    const fr = el || document.getElementById(quale === 'genera' ? 'waGen' : 'paFrame'), st = document.getElementById('paSt');
     if (!fr) return;
+    if (quale === 'bachecaProgrammi' && !extra && S.paVista) extra = { vista: S.paVista };
     const oem = /spositori/.test(quale);
     const file = oem ? 'espositori/app.html' : 'dist/app.js';
-    scarica(file).then((t) => { fr.srcdoc = oem ? paginaOem(t) : pagina(t, quale === 'genera'); fr.dataset.q = quale; if (st) st.textContent = ''; }).catch((e) => { if (st) st.textContent = 'Errore: ' + e.message; });
+    scarica(file).then((t) => { fr.srcdoc = oem ? paginaOem(t) : pagina(t, quale === 'genera', extra); fr.dataset.q = quale; if (st) st.textContent = ''; }).catch((e) => { if (st) st.textContent = 'Errore: ' + e.message; });
   }
   window.addEventListener('message', (e) => {
-    const fr = [document.getElementById('paFrame'), document.getElementById('waGen')].find((x) => x && e.source === x.contentWindow);
+    const fr = [...document.querySelectorAll('iframe')].find((x) => e.source === x.contentWindow);
     const d = e.data;
     if (fr && d && d.waFatto && fr.id === 'waGen') { fr.remove(); if (d.n) P.toast('Immagini dei reparti pronte per Telegram (' + d.n + (d.n === 1 ? ' settimana)' : ' settimane)')); return; }
     if (!fr || !d || !d.paQ) return;
@@ -100,6 +101,8 @@
     setTimeout(() => monta('espositori'), 0);
     return '<div class="pa-full"><div class="pa-top" style="border-color:#2F7F8C"><button class="back" data-go="home">‹ Portale</button><b style="color:#2F7F8C">Programma espositori</b>' + barraPub([['espositori', 'Pubblica in bacheca', 'espositori']]) + '<span id="paSt">Carico…</span></div><iframe id="paFrame" title="Programma espositori"></iframe></div>';
   };
+  /** Bacheca: anteprima del programma pubblicato in un piccolo riquadro (stessa pagina, senza barra). */
+  P.anteprimaProgrammi = function (el, vista) { el.dataset.q = 'bachecaProgrammi'; monta('bachecaProgrammi', el, { vista: vista, anteprima: true }); };
   P.viste.whatsapp = function () {
     setTimeout(() => monta('whatsapp'), 0);
     return '<div class="pa-full"><div class="pa-top" style="border-color:#25804B"><button class="back" data-go="home">‹ Portale</button><b style="color:#25804B">Pronto per WhatsApp</b><span id="paSt">Carico…</span></div><iframe id="paFrame" title="Pronto per WhatsApp"></iframe></div>';
