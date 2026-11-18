@@ -91,5 +91,10 @@ il Foglio non si condivide con nessuno e lo script manda a ciascuno solo i dati 
   generale e personale con `portale/stampa.css`.
 - **Comitive** (`portale/comitive.js`): offerte dal sondaggio, proposta con priorità a chi ha una sola disponibilità
   e quote proporzionali alle offerte; tre versioni del foglio A4. Si salva in `comitive:AAAA-MM`.
+- **Programmi adunanze ed Espositori nel portale** (`portale/programmi.js`): le pagine di sempre (`dist/app.js`,
+  `espositori/app.html`) aperte in un riquadro a tutto schermo; il riquadro chiede al portale (postMessage) e il portale
+  chiama il server con il link personale (`pa_*`, `oem_*`). I dati restano nei loro Fogli (chiavi `foglioProgrammi`,
+  `foglioEspositori` in Impostazioni), aperti dallo script come il proprietario: i Fogli non vanno più condivisi.
+  Il podio arriva dalla Turnazione reparti del portale; gli invii Telegram partono dallo script del portale (pagina Telegram).
 - Velocità: dentro ogni chiamata ogni scheda si legge una volta sola; i codici di accesso stanno nella cache dello
   script (si svuota a ogni modifica degli Accessi).

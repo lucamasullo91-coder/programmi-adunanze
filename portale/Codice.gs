@@ -1264,6 +1264,293 @@ function autorizza() {
   soloProprietario_();
   const id = leggiImpostazione_('foglioProgrammi', '');
   if (id) SpreadsheetApp.openById(id).getName();
+  const ide = leggiImpostazione_('foglioEspositori', '');
+  if (ide) SpreadsheetApp.openById(ide).getName();
   UrlFetchApp.fetch(REPO + 'README.md', { muteHttpExceptions: true });
+  DriveApp.getRootFolder().getName();
+  PropertiesService.getUserProperties().getProperty('TELEGRAM_CHAT');
   return 'Permessi a posto.';
+}
+
+
+/* ═════════════════════════ Programmi adunanze dentro il portale ═════════════════════════
+ * La pagina è quella di sempre (dist/app.js su GitHub), aperta dentro il portale. I dati restano nel Foglio
+ * «Programmi adunanze – dati» (chiave foglioProgrammi in Impostazioni): il portale lo apre come Luca, quindi il Foglio
+ * non va più condiviso con chi compila. Chi ha l'ambito «inf» compila l'infrasettimanale, «fs» il fine settimana. */
+
+function foglioProgrammi_() {
+  const id = leggiImpostazione_('foglioProgrammi', '');
+  if (!id) throw new Error('Manca il collegamento al Foglio «Programmi adunanze».');
+  return SpreadsheetApp.openById(id);
+}
+function ruoloProgrammi_(io) {
+  if (io.tutto) return 'tutto';
+  const i = io.ambiti.indexOf('inf') >= 0, f = io.ambiti.indexOf('fs') >= 0;
+  if (i && f) return 'tutto';
+  if (i) return 'inf';
+  if (f) return 'fs';
+  throw new Error('Non hai il permesso per i programmi delle adunanze.');
+}
+function coppie_(sh) {
+  const out = {};
+  if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach((r) => { if (r[0]) out[String(r[0])] = String(r[1]); });
+  return out;
+}
+/** Podio di ogni adunanza («2026-12-08|INFRA» → nome), dalla Turnazione reparti del portale. */
+function podioPortale_() {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const nomi = {}; persone_().forEach((p) => { nomi[p.id] = (p.n + ' ' + p.cognome).trim(); });
+  const out = {};
+  [-1, 0, 1, 2].forEach((n) => {
+    const m = meseDopo_(oggi_().slice(0, 7), n);
+    const x = leggiImpostazione_('reparti:' + m, null);
+    if (!x) return;
+    const ads = adunanzeReparti_(cal, settimane_(cal, m), x.nessuna || {});
+    scompatta_(x.turni).forEach((t) => {
+      if (t.incarico_id !== 'AV_POD' || !t.adunanza_id) return;
+      const a = ads.find((y) => y.id === t.adunanza_id);
+      if (a && nomi[t.persona_id]) { out[a.data + '|' + a.tipo] = nomi[t.persona_id]; out[t.adunanza_id] = nomi[t.persona_id]; }
+    });
+  });
+  return out;
+}
+/** Il podio anche con le date scritte nel programma (se il giorno di un'adunanza è cambiato solo lì). */
+function podioPerProgramma_(valori) {
+  const pod = podioPortale_();
+  Object.keys(valori).forEach((k) => {
+    const m = /^(\d{4}-\d{2}-\d{2})-(inf|fs):quando$/.exec(k);
+    if (!m) return;
+    const id = m[1] + (m[2] === 'inf' ? '-INFRA' : '-FINE'), data = String(valori[k]).slice(0, 10);
+    if (pod[id] && !pod[data + '|' + (m[2] === 'inf' ? 'INFRA' : 'FINE')]) pod[data + '|' + (m[2] === 'inf' ? 'INFRA' : 'FINE')] = pod[id];
+  });
+  Object.keys(pod).forEach((x) => { if (x.indexOf('|') < 0) delete pod[x]; });
+  return pod;
+}
+function pa_stato(k) {
+  const io = richiedi_(k);
+  const ruolo = ruoloProgrammi_(io);
+  const ss = foglioProgrammi_();
+  const valori = coppie_(ss.getSheetByName('Programma'));
+  return { email: io.nome, ruolo: ruolo, impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: podioPerProgramma_(valori) };
+}
+function pa_salva(k, chiave, valore) {
+  const io = richiedi_(k);
+  const ruolo = ruoloProgrammi_(io);
+  chiave = String(chiave);
+  const fine = /-fs[-:]/.test(chiave);
+  const ok = ruolo === 'tutto' || (ruolo === 'fs' && fine) || (ruolo === 'inf' && !fine && /-inf[-:]/.test(chiave));
+  if (!ok) throw new Error('Non puoi modificare questa parte');
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const sh = foglioProgrammi_().getSheetByName('Programma');
+    const trovata = sh.getRange('A:A').createTextFinder(chiave).matchEntireCell(true).findNext();
+    if (!valore) { if (trovata) sh.deleteRow(trovata.getRow()); }
+    else if (trovata) sh.getRange(trovata.getRow(), 2, 1, 3).setValues([[valore, io.nome, new Date()]]);
+    else sh.appendRow([chiave, valore, io.nome, new Date()]);
+  } finally { lock.releaseLock(); }
+  if (!/^diag/.test(chiave)) registroUnaVolta_(io, 'programmi', 'programma ' + (fine ? 'del fine settimana' : 'infrasettimanale') + ' modificato');
+  return true;
+}
+function cartellaProgrammi_(chiave, nome) {
+  const ss = foglioProgrammi_(), imp = ss.getSheetByName('Impostazioni');
+  const v = coppie_(imp)[chiave];
+  if (v) return DriveApp.getFolderById(v);
+  const file = DriveApp.getFileById(ss.getId());
+  const padre = file.getParents().hasNext() ? file.getParents().next() : DriveApp.getRootFolder();
+  const c = padre.createFolder(nome);
+  imp.appendRow([chiave, c.getId(), 'Cartella (non cambiare)']);
+  return c;
+}
+function pa_caricaFoto(k, base64, nome) {
+  ruoloProgrammi_(richiedi_(k));
+  return cartellaProgrammi_('cartellaFoto', 'Programmi adunanze – foto').createFile(Utilities.newBlob(Utilities.base64Decode(base64), 'image/jpeg', nome || 'programma.jpg')).getId();
+}
+function pa_caricaImmagine(k, base64, nome) {
+  ruoloProgrammi_(richiedi_(k));
+  return cartellaProgrammi_('cartellaImmagini', 'Programmi adunanze – immagini WhatsApp').createFile(Utilities.newBlob(Utilities.base64Decode(base64), 'image/png', nome || 'immagine.png')).getId();
+}
+function pa_foto(k, id) {
+  richiedi_(k);
+  return 'data:image/jpeg;base64,' + Utilities.base64Encode(DriveApp.getFileById(id).getBlob().getBytes());
+}
+
+/* ── Invii su Telegram (solo Luca): le immagini confermate di presidente e audio/video, qualche giorno prima ──
+ * Le chiavi stanno nelle proprietà utente del proprietario: le legge solo lo script, mai la pagina. */
+function riservate(k) {
+  richiedi_(k, true);
+  const p = PropertiesService.getUserProperties().getProperties();
+  const m = (x) => (p[x] ? '••••' + String(p[x]).slice(-4) : '');
+  return { TELEGRAM_TOKEN: m('TELEGRAM_TOKEN'), TELEGRAM_CHAT: m('TELEGRAM_CHAT'), ANTICIPO_GIORNI: p.ANTICIPO_GIORNI || '3', ORA_INVIO: p.ORA_INVIO || '19:00',
+    attivo: ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === 'inviiWhatsApp') };
+}
+function salvaRiservate(k, d) {
+  const io = richiedi_(k, true);
+  const p = PropertiesService.getUserProperties();
+  ['TELEGRAM_TOKEN', 'TELEGRAM_CHAT', 'ANTICIPO_GIORNI', 'ORA_INVIO'].forEach((x) => { if (d[x]) p.setProperty(x, String(d[x]).trim()); });
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'riservate', 'impostazioni Telegram aggiornate']);
+  return riservate(k);
+}
+function attivaInvii(k, acceso) {
+  const io = richiedi_(k, true);
+  ScriptApp.getProjectTriggers().forEach((t) => { if (t.getHandlerFunction() === 'inviiWhatsApp') ScriptApp.deleteTrigger(t); });
+  if (acceso !== false) ScriptApp.newTrigger('inviiWhatsApp').timeBased().everyMinutes(15).create();
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'riservate', acceso !== false ? 'invii Telegram attivati' : 'invii Telegram spenti']);
+  return riservate(k);
+}
+function provaTelegram(k) {
+  richiedi_(k, true);
+  const p = PropertiesService.getUserProperties();
+  telegram_('sendMessage', { chat_id: p.getProperty('TELEGRAM_CHAT'), text: '✅ Portale della congregazione collegato. Podio letto per ' + Object.keys(podioPortale_()).filter((x) => x.indexOf('|') > 0).length + ' adunanze.' });
+  return 'Messaggio inviato.';
+}
+function telegram_(metodo, payload) {
+  const token = PropertiesService.getUserProperties().getProperty('TELEGRAM_TOKEN');
+  if (!token) throw new Error('Token Telegram non impostato');
+  const r = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/' + metodo, { method: 'post', payload: payload, muteHttpExceptions: true });
+  if (r.getResponseCode() >= 300) throw new Error('Telegram: ' + r.getContentText().slice(0, 200));
+  return JSON.parse(r.getContentText());
+}
+function dataRoma_(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{1,2}):(\d{2})/.exec(s || '');
+  return m ? Utilities.parseDate(m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5], 'Europe/Rome', 'yyyy-MM-dd HH:mm') : null;
+}
+/** Ogni 15 minuti (attivatore): per ogni adunanza, dal momento dell'invio fino all'inizio, manda le immagini confermate;
+ *  se vengono confermate di nuovo dopo l'invio le rimanda con «Aggiornamento»; se non sono confermate, un avviso. */
+function inviiWhatsApp(e) {
+  if (!e || typeof e !== 'object' || !e.triggerUid) return; // parte solo dall'attivatore, non dalla pagina
+  const p = PropertiesService.getUserProperties();
+  if (!p.getProperty('TELEGRAM_TOKEN') || !p.getProperty('TELEGRAM_CHAT')) return;
+  const chat = p.getProperty('TELEGRAM_CHAT'), giorni = Number(p.getProperty('ANTICIPO_GIORNI') || 3), ora = (p.getProperty('ORA_INVIO') || '19:00').split(':');
+  const val = coppie_(foglioProgrammi_().getSheetByName('Programma'));
+  const adesso = new Date();
+  Object.keys(val).forEach((k) => {
+    if (!/:quando$/.test(k)) return;
+    const carta = k.slice(0, -':quando'.length), inizio = dataRoma_(val[k]);
+    if (!inizio) return;
+    const statoK = 'inviato:' + carta;
+    if (inizio <= adesso) { p.deleteProperty(statoK); return; }
+    const giorno = Utilities.formatDate(new Date(inizio.getTime() - giorni * 86400000), 'Europe/Rome', 'yyyy-MM-dd');
+    if (adesso < dataRoma_(giorno + ' ' + ora[0] + ':' + (ora[1] || '00'))) return;
+    const nomeAd = (/-inf$/.test(carta) ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana') + ' · ' + Utilities.formatDate(inizio, 'Europe/Rome', 'dd/MM HH:mm');
+    let conf = null; try { conf = JSON.parse(val[carta + ':wa'] || 'null'); } catch (e) { /* valore rovinato */ }
+    const stato = p.getProperty(statoK) || '';
+    if (!conf) {
+      if (stato !== 'avviso') { telegram_('sendMessage', { chat_id: chat, text: '⚠️ ' + nomeAd + ': le immagini per il presidente e per l’Audio/Video non sono ancora confermate da chi compila il programma.' }); p.setProperty(statoK, 'avviso'); }
+      return;
+    }
+    const firma = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, conf.firma || ''));
+    if (stato === firma) return;
+    const agg = stato && stato !== 'avviso' ? '🔄 Aggiornamento · ' : '';
+    [[conf.png && conf.png.pres, 'Presidente'], [conf.png && conf.png.av, 'Reparto Audio/Video']].forEach(([id, chi]) => {
+      if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + chi + ' · ' + nomeAd, photo: DriveApp.getFileById(id).getBlob() });
+    });
+    p.setProperty(statoK, firma);
+  });
+}
+
+
+/* ═════════════════════════ Programma espositori (OEM) dentro il portale ═════════════════════════
+ * Pagina di sempre (espositori/app.html), dati nel Foglio «Programma espositori – dati» (chiave foglioEspositori).
+ * Chi ha l'ambito «oem» compila; Luca può tutto. Stesso controllo di versione: nessuno sovrascrive il lavoro dell'altro. */
+const OEM_INTESTAZIONI_ = {
+  Mesi: ['Mese', 'Dati (non modificare a mano)', 'Versione', 'Modificato da', 'Quando'],
+  Carrelli: ['Sala|Mese', 'Dati (non modificare a mano)', 'Versione', 'Modificato da', 'Quando'],
+  Catalogo: ['Id', 'Dati (non modificare a mano)', 'Nome', 'Tipo', 'Modificato da', 'Quando'],
+};
+function foglioEspositori_() {
+  const id = leggiImpostazione_('foglioEspositori', '');
+  if (!id) throw new Error('Manca il collegamento al Foglio «Programma espositori».');
+  return SpreadsheetApp.openById(id);
+}
+function oemScheda_(ss, nome) {
+  let sh = ss.getSheetByName(nome);
+  if (!sh) sh = ss.insertSheet(nome);
+  if (sh.getLastRow() === 0 && OEM_INTESTAZIONI_[nome]) { sh.appendRow(OEM_INTESTAZIONI_[nome]); sh.setFrozenRows(1); }
+  return sh;
+}
+function ruoloOem_(io) { if (io.tutto) return 'tutto'; if (io.ambiti.indexOf('oem') >= 0) return 'compila'; throw new Error('Non hai il permesso per il programma espositori.'); }
+function oemScrittore_(k) { const io = richiedi_(k); ruoloOem_(io); return io; }
+function oemChiave_(ss, k) { return Object.prototype.toString.call(k) === '[object Date]' ? Utilities.formatDate(k, ss.getSpreadsheetTimeZone(), 'yyyy-MM') : String(k).trim(); }
+function oemRiga_(ss, sh, chiave) {
+  const n = sh.getLastRow();
+  if (n < 2) return 0;
+  const col = sh.getRange(2, 1, n - 1, 1).getValues();
+  for (let i = col.length - 1; i >= 0; i--) if (col[i][0] !== '' && oemChiave_(ss, col[i][0]) === chiave) return i + 2;
+  return 0;
+}
+function oemScrivi_(sh, r, riga) { if (!r) r = sh.getLastRow() + 1; sh.getRange(r, 1).setNumberFormat('@'); sh.getRange(r, 1, 1, riga.length).setValues([riga]); }
+function oem_stato(k) {
+  const io = richiedi_(k), ruolo = ruoloOem_(io), ss = foglioEspositori_();
+  const leggi = (nome) => { const sh = oemScheda_(ss, nome), out = {}; if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues().forEach((r) => { if (r[0]) out[oemChiave_(ss, r[0])] = { dati: String(r[1]), rev: Number(r[2]) || 0 }; }); return out; };
+  const shk = oemScheda_(ss, 'Catalogo'), catalogo = [];
+  if (shk.getLastRow() > 1) shk.getRange(2, 1, shk.getLastRow() - 1, 2).getValues().forEach((r) => { if (r[0]) catalogo.push(String(r[1])); });
+  return { email: io.nome, ruolo: ruolo, mesi: leggi('Mesi'), carrelli: leggi('Carrelli'), catalogo: catalogo };
+}
+function oemVersione_(k, scheda, chiave, dati, rev, cosa) {
+  const io = oemScrittore_(k);
+  JSON.parse(dati);
+  if (String(dati).length > 49000) throw new Error('Dati troppo grandi');
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const ss = foglioEspositori_(), sh = oemScheda_(ss, scheda), r = oemRiga_(ss, sh, String(chiave));
+    const attuale = r ? Number(sh.getRange(r, 3).getValue()) || 0 : 0;
+    if (Number(rev) !== attuale) return { ok: false, rev: attuale, dati: r ? String(sh.getRange(r, 2).getValue()) : null };
+    oemScrivi_(sh, r, [String(chiave), dati, attuale + 1, io.nome, new Date()]);
+    registroUnaVolta_(io, 'espositori', cosa);
+    return { ok: true, rev: attuale + 1 };
+  } finally { lock.releaseLock(); }
+}
+function oem_salvaMese(k, mese, dati, rev) {
+  if (!/^\d{4}-\d{2}$/.test(String(mese))) throw new Error('Mese non valido');
+  return oemVersione_(k, 'Mesi', mese, dati, rev, 'programma espositori di ' + nomeMese_(String(mese)) + ' modificato');
+}
+function oem_salvaCarrelli(k, chiave, dati, rev) {
+  if (!/^[a-z]+\|\d{4}-\d{2}$/.test(String(chiave))) throw new Error('Chiave non valida');
+  return oemVersione_(k, 'Carrelli', chiave, dati, rev, 'allestimento carrelli modificato');
+}
+function oem_eliminaMese(k, mese) {
+  richiedi_(k, true);
+  const ss = foglioEspositori_(), sh = oemScheda_(ss, 'Mesi');
+  let r; while ((r = oemRiga_(ss, sh, String(mese)))) sh.deleteRow(r);
+  return true;
+}
+function oem_salvaCatalogo(k, voce) {
+  const io = oemScrittore_(k), v = JSON.parse(voce);
+  if (!v.id || !/^[\w-]+$/.test(v.id)) throw new Error('Voce non valida');
+  if (voce.length > 49000) throw new Error('Immagine troppo grande');
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try { const ss = foglioEspositori_(), sh = oemScheda_(ss, 'Catalogo'); oemScrivi_(sh, oemRiga_(ss, sh, v.id), [v.id, voce, v.nome || '', v.tipo || '', io.nome, new Date()]); }
+  finally { lock.releaseLock(); }
+  return true;
+}
+function oem_eliminaCatalogo(k, id) {
+  oemScrittore_(k);
+  const ss = foglioEspositori_(), sh = oemScheda_(ss, 'Catalogo'), r = oemRiga_(ss, sh, String(id));
+  if (r) sh.deleteRow(r);
+  return true;
+}
+const JW_ = /^https:\/\/([a-z0-9-]+\.)*(jw\.org|jw-cdn\.org)\//i;
+function oem_jwPagina(k, url) {
+  oemScrittore_(k);
+  url = String(url || '').trim();
+  if (!JW_.test(url)) throw new Error('Incolla un link di jw.org');
+  const r = UrlFetchApp.fetch(url, { followRedirects: true, muteHttpExceptions: true, headers: { 'Accept-Language': 'it' } });
+  if (r.getResponseCode() >= 400) throw new Error('jw.org ha risposto ' + r.getResponseCode());
+  const html = r.getContentText();
+  const meta = (x) => { const m = html.match(new RegExp('<meta[^>]+(?:property|name)="' + x + '"[^>]+content="([^"]*)"', 'i')); return m ? m[1] : ''; };
+  const dec = (s) => String(s).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  const titolo = dec(meta('og:title') || ((html.match(/<title>([^<]*)<\/title>/i) || [])[1] || '')).replace(/\s*\|\s*JW\.ORG.*$/i, '').trim();
+  const viste = {}, immagini = [];
+  const og = meta('og:image');
+  if (og) { viste[og] = 1; immagini.push(dec(og)); }
+  (html.match(/https:\/\/[a-z0-9.-]*jw-cdn\.org\/img\/[^"'\s)]+?\.(?:jpg|jpeg|png)/gi) || []).forEach((u) => { u = dec(u); if (!viste[u] && immagini.length < 30) { viste[u] = 1; immagini.push(u); } });
+  return { titolo: titolo, immagini: immagini };
+}
+function oem_jwImmagine(k, url) {
+  oemScrittore_(k);
+  if (!JW_.test(String(url))) throw new Error('Immagine non di jw.org');
+  const r = UrlFetchApp.fetch(String(url), { followRedirects: true, muteHttpExceptions: true });
+  if (r.getResponseCode() >= 400) throw new Error('Immagine non disponibile');
+  const b = r.getBlob();
+  return 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes());
 }

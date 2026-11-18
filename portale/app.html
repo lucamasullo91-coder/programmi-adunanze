@@ -204,11 +204,12 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       }).catch(function (e) { delete caricati[n]; throw e; }));
     }));
   }
-  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'comitive.js'] };
+  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'comitive.js'], programmi: ['programmi.js'], espositori: ['programmi.js'], telegram: ['programmi.js'] };
+  var TITOLI = { reparti: 'Turnazione reparti', comitive: 'Comitive', programmi: 'Programmi adunanze', espositori: 'Programma espositori', telegram: 'Telegram' };
   function apriModulo(v) {
     S.vista = v; window.scrollTo(0, 0);
     if (PC.viste[v]) return disegna();
-    app.innerHTML = testata(v === 'reparti' ? 'Turnazione reparti' : 'Comitive', '', 'home') + '<p class="nota">Carico…</p>';
+    app.innerHTML = testata(TITOLI[v] || '', '', 'home') + '<p class="nota">Carico…</p>';
     carica(MODULI[v]).then(function () { if (S.vista === v) disegna(); }).catch(function (e) { toast(e.message, true); });
   }
 
@@ -308,9 +309,12 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
         '<button class="tile" data-go="accessi" style="--c:#4D5A68"><b>Accessi</b><span>Link personali e permessi</span></button>' +
         '<button class="tile" data-go="registro" style="--c:#7A7A7A"><b>Registro</b><span>Chi ha fatto cosa e quando</span></button>';
     }
+    if (io.tutto || io.ambiti.indexOf('inf') >= 0 || io.ambiti.indexOf('fs') >= 0) t += '<button class="tile" data-mod="programmi" style="--c:#A8432B"><b>Programmi adunanze</b><span>' + (io.tutto || (io.ambiti.indexOf('inf') >= 0 && io.ambiti.indexOf('fs') >= 0) ? 'Infrasettimanale e fine settimana' : io.ambiti.indexOf('inf') >= 0 ? 'Compili l\'infrasettimanale' : 'Compili il fine settimana') + '</span></button>';
     if (io.tutto || io.ambiti.indexOf('reparti') >= 0) t += '<button class="tile" data-mod="reparti" style="--c:#4D5A68"><b>Turnazione reparti</b><span>Proposta automatica, assenze, pulizie, foglio A4</span></button>';
     if (io.tutto || io.ambiti.indexOf('comitive') >= 0) t += '<button class="tile" data-mod="comitive" style="--c:#A86F00"><b>Comitive</b><span>Programma del mese dalle offerte del sondaggio</span></button>';
-    var futuri = [['Programma infrasettimanale', '#A8432B', 'inf'], ['Programma fine settimana', '#521F46', 'fs'], ['Espositori OEM', '#2F7F8C', 'oem']];
+    if (io.tutto) t += '<button class="tile" data-mod="telegram" style="--c:#2E75B5"><b>Telegram</b><span>Invii automatici delle immagini</span></button>';
+    if (io.tutto || io.ambiti.indexOf('oem') >= 0) t += '<button class="tile" data-mod="espositori" style="--c:#2F7F8C"><b>Espositori</b><span>Programma dell\'opera pubblica e carrelli</span></button>';
+    var futuri = [];
     futuri.forEach(function (m) { if (io.tutto || io.ambiti.indexOf(m[2]) >= 0) t += '<div class="tile off" style="--c:' + m[1] + '"><b>' + m[0] + '</b><span>Nel portale tra poco</span></div>'; });
     return h + '<p class="nota">I tuoi ambiti:</p>' + chipsAmbiti(io.ambiti) + '<div style="height:14px"></div>' + t + '</div>';
   }
