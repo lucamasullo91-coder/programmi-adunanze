@@ -85,7 +85,7 @@ function valori_(nome) {
   }
   return MEMO_[nome];
 }
-function dimentica_(nome) { delete MEMO_[nome]; if (nome === FOGLIO) delete MEMO_.persone; if (nome === 'Accessi') try { CacheService.getScriptCache().remove('accessi'); } catch (e) {} }
+function dimentica_(nome) { delete MEMO_[nome]; if (nome === FOGLIO) { delete MEMO_.persone; delete MEMO_.sondaggi; } if (nome === 'Sondaggi') delete MEMO_.sondaggi; if (nome === 'Accessi') try { CacheService.getScriptCache().remove('accessi'); } catch (e) {} }
 
 /* ───────────────────────── Accessi ───────────────────────── */
 
@@ -731,9 +731,16 @@ function turniOem_(lun) {
 /* ── archivio dei sondaggi ── */
 function sondaggi_() {
   scheda_('Sondaggi');
-  return valori_('Sondaggi').slice(1).map((r, i) => r[0] ? ({ id: String(r[0]), titolo: String(r[1]), dati: JSON.parse(String(r[2])), stato: String(r[3]), riga: i + 2 }) : null).filter(Boolean);
+  if (MEMO_.sondaggi) return MEMO_.sondaggi;
+  return MEMO_.sondaggi = valori_('Sondaggi').slice(1).map((r, i) => {
+    if (!r[0]) return null;
+    const dati = JSON.parse(String(r[2]));
+    // «Tutti i previsti»: i destinatari seguono l'anagrafica (chi spunti dopo entra da solo), tranne chi hai escluso tu
+    if (dati.auto) { const fuori = dati.esclusi || []; dati.destinatari = previsti_(dati).map((p) => p.id).filter((id) => fuori.indexOf(id) < 0); }
+    return { id: String(r[0]), titolo: String(r[1]), dati: dati, stato: String(r[3]), riga: i + 2 };
+  }).filter(Boolean);
 }
-function salvaSondaggio_(s) { scheda_('Sondaggi').getRange(s.riga, 2, 1, 3).setValues([[s.titolo, JSON.stringify(s.dati), s.stato]]); dimentica_('Sondaggi'); }
+function salvaSondaggio_(s) { scheda_('Sondaggi').getRange(s.riga, 2, 1, 3).setValues([[s.titolo, JSON.stringify(s.dati), s.stato]]); dimentica_('Sondaggi'); delete MEMO_.sondaggi; }
 function risposte_(sid) {
   scheda_('Risposte');
   const out = {};
@@ -851,11 +858,13 @@ function creaSondaggio(k, d) {
     if (!(d.mesiNominati || []).length && !(d.mesiReparti || []).length && !d.comitive) throw new Error('Scegli almeno una sezione.');
     dati = { mesiNominati: d.mesiNominati || [], mesiReparti: d.mesiReparti || [], comitive: d.comitive || '', scadenza: d.scadenza, inviati: {} };
   }
+  dati.auto = !(d.soloQuesti && d.soloQuesti.length);
+  dati.esclusi = [];
   dati.destinatari = (d.soloQuesti && d.soloQuesti.length ? previsti_(dati).filter((p) => d.soloQuesti.indexOf(p.id) >= 0) : previsti_(dati)).map((p) => p.id);
   let id = 'S' + Utilities.formatDate(new Date(), 'Europe/Rome', 'yyMMddHHmm');
   if (sondaggi_().some((x) => x.id === id)) id += 'b';
   scheda_('Sondaggi').appendRow([id, d.titolo || 'Disponibilità', JSON.stringify(dati), 'aperto', new Date()]);
-  dimentica_('Sondaggi');
+  dimentica_('Sondaggi'); delete MEMO_.sondaggi;
   scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', 'creato ' + id + ' · ' + (d.titolo || '') + ' · ' + dati.destinatari.length + ' destinatari']);
   return sondaggiGestione(k);
 }
@@ -869,6 +878,9 @@ function impostaSondaggio(k, sid, d) {
   if (d.titolo) s.titolo = d.titolo;
   (d.aggiungi || []).forEach((x) => { if (s.dati.destinatari.indexOf(x) < 0) s.dati.destinatari.push(x); });
   if (d.togli) s.dati.destinatari = s.dati.destinatari.filter((x) => d.togli.indexOf(x) < 0);
+  if (s.dati.auto) {
+    s.dati.esclusi = (s.dati.esclusi || []).filter((x) => (d.aggiungi || []).indexOf(x) < 0).concat((d.togli || []).filter((x) => (s.dati.esclusi || []).indexOf(x) < 0));
+  }
   if (d.inviato) { s.dati.inviati = s.dati.inviati || {}; s.dati.inviati[d.inviato] = (s.dati.inviati[d.inviato] || []).concat([oggi_()]); }
   if (d.avvisato) { s.dati.avvisati = s.dati.avvisati || {}; s.dati.avvisati[d.avvisato] = iso_(new Date()); }
   salvaSondaggio_(s);
