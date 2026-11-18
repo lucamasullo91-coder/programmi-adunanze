@@ -226,18 +226,25 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     disegna: function () { disegna(); }, vai: function (v) { vai(v); } };
   var caricati = {};
   PC.carica = function (n) { return carica([].concat(n)); };
+  var testi = {}, montati = {};
+  /** Scarica i file in parallelo ma li esegue nell'ordine dato (il motore prima della pagina che lo usa). */
   function carica(nomi) {
     return Promise.all(nomi.map(function (n) {
-      if (caricati[n]) return caricati[n];
-      return (caricati[n] = fetch(BASE + n + '?v=' + Date.now()).then(function (r) { if (!r.ok) throw new Error('GitHub ' + r.status + ' (' + n + ')'); return r.text(); }).then(function (t) {
-        var el = document.createElement(/\.css$/.test(n) ? 'style' : 'script'); el.textContent = t; (/\.css$/.test(n) ? document.head : document.body).appendChild(el);
-      }).catch(function (e) { delete caricati[n]; throw e; }));
-    }));
+      if (!testi[n]) testi[n] = fetch(BASE + n + '?v=' + Date.now()).then(function (r) { if (!r.ok) throw new Error('GitHub ' + r.status + ' (' + n + ')'); return r.text(); })
+        .catch(function (e) { delete testi[n]; throw e; });
+      return testi[n];
+    })).then(function (tt) {
+      nomi.forEach(function (n, i) {
+        if (montati[n]) return;
+        montati[n] = true;
+        var el = document.createElement(/\.css$/.test(n) ? 'style' : 'script'); el.textContent = tt[i]; (/\.css$/.test(n) ? document.head : document.body).appendChild(el);
+      });
+    });
   }
-  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], domeniche: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], programmi: ['programmi.js'], espositori: ['programmi.js'], telegram: ['programmi.js'], whatsapp: ['programmi.js'],
+  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], domeniche: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], programmi: ['programmi.js'], espositori: ['programmi.js'], telegram: ['programmi.js'], whatsapp: ['programmi.js'], pulizie: ['pulizie.js'],
     bacheca: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'motore-reparti.js', 'reparti.js', 'comitive.js', 'programmi.js', 'bacheca.js'] };
   MODULI.bachecaProgrammi = MODULI.bacheca; MODULI.bachecaEspositori = MODULI.bacheca;
-  var TITOLI = { reparti: 'Turnazione reparti', comitive: 'Comitive', programmi: 'Programmi adunanze', espositori: 'Programma espositori', telegram: 'Telegram', bacheca: 'Bacheca', domeniche: 'Domeniche del gruppo', whatsapp: 'Pronto per WhatsApp' };
+  var TITOLI = { reparti: 'Turnazione reparti', comitive: 'Comitive', programmi: 'Programmi adunanze', espositori: 'Programma espositori', telegram: 'Telegram', bacheca: 'Bacheca', domeniche: 'Domeniche del gruppo', pulizie: 'Programma pulizie', whatsapp: 'Pronto per WhatsApp' };
   function apriModulo(v) {
     S.vista = v; window.scrollTo(0, 0);
     if (PC.viste[v]) return disegna();
@@ -332,7 +339,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     var tb = '<button class="tile" data-mod="bacheca" style="--c:#2E6E7C"><b>Bacheca</b><span>I miei impegni e i programmi del mese</span></button>';
     var tg = io.gruppo && !io.tutto ? '<button class="tile" data-mod="domeniche" style="--c:#521F46"><b>Domeniche del gruppo</b><span>Comitive della domenica del gruppo ' + esc(io.gruppo) + '</span></button>' : '';
     var tw = io.wa ? '<button class="tile" data-mod="whatsapp" style="--c:#25804B"><b>Pronto per WhatsApp</b><span>Le immagini della settimana per i gruppi</span></button>' : '';
-    if (!io.ambiti.length) return h + '<div class="tiles">' + tileSondaggi() + tb + tw + tg + '</div><p class="nota" style="margin-top:12px">Salva questo link: è il tuo accesso personale.</p>';
+    if (!io.ambiti.length) return h + '<div class="tiles">' + tileSondaggi() + tb + tw + tg + (io.pulizie ? '<button class="tile" data-mod="pulizie" style="--c:#A86F00"><b>Programma pulizie</b><span>Anno teocratico</span></button>' : '') + '</div><p class="nota" style="margin-top:12px">Salva questo link: è il tuo accesso personale.</p>';
     var t = '<div class="tiles">' + tb + tileSondaggi() +
       '<button class="tile" data-go="anagrafica"><b>Anagrafica</b><span>' + S.dati.fratelli.length + ' proclamatori · abilitazioni</span></button>';
     if (io.tutto) {
@@ -345,6 +352,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     if (io.tutto || io.ambiti.indexOf('reparti') >= 0) t += '<button class="tile" data-mod="reparti" style="--c:#4D5A68"><b>Turnazione reparti</b><span>Proposta automatica, assenze, pulizie, foglio A4</span></button>';
     if (io.tutto || io.ambiti.indexOf('comitive') >= 0) t += '<button class="tile" data-mod="comitive" style="--c:#A86F00"><b>Comitive</b><span>Programma del mese dalle offerte del sondaggio</span></button>';
     t += tg;
+    if (io.pulizie) t += '<button class="tile" data-mod="pulizie" style="--c:#A86F00"><b>Programma pulizie</b><span>Anno teocratico: gruppi, coordinatori, referenti, pulizia generale</span></button>';
     if (io.wa) t += '<button class="tile" data-mod="whatsapp" style="--c:#25804B"><b>Pronto per WhatsApp</b><span>Le immagini della settimana per i gruppi</span></button>';
     if (io.tutto) t += '<button class="tile" data-mod="telegram" style="--c:#2E75B5"><b>Telegram</b><span>Invii automatici delle immagini</span></button>';
     if (io.tutto || io.ambiti.indexOf('oem') >= 0) t += '<button class="tile" data-mod="espositori" style="--c:#2F7F8C"><b>Espositori</b><span>Programma dell\'opera pubblica e carrelli</span></button>';

@@ -90,7 +90,7 @@ function valori_(nome) {
   }
   return MEMO_[nome];
 }
-function dimentica_(nome) { delete MEMO_[nome]; if (nome === FOGLIO) { delete MEMO_.persone; delete MEMO_.sondaggi; } if (nome === 'Sondaggi') delete MEMO_.sondaggi; if (nome === 'Accessi') try { CacheService.getScriptCache().remove('accessi'); } catch (e) {} }
+function dimentica_(nome) { delete MEMO_[nome]; if (nome === FOGLIO) { delete MEMO_.persone; delete MEMO_.sondaggi; } if (nome === 'Sondaggi') delete MEMO_.sondaggi; if (nome === 'Impostazioni') { delete MEMO_.pulizie; delete MEMO_.postazioni; } if (nome === 'Accessi') try { CacheService.getScriptCache().remove('accessi'); } catch (e) {} }
 
 /* ───────────────────────── Accessi ───────────────────────── */
 
@@ -116,7 +116,7 @@ function utente_(k) {
   const tutto = a.indexOf('tutto') >= 0;
   return { id: x[0], nome: x[1], ambiti: tutto ? ['tutto'].concat(AMBITI) : a, tutto: tutto, riga: x[3] };
 }
-function haAmbito_(io, a) { return io.tutto || io.ambiti.indexOf(a) >= 0; }
+function haAmbito_(io, a) { if (a === 'pulizie') return puoPulizie_(io); return io.tutto || io.ambiti.indexOf(a) >= 0; }
 function richiedi_(k, serveTutto) {
   const io = utente_(k);
   if (!io) throw new Error('Link non valido o disattivato.');
@@ -1259,6 +1259,7 @@ function reparti(k, mese) {
     if (w.speciale && !stato.eventi[w.lunedi] && !stato.eventiTolti) stato.eventi[w.lunedi] = { tipo: w.speciale.nome, luogo: w.speciale.luogo || '', orario: '', tema: '', nota: '' };
     if (w.speciale && w.speciale.adunanze === false) { stato.nessuna[w.lunedi + '-INFRA'] = true; stato.nessuna[w.lunedi + '-FINE'] = true; }
   });
+  stato.pulizieProgramma = applicaPulizie_(stato, sett.map((w) => w.lunedi), false);
   const adunanze = adunanzeReparti_(cal, sett, stato.nessuna);
   const pInc = abilitazioniReparti_();
   const inTurno = {}; pInc.forEach((x) => { inTurno[x.persona_id] = true; });
@@ -1782,7 +1783,7 @@ function oem_jwImmagine(k, url) {
  * Copie in Impostazioni (pub:reparti:AAAA-MM, pub:comitive:…, pub:programmi-inf:…, pub:programmi-fs:…);
  * gli espositori, più grandi, nella scheda «Pubblicati» del loro Foglio. */
 
-const PUB_TIPI_ = { reparti: 'reparti', comitive: 'comitive', 'programmi-inf': 'inf', 'programmi-fs': 'fs', espositori: 'oem' };
+const PUB_TIPI_ = { reparti: 'reparti', comitive: 'comitive', 'programmi-inf': 'inf', 'programmi-fs': 'fs', espositori: 'oem', pulizie: 'pulizie' };
 function lunediMese_(mese) { return lunediDel_(mese); }
 function snapshotProgrammi_(mese, quale) {
   const val = coppie_(foglioProgrammi_().getSheetByName('Programma'));
@@ -1801,7 +1802,10 @@ function pubblica(k, tipo, mese) {
   if (!haAmbito_(io, PUB_TIPI_[tipo])) throw new Error('Non hai il permesso di pubblicare questo programma.');
   const quando = iso_(new Date());
   let dati;
-  if (tipo === 'reparti' || tipo === 'comitive') {
+  if (tipo === 'pulizie') {
+    dati = leggiImpostazione_('pulizie:' + mese.slice(0, 4), null);
+    if (!dati) throw new Error('Il programma pulizie di quest\'anno è ancora vuoto.');
+  } else if (tipo === 'reparti' || tipo === 'comitive') {
     dati = leggiImpostazione_(tipo + ':' + mese, null);
     if (!dati) throw new Error('Non c\'è ancora niente da pubblicare per ' + nomeMese_(mese) + '.');
     if (tipo === 'comitive') dati.dom = domenicheMese_(mese);
@@ -1826,7 +1830,9 @@ function statoPubblicazione(k, tipo, mese) {
   if (!p) return { pubblicato: false };
   let cambiato = false;
   try {
-    if (tipo === 'reparti' || tipo === 'comitive') cambiato = JSON.stringify(leggiImpostazione_(tipo + ':' + mese, null)) !== JSON.stringify(p.dati);
+    if (tipo === 'pulizie') cambiato = JSON.stringify(leggiImpostazione_('pulizie:' + mese.slice(0, 4), null)) !== JSON.stringify(p.dati);
+    else if (tipo === 'comitive') { const cur = leggiImpostazione_('comitive:' + mese, null) || {}; cur.dom = domenicheMese_(mese); cambiato = JSON.stringify(cur) !== JSON.stringify(p.dati); }
+    else if (tipo === 'reparti') cambiato = JSON.stringify(leggiImpostazione_(tipo + ':' + mese, null)) !== JSON.stringify(p.dati);
     else if (tipo !== 'espositori') cambiato = JSON.stringify(snapshotProgrammi_(mese, PUB_TIPI_[tipo])) !== JSON.stringify(p.dati);
   } catch (e) { /* Foglio non raggiungibile */ }
   return { pubblicato: true, quando: p.quando, chi: p.chi, cambiato: cambiato };
@@ -1860,6 +1866,7 @@ function repartiPubblicati_(mese) {
   const st = p.dati;
   st.turni = scompatta_(st.turni);
   ['gruppi', 'generali', 'nessuna', 'eventi'].forEach((x) => { st[x] = st[x] || {}; });
+  applicaPulizie_(st, sett.map((w) => w.lunedi), true);
   sett.forEach((w) => { if (w.speciale && w.speciale.adunanze === false) { st.nessuna[w.lunedi + '-INFRA'] = true; st.nessuna[w.lunedi + '-FINE'] = true; } });
   const servono = {}; st.turni.forEach((t) => { servono[t.persona_id] = true; });
   Object.keys(st.generali).forEach((s) => { const g = st.generali[s]; if (g.coord) servono[g.coord] = true; if (g.ref) servono[g.ref] = true; });
@@ -1909,17 +1916,30 @@ function bacheca(k, mese) {
   const rp = repartiPubblicati_(mese);
   if (rp) {
     const nomeInc = { USC_COORD: 'Coordinatore uscieri', USC_ING: 'Usciere all\'ingresso', USC_AUD: 'Usciere in auditorium', USC_PAR: 'Usciere al parcheggio', AV_POD: 'Podio', AV_MIC: 'Microfonista', AV_MIX: 'Mixer', AV_PC: 'PC', LET: 'Letteratura', TER: 'Territori', PUL_COORD: 'Coordinatore pulizie', PUL_REF: 'Referente pulizie' };
-    rp.stato.turni.filter((t) => t.persona_id === io.id).forEach((t) => {
+    rp.stato.turni.filter((t) => t.persona_id === io.id && !/^PUL_/.test(t.incarico_id)).forEach((t) => {
       const a = rp.adunanze.find((x) => x.id === t.adunanza_id);
       out.impegni.push({ data: a ? a.data : t.settimana_id, tipo: 'rep', testo: nomeInc[t.incarico_id] + (a ? '' : ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7)) });
     });
-    Object.keys(rp.stato.generali).forEach((s) => { const g = rp.stato.generali[s]; if (g.attiva && (g.coord === io.id || g.ref === io.id)) out.impegni.push({ data: g.data, tipo: 'rep', testo: 'Pulizia generale · ' + (g.coord === io.id ? 'coordinatore' : 'referente') }); });
+    if (!rp.stato.pulizieProgramma) {
+      rp.stato.turni.filter((t) => t.persona_id === io.id && /^PUL_/.test(t.incarico_id)).forEach((t) => out.impegni.push({ data: t.settimana_id, tipo: 'pul', testo: nomeInc[t.incarico_id] + ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7) }));
+      Object.keys(rp.stato.generali).forEach((s) => { const g = rp.stato.generali[s]; if (g.attiva && (g.coord === io.id || g.ref === io.id)) out.impegni.push({ data: g.data, tipo: 'pul', testo: 'Pulizia generale · ' + (g.coord === io.id ? 'coordinatore' : 'referente') }); });
+    }
     if (out.io.reparti || rp.stato.turni.some((t) => t.persona_id === io.id)) out.reparti = rp;
   }
+  // pulizie, dal programma pulizie pubblicato
+  settimane_(cal, mese).forEach((w) => {
+    const e = puliziaSettimana_(w.lunedi, true);
+    if (!e) return;
+    const sett = ' · settimana del ' + w.lunedi.slice(8) + '/' + w.lunedi.slice(5, 7);
+    if (e.c === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Coordinatore pulizie' + sett });
+    if (e.r === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Referente pulizie' + sett });
+    if (e.gc === io.id || e.gr === io.id) out.impegni.push({ data: e.gd || w.lunedi, tipo: 'pul', testo: 'Pulizia generale · ' + (e.gc === io.id ? 'coordinatore' : 'referente') });
+  });
   // comitive
   const cm = comitivePubblicate_(mese);
   if (cm) {
     cm.settimane.forEach((w) => w.comitive.forEach((c) => { if (!c.annullata && !cm.stato.nascoste[c.k] && cm.stato.assegnati[c.k] === io.id) out.impegni.push({ data: c.data, tipo: 'com', testo: 'Comitiva ' + c.ora + ' · ' + c.luogo }); }));
+    (cm.foglio.domeniche || []).forEach((r) => { if (r.conduttore === io.id) out.impegni.push({ data: r.data, tipo: 'com', testo: 'Comitiva della domenica ' + r.ora + ' · ' + r.luogo + ' · ' + (r.gruppi.length > 1 && r.gruppi.length === cm.foglio.gruppi.length ? 'tutti i gruppi' : 'gruppi ' + r.gruppi.join(', ')) }); });
     out.comitive = cm;
     out.versioniComitive = out.io.nominato ? ['generale', 'personale', 'tabella'] : ['tabella'];
   }
@@ -1973,7 +1993,9 @@ function repartiPerProgramma_(pubblicati) {
     const m = meseDopo_(oggi_().slice(0, 7), n);
     const x = pubblicati ? (leggiImpostazione_('pub:reparti:' + m, null) || {}).dati : leggiImpostazione_('reparti:' + m, null);
     if (!x) return;
-    const turni = scompatta_(x.turni);
+    x.turni = scompatta_(x.turni); x.gruppi = x.gruppi || {}; x.generali = x.generali || {};
+    applicaPulizie_(x, settimane_(cal, m).map((w) => w.lunedi), pubblicati);
+    const turni = x.turni;
     settimane_(cal, m).forEach((w) => {
       const chi = (inc, pos, ad) => { const t = turni.find((y) => y.settimana_id === w.lunedi && y.incarico_id === inc && y.posizione === pos && y.adunanza_id === ad); return t ? sg[t.persona_id] || '' : ''; };
       const sett = {};
@@ -2037,7 +2059,10 @@ function repartiWA_(vede) {
     const m = meseDopo_(oggi_().slice(0, 7), n);
     const pub = leggiImpostazione_('pub:reparti:' + m, null);
     if (!pub || !pub.dati) return;
-    const x = pub.dati, turni = scompatta_(x.turni), sett = settimane_(cal, m);
+    const x = JSON.parse(JSON.stringify(pub.dati)), sett = settimane_(cal, m);
+    x.turni = scompatta_(x.turni); x.gruppi = x.gruppi || {}; x.generali = x.generali || {};
+    applicaPulizie_(x, sett.map((w) => w.lunedi), true);
+    const turni = x.turni;
     const ads = adunanzeReparti_(cal, sett, x.nessuna || {});
     sett.forEach((w) => {
       if (out[w.lunedi] || w.lunedi < piu_(oggi_(), -6)) return;
@@ -2103,4 +2128,117 @@ function inviiReparti_(p, chat, giorni, ora, adesso) {
     Object.keys(WA_REPARTI_).forEach((x) => { const id = (c.png || {})[x]; if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + 'Reparto ' + WA_REPARTI_[x] + ' · ' + sett, photo: DriveApp.getFileById(id).getBlob() }); });
     p.setProperty(statoK, firma);
   });
+}
+
+
+/* ═════════════════════════ Programma pulizie (anno teocratico) ═════════════════════════
+ * Una riga per settimana (lunedì): gruppo che pulisce dopo le adunanze, coordinatore, referente, pulizia generale
+ * (gruppo, data, coordinatore, referente) e note. Chiave pulizie:AAAA = da settembre AAAA ad agosto AAAA+1.
+ * Le persone sono id dell'anagrafica oppure «txt:Nome» (per lo storico, chi non c'è più). I gruppi sono testo:
+ * così restano i nomi che i gruppi avevano allora. È l'unica fonte delle pulizie: la turnazione reparti, i fogli,
+ * la bacheca e le immagini WhatsApp le leggono da qui (applicaPulizie_). Lo compilano Luca e il coordinatore del reparto Pulizie. */
+function annoTeocratico_(lunedi) { const y = Number(lunedi.slice(0, 4)), m = Number(lunedi.slice(5, 7)); return m >= 9 ? y : y - 1; }
+function lunediAnno_(anno) {
+  const out = []; let d = d_(anno + '-09-01');
+  while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1);
+  const fine = anno + 1 + '-08-31';
+  while (s_(d) <= fine) { out.push(s_(d)); d.setUTCDate(d.getUTCDate() + 7); }
+  return out;
+}
+function programmaPulizie_(anno, pubblicato) {
+  MEMO_.pulizie = MEMO_.pulizie || {};
+  const k = anno + (pubblicato ? 'p' : '');
+  if (MEMO_.pulizie[k] !== undefined) return MEMO_.pulizie[k];
+  const x = pubblicato ? (leggiImpostazione_('pub:pulizie:' + anno + '-09', null) || {}).dati : leggiImpostazione_('pulizie:' + anno, null);
+  return MEMO_.pulizie[k] = x || null;
+}
+function puliziaSettimana_(lunedi, pubblicato) { const x = programmaPulizie_(annoTeocratico_(lunedi), pubblicato); return x && x.righe && x.righe[lunedi] || null; }
+const idPersona_ = (v) => (v && String(v).indexOf('txt:') !== 0 ? String(v) : '');
+/** Mette nello stato di una turnazione (reparti) le pulizie del programma, per le settimane che il programma ha. */
+function applicaPulizie_(st, lunedis, pubblicato) {
+  st.turni = scompatta_(st.turni); st.gruppi = st.gruppi || {}; st.generali = st.generali || {};
+  const fatte = {};
+  lunedis.forEach((lun) => {
+    const e = puliziaSettimana_(lun, pubblicato);
+    if (!e) return;
+    fatte[lun] = true;
+    st.turni = st.turni.filter((t) => !(t.settimana_id === lun && /^PUL_/.test(t.incarico_id)));
+    if (idPersona_(e.c)) st.turni.push({ settimana_id: lun, adunanza_id: null, incarico_id: 'PUL_COORD', posizione: 1, persona_id: idPersona_(e.c) });
+    if (idPersona_(e.r)) st.turni.push({ settimana_id: lun, adunanza_id: null, incarico_id: 'PUL_REF', posizione: 1, persona_id: idPersona_(e.r) });
+    if (e.g) st.gruppi[lun] = e.g; else delete st.gruppi[lun];
+    if (e.gg || e.gd || e.gc || e.gr) st.generali[lun] = { attiva: true, gruppo: e.gg || '', data: e.gd || '', coord: idPersona_(e.gc), ref: idPersona_(e.gr) };
+    else delete st.generali[lun];
+  });
+  return Object.keys(fatte).length ? fatte : null;
+}
+/** Il programma pulizie di un anno teocratico, per chi lo compila. */
+function pulizie(k, anno) {
+  const io = richiedi_(k);
+  if (!puoPulizie_(io)) throw new Error('Il programma pulizie lo compila il coordinatore del reparto Pulizie.');
+  const oggi = oggi_();
+  anno = Number(anno) || annoTeocratico_(oggi);
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const speciali = {};
+  for (let m = 0; m < 12; m++) settimane_(cal, meseDopo_(anno + '-09', m)).forEach((w) => { if (w.speciale) speciali[w.lunedi] = w.speciale; });
+  const abil = abilitazioniReparti_(), di = (inc) => { const ids = {}; abil.forEach((x) => { if (x.incarico_id === inc) ids[x.persona_id] = true; }); return ids; };
+  const coord = di('PUL_COORD'), ref = di('PUL_REF');
+  let x = programmaPulizie_(anno, false) || { righe: {} };
+  // la prima volta: porto qui le pulizie già scritte nella turnazione reparti (così non si perde niente)
+  const lun = lunediAnno_(anno), nuove = {};
+  for (let m = 0; m < 12; m++) {
+    const mese = meseDopo_(anno + '-09', m), st = leggiImpostazione_('reparti:' + mese, null);
+    if (!st) continue;
+    const t = scompatta_(st.turni), gen = st.generali || {}, gr = st.gruppi || {};
+    lun.forEach((l) => {
+      if (x.righe[l] || nuove[l]) return;
+      const c = t.find((y) => y.settimana_id === l && y.incarico_id === 'PUL_COORD'), r = t.find((y) => y.settimana_id === l && y.incarico_id === 'PUL_REF'), g = gen[l];
+      const e = {};
+      if (gr[l]) e.g = gr[l]; if (c) e.c = c.persona_id; if (r) e.r = r.persona_id;
+      if (g && g.attiva) { if (g.gruppo) e.gg = g.gruppo; if (g.data) e.gd = g.data; if (g.coord) e.gc = g.coord; if (g.ref) e.gr = g.ref; }
+      if (Object.keys(e).length) nuove[l] = e;
+    });
+  }
+  if (Object.keys(nuove).length) {
+    const lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try { x = leggiImpostazione_('pulizie:' + anno, null) || { righe: {} }; Object.keys(nuove).forEach((l) => { if (!x.righe[l]) x.righe[l] = nuove[l]; }); scriviImpostazione_('pulizie:' + anno, x); } finally { lock.releaseLock(); }
+  }
+  const fratelli = persone_().filter((p) => p.sesso === 'Uomo').map((p) => ({ id: p.id, nome: p.n, cognome: p.cognome, gruppo: p.gruppo, coord: !!coord[p.id], ref: !!ref[p.id] }))
+    .sort((a, b) => (a.cognome + a.nome).localeCompare(b.cognome + b.nome, 'it'));
+  return { anno: anno, oggi: oggi, settimane: lunediAnno_(anno).map((l) => ({ lunedi: l, al: piu_(l, 6), speciale: speciali[l] || null })),
+    righe: x.righe || {}, gruppi: gruppiServizio_(), fratelli: fratelli, cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), luca: !!io.tutto };
+}
+/** Una settimana del programma pulizie (salvata da sola: chi compila insieme non si sovrascrive). */
+function salvaPulizia(k, anno, lunedi, riga) {
+  const io = richiedi_(k);
+  if (!puoPulizie_(io)) throw new Error('Il programma pulizie lo compila il coordinatore del reparto Pulizie.');
+  anno = Number(anno);
+  if (!anno || lunediAnno_(anno).indexOf(String(lunedi)) < 0) throw new Error('Settimana non valida.');
+  const pulita = {};
+  ['g', 'gg'].forEach((x) => { if (riga && String(riga[x] || '').trim()) pulita[x] = String(riga[x]).trim().slice(0, 40); });
+  ['c', 'r', 'gc', 'gr'].forEach((x) => { const v = String((riga && riga[x]) || '').trim(); if (v) pulita[x] = v.indexOf('txt:') === 0 ? 'txt:' + v.slice(4).trim().slice(0, 60) : v; });
+  if (riga && /^\d{4}-\d{2}-\d{2}$/.test(riga.gd || '')) pulita.gd = riga.gd;
+  if (riga && String(riga.n || '').trim()) pulita.n = String(riga.n).trim().slice(0, 120);
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const x = leggiImpostazione_('pulizie:' + anno, null) || { righe: {} };
+    if (Object.keys(pulita).length) x.righe[lunedi] = pulita; else delete x.righe[lunedi];
+    scriviImpostazione_('pulizie:' + anno, x);
+    if (MEMO_.pulizie) delete MEMO_.pulizie[anno];
+  } finally { lock.releaseLock(); }
+  registroUnaVolta_(io, 'pulizie', 'programma pulizie ' + anno + '/' + (anno + 1) + ' modificato');
+  return pulita;
+}
+/** Il programma pulizie pubblicato (bacheca): settimane del mese con gruppo, incaricati e pulizia generale. */
+function puliziePubblicate_(mese) {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), nomi = {};
+  persone_().forEach((p) => { nomi[p.id] = { nome: p.n, cognome: p.cognome }; });
+  const anno = annoTeocratico_(mese + '-15'), x = programmaPulizie_(anno, true);
+  if (!x) return null;
+  const pub = leggiImpostazione_('pub:pulizie:' + anno + '-09', null);
+  const usati = {};
+  Object.keys(x.righe || {}).forEach((l) => { const e = x.righe[l]; ['c', 'r', 'gc', 'gr'].forEach((f) => { if (idPersona_(e[f])) usati[e[f]] = nomi[e[f]]; }); });
+  const speciali = {};
+  for (let m = 0; m < 12; m++) settimane_(cal, meseDopo_(anno + '-09', m)).forEach((w) => { if (w.speciale) speciali[w.lunedi] = w.speciale; });
+  return { anno: anno, quando: pub ? pub.quando : '', settimane: lunediAnno_(anno).map((l) => ({ lunedi: l, al: piu_(l, 6), speciale: speciali[l] || null })), righe: x.righe || {}, nomi: usati,
+    cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia') };
 }

@@ -281,28 +281,22 @@
 
   /* ── scheda Pulizie ── */
   function vistaPulizie() {
-    const gruppi = R.d.gruppiPulizie.concat(['Tutti i gruppi']);
-    const abil = (inc) => R.d.pInc.filter((x) => x.incarico_id === inc).map((x) => persona(x.persona_id)).filter(Boolean).sort((a, b) => a.cognome.localeCompare(b.cognome, 'it'));
-    const sel = (rp, s, val, lista, gruppo) => '<select data-rp="' + rp + '" data-s="' + s + '"><option value="">—</option>' + lista.map((p) => '<option value="' + p.id + '"' + (val === p.id ? ' selected' : '') + '>' + esc(p.sigla) + (gruppo && p.gruppo === gruppo ? '  · del gruppo' : '') + '</option>').join('') + '</select>';
-    let h = '<p class="rp-aiuto">Il referente deve essere del gruppo di turno (altrimenti resta vuoto); per il coordinatore è preferibile, ma non obbligatorio. La proposta dei turni rispetta quello che scegli qui.</p><div class="rp-pul">';
-    R.d.settimane.forEach((w, i) => {
-      const g = R.st.gruppi[w.id] || '';
-      const co = turno(w.id, 'PUL_COORD', 1, null), re = turno(w.id, 'PUL_REF', 1, null);
-      const warn = re && g && g !== 'Tutti i gruppi' && (persona(re.persona_id) || {}).gruppo !== g;
-      h += '<div class="w"><h4>' + (i + 1) + 'ª settimana · ' + intervallo(w.lunedi) + '</h4>' +
-        '<label>Gruppo<select data-rp="gruppo" data-s="' + w.id + '"><option value="">—</option>' + gruppi.map((x) => '<option' + (x === g ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select></label>' +
-        '<label>Coordinatore' + sel('pul', w.id + '|PUL_COORD', co && co.persona_id, abil('PUL_COORD'), g) + '</label>' +
-        '<label>Referente' + sel('pul', w.id + '|PUL_REF', re && re.persona_id, abil('PUL_REF').filter((p) => !g || g === 'Tutti i gruppi' || p.gruppo === g || (re && re.persona_id === p.id)), g) + '</label>' +
-        (warn ? '<small style="color:#B3261E;font-weight:600">⚠ Il referente non è del gruppo di turno</small>' : '');
-      const gen = R.st.generali[w.id] || {};
-      h += '<label style="grid-template-columns:auto 1fr"><input type="checkbox" data-rp="genOn" data-s="' + w.id + '"' + (gen.attiva ? ' checked' : '') + ' style="width:auto"> Pulizia generale in questa settimana</label>';
-      if (gen.attiva) h += '<label>Giorno<input type="date" data-rp="gen" data-s="' + w.id + '" data-v="data" value="' + esc(gen.data || '') + '"></label>' +
-        '<label>Gruppo<select data-rp="gen" data-s="' + w.id + '" data-v="gruppo"><option value="">—</option>' + gruppi.map((x) => '<option' + (x === gen.gruppo ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select></label>' +
-        '<label>Coordinatore<select data-rp="gen" data-s="' + w.id + '" data-v="coord"><option value="">—</option>' + abil('PUL_COORD').map((p) => '<option value="' + p.id + '"' + (gen.coord === p.id ? ' selected' : '') + '>' + esc(p.sigla) + '</option>').join('') + '</select></label>' +
-        '<label>Referente<select data-rp="gen" data-s="' + w.id + '" data-v="ref"><option value="">—</option>' + abil('PUL_REF').map((p) => '<option value="' + p.id + '"' + (gen.ref === p.id ? ' selected' : '') + '>' + esc(p.sigla) + '</option>').join('') + '</select></label>';
-      h += '</div>';
-    });
-    h += '</div><h3 class="t">Settimane con un evento</h3><p class="rp-aiuto">Nel foglio la settimana dell\'evento (assemblea, congresso) ha il suo riquadro. Arrivano dal Calendario; qui puoi completare tema e orario.</p><div class="rp-pul">';
+    {
+      // Le pulizie si compilano nel Programma pulizie: qui si vedono soltanto
+      const nm = (id) => (id ? esc(sigla(id)) : '<span style="color:var(--muted)">—</span>');
+      let h = '<div class="rp-bar"><button class="btn" data-mod="pulizie" style="background:#A86F00;border-color:#A86F00">Apri il Programma pulizie</button></div>' +
+        '<p class="rp-aiuto">Gruppo, coordinatore, referente e pulizia generale si scrivono nel <b>Programma pulizie</b> (anno teocratico): qui li vedi, e la proposta dei turni ne tiene conto.</p><div class="rp-pul">';
+      R.d.settimane.forEach((w, i) => {
+        const co = turno(w.id, 'PUL_COORD', 1, null), re = turno(w.id, 'PUL_REF', 1, null), gen = R.st.generali[w.id] || {};
+        h += '<div class="w"><h4>' + (i + 1) + 'ª settimana · ' + intervallo(w.lunedi) + '</h4><div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px">' +
+          '<span>Gruppo</span><b>' + esc(R.st.gruppi[w.id] || '—') + '</b><span>Coordinatore</span><b>' + nm(co && co.persona_id) + '</b><span>Referente</span><b>' + nm(re && re.persona_id) + '</b>' +
+          (gen.attiva ? '<span style="color:#235C90">Pulizia generale</span><b style="color:#235C90">' + esc([gen.gruppo, gen.data ? corto(gen.data) : ''].filter(Boolean).join(' · ')) + '</b><span>Coord. / ref.</span><b>' + nm(gen.coord) + ' · ' + nm(gen.ref) + '</b>' : '') + '</div></div>';
+      });
+      return h + '</div>' + vistaEventi();
+    }
+  }
+  function vistaEventi() {
+    let h = '<h3 class="t">Settimane con un evento</h3><p class="rp-aiuto">Nel foglio la settimana dell\'evento (assemblea, congresso) ha il suo riquadro. Arrivano dal Calendario; qui puoi completare tema e orario.</p><div class="rp-pul">';
     R.d.settimane.filter((w) => R.st.eventi[w.id]).forEach((w) => {
       const ev = R.st.eventi[w.id];
       h += '<div class="w"><h4>' + intervallo(w.lunedi) + '</h4>' + ['tipo', 'tema', 'luogo', 'orario', 'nota'].map((f) => '<label>' + P.cap(f) + '<input data-rp="ev" data-s="' + w.id + '" data-v="' + f + '" value="' + esc(ev[f] || '') + '"></label>').join('') +
