@@ -115,8 +115,31 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
 .reg i{font-style:normal;color:var(--muted)} .reg b{font-weight:600}
 
 /* sondaggio (grafica approvata il 16 nov) */
-.sd-head{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:18px 18px 16px;border-bottom:3px solid var(--slate);margin-bottom:14px}
-.sd-head h1{margin:0;font-size:26px;color:#A8432B;font-weight:700}
+.sd-head{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:18px 18px 16px;border-bottom:4px solid var(--tc,var(--slate));margin-bottom:14px}
+.sd-head h1{margin:6px 0 0;font-size:24px;color:var(--tc,#A8432B);font-weight:700}
+.sd-kick{margin-top:12px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--tc,#A8432B)}
+.sd-tit{font-size:17px;font-weight:600;color:var(--ink,#1F2630);margin-top:2px}
+.sd-page .sd-invia{background:var(--tc,#A8432B)}
+.sd-oe{padding:4px 0}
+.sd-oer{display:grid;grid-template-columns:92px 1fr auto;align-items:center;gap:10px;padding:6px 14px;border-left:5px solid var(--pc)}
+.sd-oer.g{border-top:1px solid #efece7;padding-top:9px}
+.sd-oer:first-child{border-top:0}
+.sd-oed{font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--ink,#1F2630)}
+.sd-oei{display:flex;flex-direction:column;line-height:1.15}
+.sd-oei b{font-size:15.5px;font-weight:700}
+.sd-oei small{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pc)}
+.sd-si{font:inherit;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;border:2px solid var(--pc);background:#fff;color:var(--pc);border-radius:10px;padding:8px 14px 8px 10px;cursor:pointer;min-width:78px}
+.sd-si i{width:20px;height:20px;border:2px solid var(--pc);border-radius:5px;display:inline-grid;place-items:center;font-style:normal;font-size:14px;line-height:1}
+.sd-si.on{background:var(--pc);color:#fff}
+.sd-si.on i{border-color:#fff}
+.sd-si.on i:after{content:"✓"}
+.sg-tipi{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.sg-tipi button{border:1.5px solid var(--c);color:var(--c);background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.sg-tipi button.on{background:var(--c);color:#fff}
+.sg-new{border-left:5px solid var(--c)}
+.sg-new .w2{grid-column:1/-1}
+.sg-k{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.sg-del{color:#B3261E!important}
 .sd-intro{font-size:15px;line-height:1.5;color:var(--slate);margin:6px 0 0}
 .sd-scad{display:inline-block;margin-top:10px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);background:var(--neu);border-radius:999px;padding:5px 10px}
 .sd-weeks{display:grid;grid-template-columns:1fr;gap:12px}
@@ -294,7 +317,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   /* ── viste ── */
   function tileSondaggi() {
     return (S.dati.sondaggi || []).map(function (x) {
-      return '<button class="tile" data-sid="' + esc(x.id) + '" style="--c:#A8432B"><b>Disponibilità</b><span>' + esc(x.titolo) + ' · ' +
+      return '<button class="tile" data-sid="' + esc(x.id) + '" style="--c:' + esc(x.colore || '#A8432B') + '"><b>Disponibilità</b><span><b style="font-size:11px;letter-spacing:.08em">' + esc((x.nomeTipo || '').toUpperCase()) + '</b><br>' + esc(x.titolo) + ' · ' +
         (x.risposto ? 'hai già risposto, puoi correggere' : 'da compilare') + '</span></button>';
     }).join('');
   }
@@ -335,12 +358,14 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     }
     var indietro = S.perConto ? '<button class="back" data-go="invio">‹ Invio</button>' : '<button class="back" data-go="home">‹ Portale</button>';
     var sc = S.scelte;
-    var h = '<div class="sd-head"><div class="head" style="border:0;margin:0;padding:0"><div><div class="cong">Napoli Pianura Trencia</div><div class="goldr"></div></div>' + indietro + '</div>' +
+    var oem = M.genere === 'oem';
+    var h = '<div class="sd-page" style="--tc:' + esc(M.colore || '#A8432B') + '"><div class="sd-head"><div class="head" style="border:0;margin:0;padding:0"><div><div class="cong">Napoli Pianura Trencia</div><div class="goldr"></div></div>' + indietro + '</div>' +
+      '<div class="sd-kick">Disponibilità · ' + esc(M.nomeTipo || '') + '</div><div class="sd-tit">' + esc(M.titolo) + '</div>' +
       '<h1>Ciao ' + esc(M.persona.nome) + '</h1>' +
       (S.perConto ? '<p class="sd-intro"><b>Stai compilando per suo conto.</b></p>' : '') +
       '<p class="sd-intro">' + (M.periodo ? esc(cap(M.periodo)) + '. Sei già segnato presente: tocca «Non ci sono» solo dove sai già che mancherai.' : '') +
       (M.comitive ? ' Comitive di ' + esc(M.comitive) + ': tocca «Posso condurre» dove puoi.' : '') +
-      (M.oem ? 'Opera pubblica di ' + esc(M.oem) + ': tocca «Posso esserci» per ogni turno a cui puoi partecipare.' : '') + '</p>' +
+      (M.oem ? 'Opera pubblica di ' + esc(M.oem) + ': tocca «Sì» per ogni turno a cui puoi partecipare.' : '') + '</p>' +
       '<span class="sd-scad">' + (M.chiuso ? 'Scaduto il ' : 'Rispondi entro ') + esc(M.scadenzaTesto) + '</span></div>';
     if (M.periodo) h += '<div class="sd-via">Sarai via per qualche giorno? Dal <input type="date" id="via1"> al <input type="date" id="via2"> <button class="btn small" id="viaOk">Segna «non ci sono»</button></div>';
     h += '<div class="sd-weeks">' + M.settimane.map(function (w, i) {
@@ -359,16 +384,19 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
         }).join('');
       }
       if ((w.turni || []).length) {
-        r += '<div class="sd-sep oem">Opera pubblica · espositori</div>' + w.turni.map(function (t) {
-          return '<div class="sd-row" style="--pc:' + esc(t.colore) + '"><div class="sd-box sd-oem"><small>' + esc(t.postazione.toUpperCase()) + '</small><b>' + esc(t.etichetta) + '</b><span class="det">' + esc(t.ora) + '</span></div>' +
-            '<button class="sd-btn si oem' + (sc[t.k] ? ' on' : '') + '" data-sk="' + esc(t.k) + '">POSSO ESSERCI</button></div>';
-        }).join('');
+        var gp = '';
+        r += '<div class="sd-oe">' + w.turni.map(function (t) {
+          var nuovoG = t.data !== gp; gp = t.data;
+          return '<div class="sd-oer' + (nuovoG ? ' g' : '') + '" style="--pc:' + esc(t.colore) + '"><span class="sd-oed">' + (nuovoG ? esc(t.etichetta) : '') + '</span>' +
+            '<span class="sd-oei"><b>' + esc(t.ora) + '</b><small>' + esc(t.postazione) + '</small></span>' +
+            '<button class="sd-si' + (sc[t.k] ? ' on' : '') + '" data-sk="' + esc(t.k) + '" aria-label="Sì, ci sono"><i></i>Sì</button></div>';
+        }).join('') + '</div>';
       }
       return r + '</section>';
     }).join('') + '</div>';
     h += '<div class="sd-end">' + (S.fatto ? '<div class="sd-ok">' + esc(S.fatto) + '</div>' : '') + '<div class="sd-err" id="sdErr"></div>' +
       (M.periodo ? '<button class="sd-big sd-sempre" id="sdSempre">Ci sono sempre</button>' : '') +
-      '<button class="sd-big sd-invia" id="sdInvia">' + (M.risposta ? 'Salva le modifiche' : 'Invia') + '</button></div>';
+      '<button class="sd-big sd-invia" id="sdInvia">' + (M.risposta ? 'Salva le modifiche' : 'Invia') + '</button></div></div>';
     return h;
   }
   function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
@@ -393,7 +421,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       var nome = M.persona.nome;
       S.fatto = (S.perConto ? 'Salvato per ' + nome + '. ' : 'Grazie ' + nome + '. ') +
         (M.periodo ? (a.length ? 'Adunanze in cui non ci sei: ' + a.length + '. ' : 'Risulti presente a tutte le adunanze. ') : '') +
-        (M.comitive ? 'Comitive in cui puoi condurre: ' + c.length + '. ' : '') +
+        (M.comitive ? 'Comitive in cui puoi condurre: ' + c.length + '. ' : '') + (M.oem ? 'Turni in cui ci sei: ' + tu.length + '. ' : '') +
         (S.perConto ? '' : 'Puoi correggere fino a ' + M.scadenzaTesto.toLowerCase() + ' dallo stesso link.') + (r.tardi ? ' (Risposta arrivata dopo la scadenza.)' : '');
       (S.dati.sondaggi || []).forEach(function (x) { if (x.id === M.id) x.risposto = true; });
       disegna(); window.scrollTo(0, document.body.scrollHeight);
@@ -410,29 +438,63 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     return out;
   }
   function prossimo(n) { var d = new Date(), x = new Date(d.getFullYear(), d.getMonth() + n, 1); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); }
+  var TIPI_S = { adunanze: ['Adunanze · parti e reparti', '#A8432B'], comitive: ['Comitive', '#A86F00'], oem: ['Opera pubblica · espositori', '#2F7F8C'] };
+  function nomeMese(m) { return m ? cap(MESI[Number(m.slice(5)) - 1]) : ''; }
   function sondaggiV() {
     var h = testata('Sondaggi', 'Disponibilità', 'home');
     if (!S.sond) { srv('sondaggiGestione').then(function (r) { S.sond = r; disegna(); }).catch(function (e) { toast(e.message, true); }); return h + '<p class="nota">Carico…</p>'; }
-    h += '<h3 class="t">Nuovo sondaggio</h3><div class="form">' +
-      '<label>Titolo<input id="gTit" value="Disponibilità di ' + cap(MESI[Number(prossimo(1).slice(5)) - 1]) + '"></label>' +
-      '<label>Nominati · adunanze, 1° mese<select id="gN1">' + mesiOpz(prossimo(1), true) + '</select></label>' +
-      '<label>Nominati · adunanze, 2° mese<select id="gN2">' + mesiOpz(prossimo(2), true) + '</select></label>' +
-      '<label>Fratelli in turnazione · adunanze<select id="gR">' + mesiOpz(prossimo(1), true) + '</select></label>' +
-      '<label>Comitive (nominati)<select id="gC">' + mesiOpz(prossimo(1), true) + '</select></label>' +
-      '<label>Scadenza<input type="date" id="gScad"></label>' +
-      '<label>Destinatari<select id="gDest"><option value="tutti">Tutti i previsti</option><option value="nessuno">Nessuno: li scelgo io (prova)</option></select></label>' +
-      '</div><button class="btn" id="gCrea">Crea il sondaggio</button>';
-    h += '<h3 class="t">Sondaggio dell\'opera pubblica</h3><p class="nota">È un sondaggio a parte, con un link a parte: va solo agli abilitati OEM (la spunta OEM in anagrafica) e chiede i turni alle postazioni del mese.</p><div class="form">' +
-      '<label>Titolo<input id="oTit" value="Opera pubblica di ' + cap(MESI[Number(prossimo(1).slice(5)) - 1]) + '"></label>' +
-      '<label>Mese<select id="oMese">' + mesiOpz(prossimo(1), false) + '</select></label>' +
-      '<label>Scadenza<input type="date" id="oScad"></label>' +
-      '<label>Destinatari<select id="oDest"><option value="tutti">Tutti gli abilitati OEM</option><option value="nessuno">Nessuno: li scelgo io (prova)</option></select></label>' +
-      '</div><button class="btn" id="oCrea" style="background:#2F7F8C;border-color:#2F7F8C">Crea il sondaggio OEM</button>';
-    h += '<h3 class="t">Sondaggi</h3>' + (S.sond.length ? '<div class="gs">' + S.sond.map(function (x) {
-      return '<div class="p" style="--c:' + (x.stato === 'aperto' ? '#A8432B' : '#9AA3AD') + '"><div class="top"><b>' + esc(x.titolo) + '</b><span class="st ' + (x.stato === 'aperto' ? 'ok' : '') + '">' + esc(x.stato) + '</span></div>' +
-        '<div class="nota" style="margin:0">' + (x.dati.tipo === 'oem' ? '<b>Opera pubblica</b> · ' : '') + 'Scadenza ' + esc(x.dati.scadenza) + ' · risposte ' + x.risposte + ' su ' + x.destinatari + '</div>' +
-        '<div class="az" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small" data-inv="' + esc(x.id) + '">Invio dei link</button><button class="btn small soft" data-ris="' + esc(x.id) + '">Risultati</button></div></div>';
-    }).join('') + '</div>' : '<p class="nota">Ancora nessuno.</p>');
+    var nt = S.nuovoTipo || 'adunanze', col = TIPI_S[nt][1];
+    var dest = '<label>Destinatari<select id="gDest"><option value="tutti">' + (nt === 'oem' ? 'Tutti gli abilitati OEM' : nt === 'comitive' ? 'Tutti i conduttori abilitati' : 'Tutti i previsti') + '</option><option value="nessuno">Nessuno: li scelgo io (prova)</option></select></label>';
+    h += '<h3 class="t">Nuovo sondaggio</h3><div class="sg-tipi">' + Object.keys(TIPI_S).map(function (t) {
+      return '<button data-nt="' + t + '" class="' + (t === nt ? 'on' : '') + '" style="--c:' + TIPI_S[t][1] + '">' + TIPI_S[t][0] + '</button>'; }).join('') + '</div>';
+    h += '<div class="form sg-new" style="--c:' + col + '">';
+    if (nt === 'adunanze') h += '<label class="w2">Titolo<input id="gTit" value="Disponibilità per le adunanze · ' + nomeMese(prossimo(1)) + ' e ' + nomeMese(prossimo(2)) + '"></label>' +
+      '<label>Nominati · 1° mese<select id="gN1">' + mesiOpz(prossimo(1), true) + '</select></label>' +
+      '<label>Nominati · 2° mese<select id="gN2">' + mesiOpz(prossimo(2), true) + '</select></label>' +
+      '<label>Fratelli in turnazione · 1° mese<select id="gR1">' + mesiOpz(prossimo(1), true) + '</select></label>' +
+      '<label>Fratelli in turnazione · 2° mese<select id="gR2">' + mesiOpz('', true) + '</select></label>';
+    if (nt === 'comitive') h += '<label class="w2">Titolo<input id="gTit" value="Disponibilità per le comitive · ' + nomeMese(prossimo(1)) + '"></label>' +
+      '<label>Comitive · 1° mese<select id="gC1">' + mesiOpz(prossimo(1), true) + '</select></label>' +
+      '<label>Comitive · 2° mese<select id="gC2">' + mesiOpz('', true) + '</select></label>';
+    if (nt === 'oem') h += '<label class="w2">Titolo<input id="gTit" value="Opera pubblica · ' + nomeMese(prossimo(1)) + '"></label>' +
+      '<label>Mese<select id="gM">' + mesiOpz(prossimo(1), false) + '</select></label>';
+    h += '<label>Scadenza<input type="date" id="gScad"></label>' + dest + '</div>' +
+      '<p class="nota">' + (nt === 'adunanze' ? 'I nominati indicano le adunanze in cui mancano (per le parti); i fratelli in turnazione quelle in cui mancano per i reparti.' :
+        nt === 'comitive' ? 'Va a chi ha la spunta «conduce le comitive» in anagrafica: indica le comitive che può condurre.' : 'Va agli abilitati OEM: indicano i turni alle postazioni a cui possono esserci.') + '</p>' +
+      '<button class="btn" id="gCrea" style="background:' + col + ';border-color:' + col + '">Crea il sondaggio</button>';
+    var fs = S.filtroS || 'aperto';
+    var conta = function (st) { return S.sond.filter(function (x) { return st === 'aperto' ? x.stato === 'aperto' : x.stato === st; }).length; };
+    h += '<h3 class="t">Sondaggi</h3><div class="bar"><span class="seg">' + [['aperto', 'Aperti'], ['chiuso', 'Chiusi'], ['archiviato', 'Archiviati']].map(function (o) {
+      return '<button data-fs="' + o[0] + '" class="' + (fs === o[0] ? 'on' : '') + '">' + o[1] + ' (' + conta(o[0]) + ')</button>'; }).join('') + '</span></div>';
+    var lista = S.sond.filter(function (x) { return x.stato === fs; });
+    h += lista.length ? '<div class="gs">' + lista.map(function (x) {
+      return '<div class="p" style="--c:' + esc(x.colore) + '"><div class="top"><b>' + esc(x.titolo) + '</b><span class="st ' + (x.stato === 'aperto' ? 'ok' : '') + '">' + esc(x.stato) + '</span></div>' +
+        '<div class="sg-k" style="color:' + esc(x.colore) + '">' + esc(x.nomeTipo) + '</div>' +
+        '<div class="nota" style="margin:0">' + x.sezioni.map(esc).join(' · ') + '<br>Scadenza ' + esc(x.dati.scadenza.split('-').reverse().join('/')) + ' · risposte ' + x.risposte + ' su ' + x.destinatari +
+        (x.conservate ? ' · <i>' + x.conservate + (x.conservate === 1 ? ' persona ha' : ' persone hanno') + ' risposte conservate fuori dalle sezioni</i>' : '') + '</div>' +
+        '<div class="az" style="display:flex;gap:6px;flex-wrap:wrap">' + (x.stato !== 'archiviato' ? '<button class="btn small" data-inv="' + esc(x.id) + '">Invio dei link</button>' : '') +
+        '<button class="btn small soft" data-ris="' + esc(x.id) + '">Risultati</button><button class="btn small soft" data-mse="' + esc(x.id) + '">Modifica</button>' +
+        (x.stato === 'archiviato' ? '<button class="btn small soft" data-arc="' + esc(x.id) + '" data-v="chiuso">Ripristina</button>' : '<button class="btn small soft" data-arc="' + esc(x.id) + '" data-v="archiviato">Archivia</button>') +
+        '<button class="btn small soft sg-del" data-del="' + esc(x.id) + '">Elimina</button></div></div>';
+    }).join('') + '</div>' : '<p class="nota">Nessun sondaggio ' + (fs === 'aperto' ? 'aperto' : fs === 'chiuso' ? 'chiuso' : 'archiviato') + '.</p>';
+    if (fs === 'archiviato') h += '<p class="nota">Gli archiviati non hanno più link attivi e non compaiono a nessuno; le risposte restano nel Foglio (scheda Risposte).</p>';
+    return h;
+  }
+  /** Modifica di un sondaggio: titolo, scadenza, stato, sezioni. */
+  function modSondV() {
+    var x = (S.sond || []).filter(function (y) { return y.id === S.sidE; })[0];
+    if (!x) { vai('sondaggi'); return ''; }
+    var d = x.dati, h = testata('Modifica sondaggio', esc(x.nomeTipo), 'sondaggi');
+    var due = function (id, lab, arr) { return '<label>' + lab + ' · 1° mese<select id="' + id + '1">' + mesiOpz(arr[0] || '', true) + '</select></label><label>' + lab + ' · 2° mese<select id="' + id + '2">' + mesiOpz(arr[1] || '', true) + '</select></label>'; };
+    h += '<div class="form sg-new" style="--c:' + esc(x.colore) + '"><label class="w2">Titolo<input id="eTit" value="' + esc(x.titolo) + '"></label>' +
+      '<label>Scadenza<input type="date" id="eScad" value="' + esc(d.scadenza) + '"></label>' +
+      '<label>Stato<select id="eStato">' + [['aperto', 'Aperto'], ['chiuso', 'Chiuso'], ['archiviato', 'Archiviato']].map(function (o) { return '<option value="' + o[0] + '"' + (x.stato === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>';
+    if (x.genere === 'oem') h += '<label>Mese<select id="eM">' + mesiOpz(d.mese, false) + '</select></label>';
+    if (x.genere === 'adunanze' || x.genere === 'misto') h += due('eN', 'Nominati', d.mesiNominati || []) + due('eR', 'Fratelli in turnazione', d.mesiReparti || []);
+    if (x.genere === 'comitive' || x.genere === 'misto') h += due('eC', 'Comitive', x.mesiComitive || []);
+    h += '</div><div class="form" style="grid-template-columns:1fr"><label>Se togli una sezione a cui qualcuno ha già risposto<select id="eRisp"><option value="conserva">Conserva le risposte (non si usano più, restano nel Foglio: le vedi solo tu)</option><option value="elimina">Cancella quelle risposte</option></select></label></div>' +
+      '<p class="nota">Se aggiungi una sezione, chi ha già risposto la vede segnata come nuova: lo trovi in «Invio dei link» per mandargli il promemoria.</p>' +
+      '<button class="btn" id="eSalva" style="background:' + esc(x.colore) + ';border-color:' + esc(x.colore) + '">Salva le modifiche</button>';
     return h;
   }
   function invioV() {
@@ -443,7 +505,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     var risp = dentro.filter(function (p) { return p.risposto; }).length, inv = dentro.filter(function (p) { return p.inviato.length; }).length;
     h = testata('Invio dei link', esc(I.titolo), 'sondaggi');
     h += '<div class="form"><label>Scadenza<input type="date" id="iScad" value="' + esc(I.scadenza) + '"></label>' +
-      '<label>Stato<select id="iStato"><option value="aperto"' + (I.stato === 'aperto' ? ' selected' : '') + '>Aperto</option><option value="chiuso"' + (I.stato !== 'aperto' ? ' selected' : '') + '>Chiuso</option></select></label></div>';
+      '<label>Stato<select id="iStato"><option value="aperto"' + (I.stato === 'aperto' ? ' selected' : '') + '>Aperto</option><option value="chiuso"' + (I.stato === 'chiuso' ? ' selected' : '') + '>Chiuso</option><option value="archiviato"' + (I.stato === 'archiviato' ? ' selected' : '') + '>Archiviato</option></select></label></div>';
     var avv = dentro.filter(function (p) { return p.avvisare; }).length;
     h += '<p class="nota"><b>' + dentro.length + '</b> destinatari · inviati <b>' + inv + '</b> · hanno risposto <b>' + risp + '</b> · mancano <b>' + (dentro.length - risp) + '</b>' + (avv ? ' · <b style="color:#9A6A00">' + avv + ' da avvisare</b> di una modifica al calendario' : '') + '</p>';
     h += '<div class="bar"><span class="seg">' + [['inclusi', 'Destinatari'], ['mancano', 'Non hanno risposto'], ['risposto', 'Hanno risposto'], ['avvisare', 'Da avvisare'], ['esclusi', 'Esclusi']].map(function (o) {
@@ -688,7 +750,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     var v = S.vista;
     var y = window.scrollY, tw0 = app.querySelector('.tw');
     if (tw0 && S.vista === 'anagrafica') { S._twx = tw0.scrollLeft; S._twy = tw0.scrollTop; }
-    app.innerHTML = PC.viste[v] ? PC.viste[v]() : v === 'modulo' ? moduloV() : v === 'sondaggi' ? sondaggiV() : v === 'invio' ? invioV() : v === 'risultati' ? risultatiV() : v === 'calendario' ? calendarioV() : v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
+    app.innerHTML = PC.viste[v] ? PC.viste[v]() : v === 'modulo' ? moduloV() : v === 'sondaggi' ? sondaggiV() : v === 'invio' ? invioV() : v === 'risultati' ? risultatiV() : v === 'modSond' ? modSondV() : v === 'calendario' ? calendarioV() : v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
     if (v === 'anagrafica' || v === 'accessi') window.scrollTo(0, y);
     var tw = app.querySelector('.tw');
     if (tw && S._tw) { tw.scrollLeft = S._twx || 0; tw.scrollTop = S._twy || 0; }
@@ -764,7 +826,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   window.addEventListener('beforeunload', function (e) { if (coda.length || inVolo) { e.preventDefault(); e.returnValue = ''; } });
 
   app.addEventListener('click', function (e) {
-    var u = e.target.closest('[data-sid],[data-sk],#sdSempre,#sdInvia,#viaOk,#gCrea,#oCrea,[data-avv],[data-inv],[data-ris],[data-fi],[data-tutti],[data-wai],[data-cpi],[data-per],[data-inc],[data-crm],[data-cadd],#calSalva');
+    var u = e.target.closest('[data-sid],[data-sk],#sdSempre,#sdInvia,#viaOk,#gCrea,#eSalva,[data-nt],[data-fs],[data-mse],[data-arc],[data-del],[data-avv],[data-inv],[data-ris],[data-fi],[data-tutti],[data-wai],[data-cpi],[data-per],[data-inc],[data-crm],[data-cadd],#calSalva');
     if (!u) return;
     e.stopImmediatePropagation();
     if (u.dataset.sid) { S.sid = u.dataset.sid; S.mod = null; S.perConto = null; S.fatto = ''; return vai('modulo'); }
@@ -778,16 +840,34 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       S.mod.settimane.forEach(function (w) { w.adunanze.forEach(function (x) { if (x.data >= a && x.data <= b) { S.scelte[x.k] = true; n++; } }); });
       disegna(); return toast(n ? 'Segnate ' + n + ' adunanze' : 'Nessuna adunanza in quei giorni');
     }
+    if (u.dataset.nt) { S.nuovoTipo = u.dataset.nt; return disegna(); }
+    if (u.dataset.fs) { S.filtroS = u.dataset.fs; return disegna(); }
+    if (u.dataset.mse) { S.sidE = u.dataset.mse; return vai('modSond'); }
     if (u.id === 'gCrea') {
-      var g = function (i) { return document.getElementById(i).value; };
-      var d = { titolo: g('gTit'), mesiNominati: [g('gN1'), g('gN2')].filter(Boolean), mesiReparti: [g('gR')].filter(Boolean), comitive: g('gC'), scadenza: g('gScad'), soloQuesti: g('gDest') === 'nessuno' ? ['-'] : [] };
+      var g = function (i) { var el = document.getElementById(i); return el ? el.value : ''; };
+      var nt = S.nuovoTipo || 'adunanze';
+      var d = { tipo: nt, titolo: g('gTit'), scadenza: g('gScad'), soloQuesti: g('gDest') === 'nessuno' ? ['-'] : [],
+        mesiNominati: [g('gN1'), g('gN2')].filter(Boolean), mesiReparti: [g('gR1'), g('gR2')].filter(Boolean), mesiComitive: [g('gC1'), g('gC2')].filter(Boolean), mese: g('gM') };
       u.disabled = true;
-      return srv('creaSondaggio', d).then(function (r) { S.sond = r; disegna(); toast('Sondaggio creato'); }).catch(function (err) { u.disabled = false; toast(err.message, true); });
+      return srv('creaSondaggio', d).then(function (r) { S.sond = r; S.filtroS = 'aperto'; disegna(); toast('Sondaggio creato'); }).catch(function (err) { u.disabled = false; toast(err.message, true); });
     }
-    if (u.id === 'oCrea') {
-      var go = function (i) { return document.getElementById(i).value; };
+    if (u.id === 'eSalva') {
+      var ge = function (i) { var el = document.getElementById(i); return el ? el.value : ''; };
+      var z = { mesiNominati: [ge('eN1'), ge('eN2')].filter(Boolean), mesiReparti: [ge('eR1'), ge('eR2')].filter(Boolean), mesiComitive: [ge('eC1'), ge('eC2')].filter(Boolean), mese: ge('eM') };
+      var el2 = ge('eRisp') === 'elimina';
+      if (el2 && !window.confirm('Cancello le risposte che restano fuori dalle sezioni? Non si possono recuperare.')) return;
       u.disabled = true;
-      return srv('creaSondaggio', { tipo: 'oem', titolo: go('oTit'), mese: go('oMese'), scadenza: go('oScad'), soloQuesti: go('oDest') === 'nessuno' ? ['-'] : [] }).then(function (r) { S.sond = r; disegna(); toast('Sondaggio OEM creato'); }).catch(function (err) { u.disabled = false; toast(err.message, true); });
+      return srv('impostaSondaggio', S.sidE, { titolo: ge('eTit'), scadenza: ge('eScad'), stato: ge('eStato'), sezioni: z, eliminaRisposte: el2, lista: true })
+        .then(function (r) { S.sond = r; S.vista = "sondaggi"; disegna(); toast("Sondaggio aggiornato"); }).catch(function (err) { u.disabled = false; toast(err.message, true); });
+    }
+    if (u.dataset.arc) {
+      var v = u.dataset.v;
+      return srv('impostaSondaggio', u.dataset.arc, { stato: v, lista: true }).then(function (r) { S.sond = r; disegna(); toast(v === 'archiviato' ? 'Archiviato: le risposte restano nel Foglio' : 'Ripristinato tra i chiusi'); }).catch(function (err) { toast(err.message, true); });
+    }
+    if (u.dataset.del) {
+      var xs = S.sond.filter(function (y) { return y.id === u.dataset.del; })[0];
+      if (!window.confirm('Elimino «' + xs.titolo + '» e tutte le sue ' + xs.risposte + ' risposte? Non si può annullare. (Per conservarle usa «Archivia».)')) return;
+      return srv('eliminaSondaggio', u.dataset.del).then(function (r) { S.sond = r; disegna(); toast('Sondaggio eliminato'); }).catch(function (err) { toast(err.message, true); });
     }
     if (u.dataset.avv) {
       var pa = S.inv.persone.filter(function (p) { return p.id === u.dataset.avv; })[0];

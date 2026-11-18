@@ -118,3 +118,13 @@ Settimana per settimana, le immagini da mandare nei gruppi:
 Luca vede tutto. Alla pubblicazione della turnazione il portale prepara in un riquadro nascosto i PNG dei reparti e li salva nella
 cartella Drive delle immagini (`wa:reparti:<lunedì>`); l'attivatore Telegram li manda con lo stesso anticipo, prima della prima
 adunanza della settimana, e li rimanda con «Aggiornamento» se la turnazione cambia ed è ripubblicata.
+
+### Sondaggi: tre tipi, modificabili
+
+- **Adunanze · parti e reparti** (rosso): nominati e fratelli in turnazione, ciascuno con 1 o 2 mesi.
+- **Comitive** (ocra): a chi ha la spunta «conduce le comitive», 1 o 2 mesi.
+- **Opera pubblica · espositori** (verde acqua): agli abilitati OEM, compatto, con «Sì» da spuntare per ogni turno.
+
+Ogni sondaggio si può **modificare** (titolo, scadenza, stato, sezioni), **archiviare** (niente più link, risposte conservate)
+o **eliminare** (con tutte le risposte). Se togli una sezione, le risposte si conservano (restano nel Foglio e non si usano)
+oppure si cancellano: lo decide Luca. I sondaggi creati prima della divisione restano «Adunanze e comitive».

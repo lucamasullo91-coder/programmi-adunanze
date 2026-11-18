@@ -705,16 +705,39 @@ function persone_() {
     servizio: String(r[C.servizio - 1] || ''), nucleo: String(r[C.nucleo - 1] || ''), riga: r,
   }));
 }
+/** I tre sondaggi, ognuno con il suo link e il colore delle cose a cui è destinato. */
+const TIPI_SONDAGGIO_ = {
+  adunanze: { nome: 'Adunanze · parti e reparti', colore: '#A8432B' },
+  comitive: { nome: 'Comitive', colore: '#A86F00' },
+  oem: { nome: 'Opera pubblica · espositori', colore: '#2F7F8C' },
+  misto: { nome: 'Adunanze e comitive', colore: '#A8432B' },
+};
+/** Il tipo di un sondaggio (i primi, creati prima della divisione, sono «misto»). */
+function tipoSondaggio_(d) { return d.tipo || (d.comitive || (d.mesiComitive || []).length ? 'misto' : 'adunanze'); }
+function mesiComitive_(d) { return (d.mesiComitive || []).concat(d.comitive && !(d.mesiComitive || []).length ? [d.comitive] : []); }
+/** Chi conduce le comitive: la spunta in anagrafica (sezione Comitive); se la colonna non c'è, i nominati. */
+function conduceComitive_(p) { const col = colonnaComitive_(); return col ? p.riga[col.c - 1] === true : p.nominato; }
 /** Le sezioni che una persona deve compilare in un sondaggio. */
 function sezioniPer_(p, d) {
-  const sez = { mesi: [], comitive: '', oem: '' };
-  if (d.tipo === 'oem') { if (p.oem) sez.oem = d.mese; return sez; }
-  if (p.nominato) { sez.mesi = (d.mesiNominati || []).slice(); if (d.comitive) sez.comitive = d.comitive; }
+  const sez = { mesi: [], comitive: [], oem: '' };
+  const tipo = tipoSondaggio_(d);
+  if (tipo === 'oem') { if (p.oem) sez.oem = d.mese; return sez; }
+  if (tipo === 'comitive') { if (conduceComitive_(p)) sez.comitive = mesiComitive_(d); return sez; }
+  if (p.nominato) { sez.mesi = (d.mesiNominati || []).slice(); if (tipo === 'misto') sez.comitive = mesiComitive_(d); }
   else if (p.reparti) sez.mesi = (d.mesiReparti || []).slice();
   return sez;
 }
-function previsti_(d) { return persone_().filter((p) => { const z = sezioniPer_(p, d); return z.mesi.length || z.comitive || z.oem; }); }
-function haSezioni_(z) { return !!(z.mesi.length || z.comitive || z.oem); }
+function previsti_(d) { return persone_().filter((p) => haSezioni_(sezioniPer_(p, d))); }
+function haSezioni_(z) { return !!(z.mesi.length || z.comitive.length || z.oem); }
+/** Le sezioni di un sondaggio in parole («Nominati · dicembre e gennaio»). */
+function sezioniTesto_(d) {
+  const t = tipoSondaggio_(d), m = (x) => x.map(nomeMese_).join(' e '), out = [];
+  if (t === 'oem') return ['Opera pubblica · ' + nomeMese_(d.mese)];
+  if ((d.mesiNominati || []).length) out.push('Nominati · ' + m(d.mesiNominati));
+  if ((d.mesiReparti || []).length) out.push('Fratelli in turnazione · ' + m(d.mesiReparti));
+  if (mesiComitive_(d).length) out.push('Comitive · ' + m(mesiComitive_(d)));
+  return out;
+}
 
 /* ── opera pubblica con gli espositori: postazioni e fasce (le stesse del programma espositori) ── */
 const POSTAZIONI_BASE_ = [
@@ -730,7 +753,8 @@ function turniOem_(lun) {
     const data = piu_(lun, i), g = d_(data).getUTCDay();
     post.forEach((p) => p.fasce.forEach((f) => { if (f.g === g) out.push({ k: data + '|' + p.id + '|' + f.ora, data: data, ora: f.ora, postazione: p.nome, colore: p.colore, sfondo: p.sfondo, etichetta: breve_(data) }); }));
   }
-  return out.sort((a, b) => (a.data + pad_(a.ora) < b.data + pad_(b.ora) ? -1 : 1));
+  const ord = (t) => t.data + String(t.ora).replace(/^(\d):/, '0$1:');
+  return out.sort((a, b) => (ord(a) < ord(b) ? -1 : ord(a) > ord(b) ? 1 : a.postazione < b.postazione ? -1 : 1));
 }
 
 /* ── archivio dei sondaggi ── */
@@ -765,7 +789,8 @@ function sondaggiPer_(id) {
     const z = sezioniPer_(p, s.dati);
     if (!haSezioni_(z)) return null;
     const r = risposte_(s.id)[id];
-    return { id: s.id, titolo: s.titolo, scadenza: s.dati.scadenza, risposto: !!r };
+    const t = tipoSondaggio_(s.dati);
+    return { id: s.id, titolo: s.titolo, scadenza: s.dati.scadenza, risposto: !!r, colore: TIPI_SONDAGGIO_[t].colore, nomeTipo: TIPI_SONDAGGIO_[t].nome };
   }).filter(Boolean);
 }
 
@@ -781,14 +806,14 @@ function modulo(k, sid, perConto) {
   const z = sezioniPer_(p, s.dati);
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
   const mesi = z.mesi.slice();
-  if (z.comitive && mesi.indexOf(z.comitive) < 0) mesi.push(z.comitive);
+  z.comitive.forEach((m) => { if (mesi.indexOf(m) < 0) mesi.push(m); });
   if (z.oem && mesi.indexOf(z.oem) < 0) mesi.push(z.oem);
   mesi.sort();
   const sett = [];
   mesi.forEach((m) => settimane_(cal, m).forEach((w) => {
     w.mese = m;
     if (z.mesi.indexOf(m) < 0) w.adunanze = [];
-    if (z.comitive !== m) w.comitive = [];
+    if (z.comitive.indexOf(m) < 0) w.comitive = [];
     w.turni = z.oem === m ? turniOem_(w.lunedi) : [];
     if (w.adunanze.length || w.comitive.length || w.turni.length || (w.speciale && !z.oem)) sett.push(w);
   }));
@@ -796,8 +821,8 @@ function modulo(k, sid, perConto) {
   const quando = r ? iso_(r.ultima) : '';
   if (r) sett.forEach((w) => { w.comitive.forEach((c) => { if (c.creata && c.creata > quando) c.nuova = true; }); w.adunanze.forEach((a) => { if (a.creata && a.creata > quando) a.nuova = true; }); });
   return {
-    id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), chiuso: s.dati.scadenza < oggi_(),
-    persona: { id: p.id, nome: p.n || p.nome }, periodo: z.mesi.map(nomeMese_).join(' e '), comitive: z.comitive ? nomeMese_(z.comitive) : '', oem: z.oem ? nomeMese_(z.oem) : '',
+    id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', genere: tipoSondaggio_(s.dati), colore: TIPI_SONDAGGIO_[tipoSondaggio_(s.dati)].colore, nomeTipo: TIPI_SONDAGGIO_[tipoSondaggio_(s.dati)].nome, scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), chiuso: s.dati.scadenza < oggi_(),
+    persona: { id: p.id, nome: p.n || p.nome }, periodo: z.mesi.map(nomeMese_).join(' e '), comitive: z.comitive.map(nomeMese_).join(' e '), oem: z.oem ? nomeMese_(z.oem) : '',
     settimane: sett, risposta: r ? r.r : null,
   };
 }
@@ -847,27 +872,75 @@ function anteprima(k, mese) { richiedi_(k, true); return settimane_(leggiImposta
 function sondaggiGestione(k) {
   richiedi_(k, true);
   return sondaggi_().map((s) => {
-    const r = risposte_(s.id);
-    return { id: s.id, titolo: s.titolo, stato: s.stato, dati: s.dati, destinatari: s.dati.destinatari.length, risposte: Object.keys(r).filter((x) => s.dati.destinatari.indexOf(x) >= 0).length };
+    const r = risposte_(s.id), t = tipoSondaggio_(s.dati);
+    return { id: s.id, titolo: s.titolo, stato: s.stato, dati: s.dati, genere: t, colore: TIPI_SONDAGGIO_[t].colore, nomeTipo: TIPI_SONDAGGIO_[t].nome, sezioni: sezioniTesto_(s.dati),
+      mesiComitive: mesiComitive_(s.dati), destinatari: s.dati.destinatari.length, risposte: Object.keys(r).filter((x) => s.dati.destinatari.indexOf(x) >= 0).length,
+      conservate: conservate_(s, r) };
   }).reverse();
+}
+/** Le chiavi valide per ogni mese (adunanze, comitive, turni OEM), per capire quali risposte stanno fuori dalle sezioni. */
+function chiaviMese_(cal, m, cache) {
+  if (cache[m]) return cache[m];
+  const out = { a: {}, c: {}, t: {} };
+  settimane_(cal, m).forEach((w) => { w.adunanze.forEach((a) => { out.a[a.k] = 1; }); w.comitive.forEach((c) => { out.c[c.k] = 1; }); turniOem_(w.lunedi).forEach((t) => { out.t[t.k] = 1; }); });
+  return cache[m] = out;
+}
+/** Di una risposta, quello che sta fuori dalle sezioni attuali della persona (conservato ma non usato). */
+function fuoriSezioni_(p, d, x, cal, cache) {
+  const z = p ? sezioniPer_(p, d) : { mesi: [], comitive: [], oem: '' };
+  const dentro = (k, tipo, mesi) => mesi.some((m) => chiaviMese_(cal, m, cache)[tipo][k]);
+  return {
+    assenze: (x.assenze || []).filter((k) => !dentro(k, 'a', z.mesi)),
+    comitive: (x.comitive || []).filter((k) => !dentro(k, 'c', z.comitive)),
+    turni: (x.turni || []).filter((k) => !dentro(k, 't', z.oem ? [z.oem] : [])),
+  };
+}
+function conservate_(s, r) {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), cache = {}, pers = {};
+  persone_().forEach((p) => { pers[p.id] = p; });
+  let n = 0;
+  Object.keys(r).forEach((id) => { const f = fuoriSezioni_(pers[id], s.dati, r[id].r, cal, cache); if (f.assenze.length || f.comitive.length || f.turni.length) n++; });
+  return n;
+}
+/** Solo Luca: cancella le risposte che stanno fuori dalle sezioni attuali del sondaggio. */
+function eliminaRisposteFuori_(s) {
+  const r = risposte_(s.id), cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), cache = {}, pers = {};
+  persone_().forEach((p) => { pers[p.id] = p; });
+  const sh = scheda_('Risposte');
+  let n = 0;
+  Object.keys(r).forEach((id) => {
+    const x = r[id].r, f = fuoriSezioni_(pers[id], s.dati, x, cal, cache);
+    if (!f.assenze.length && !f.comitive.length && !f.turni.length) return;
+    const via = (a, b) => (a || []).filter((k) => b.indexOf(k) < 0);
+    const nuova = { assenze: via(x.assenze, f.assenze), comitive: via(x.comitive, f.comitive), turni: via(x.turni, f.turni), note: x.note || '' };
+    sh.getRange(r[id].riga, 4).setValue(JSON.stringify(nuova));
+    n++;
+  });
+  dimentica_('Risposte');
+  return n;
 }
 /** Nuovo sondaggio: { titolo, mesiNominati, mesiReparti, comitive, scadenza, soloQuesti:[id] }. */
 function creaSondaggio(k, d) {
   const io = richiedi_(k, true);
   if (!d.scadenza) throw new Error('Manca la scadenza.');
   let dati;
+  const mesiOk = (x) => (x || []).filter((m) => /^\d{4}-\d{2}$/.test(m)).filter((m, i, a) => a.indexOf(m) === i).sort();
   if (d.tipo === 'oem') {
     if (!d.mese) throw new Error('Scegli il mese dell\'opera pubblica.');
-    dati = { tipo: 'oem', mese: d.mese, mesiNominati: [], mesiReparti: [], comitive: '', scadenza: d.scadenza, inviati: {} };
+    dati = { tipo: 'oem', mese: d.mese, mesiNominati: [], mesiReparti: [], scadenza: d.scadenza, inviati: {} };
+  } else if (d.tipo === 'comitive') {
+    if (!mesiOk(d.mesiComitive).length) throw new Error('Scegli almeno un mese di comitive.');
+    dati = { tipo: 'comitive', mesiComitive: mesiOk(d.mesiComitive), mesiNominati: [], mesiReparti: [], scadenza: d.scadenza, inviati: {} };
   } else {
-    if (!(d.mesiNominati || []).length && !(d.mesiReparti || []).length && !d.comitive) throw new Error('Scegli almeno una sezione.');
-    dati = { mesiNominati: d.mesiNominati || [], mesiReparti: d.mesiReparti || [], comitive: d.comitive || '', scadenza: d.scadenza, inviati: {} };
+    if (!mesiOk(d.mesiNominati).length && !mesiOk(d.mesiReparti).length) throw new Error('Scegli almeno una sezione.');
+    dati = { tipo: 'adunanze', mesiNominati: mesiOk(d.mesiNominati), mesiReparti: mesiOk(d.mesiReparti), scadenza: d.scadenza, inviati: {} };
   }
   dati.auto = !(d.soloQuesti && d.soloQuesti.length);
   dati.esclusi = [];
   dati.destinatari = (d.soloQuesti && d.soloQuesti.length ? previsti_(dati).filter((p) => d.soloQuesti.indexOf(p.id) >= 0) : previsti_(dati)).map((p) => p.id);
-  let id = 'S' + Utilities.formatDate(new Date(), 'Europe/Rome', 'yyMMddHHmm');
-  if (sondaggi_().some((x) => x.id === id)) id += 'b';
+  const base = 'S' + Utilities.formatDate(new Date(), 'Europe/Rome', 'yyMMddHHmm');
+  let id = base, n = 1;
+  while (sondaggi_().some((x) => x.id === id)) id = base + String.fromCharCode(97 + n++);
   scheda_('Sondaggi').appendRow([id, d.titolo || 'Disponibilità', JSON.stringify(dati), 'aperto', new Date()]);
   dimentica_('Sondaggi'); delete MEMO_.sondaggi;
   scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', 'creato ' + id + ' · ' + (d.titolo || '') + ' · ' + dati.destinatari.length + ' destinatari']);
@@ -879,7 +952,19 @@ function impostaSondaggio(k, sid, d) {
   const s = sondaggi_().find((x) => x.id === sid);
   if (!s) throw new Error('Sondaggio non trovato.');
   if (d.scadenza) s.dati.scadenza = d.scadenza;
-  if (d.stato) s.stato = d.stato;
+  if (d.stato) { if (['aperto', 'chiuso', 'archiviato'].indexOf(d.stato) < 0) throw new Error('Stato non valido'); s.stato = d.stato; }
+  if (d.sezioni) {
+    const mesiOk = (x) => (x || []).filter((m) => /^\d{4}-\d{2}$/.test(m)).filter((m, i, a) => a.indexOf(m) === i).sort();
+    if (!s.dati.tipo) s.dati.tipo = tipoSondaggio_(s.dati); // il tipo resta quello di partenza anche se togli una sezione
+    const t = s.dati.tipo, z = d.sezioni;
+    if (t === 'oem') { if (!/^\d{4}-\d{2}$/.test(z.mese || '')) throw new Error('Scegli il mese.'); s.dati.mese = z.mese; }
+    else {
+      if (t !== 'comitive') { s.dati.mesiNominati = mesiOk(z.mesiNominati); s.dati.mesiReparti = mesiOk(z.mesiReparti); }
+      if (t !== 'adunanze') { s.dati.mesiComitive = mesiOk(z.mesiComitive); delete s.dati.comitive; }
+      if (!s.dati.mesiNominati.length && !s.dati.mesiReparti.length && !(s.dati.mesiComitive || []).length) throw new Error('Lascia almeno una sezione.');
+    }
+    if (s.dati.auto) s.dati.destinatari = previsti_(s.dati).map((p) => p.id).filter((id) => (s.dati.esclusi || []).indexOf(id) < 0);
+  }
   if (d.titolo) s.titolo = d.titolo;
   (d.aggiungi || []).forEach((x) => { if (s.dati.destinatari.indexOf(x) < 0) s.dati.destinatari.push(x); });
   if (d.togli) s.dati.destinatari = s.dati.destinatari.filter((x) => d.togli.indexOf(x) < 0);
@@ -889,8 +974,25 @@ function impostaSondaggio(k, sid, d) {
   if (d.inviato) { s.dati.inviati = s.dati.inviati || {}; s.dati.inviati[d.inviato] = (s.dati.inviati[d.inviato] || []).concat([oggi_()]); }
   if (d.avvisato) { s.dati.avvisati = s.dati.avvisati || {}; s.dati.avvisati[d.avvisato] = iso_(new Date()); }
   salvaSondaggio_(s);
-  if (!d.inviato && !d.avvisato) scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', sid + ' · ' + JSON.stringify(d)]);
-  return invio(k, sid);
+  let tolte = 0;
+  if (d.sezioni && d.eliminaRisposte) tolte = eliminaRisposteFuori_(s);
+  if (!d.inviato && !d.avvisato) scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', sid + ' · ' + JSON.stringify(d) + (tolte ? ' · risposte cancellate a ' + tolte + ' persone' : '')]);
+  return d.lista ? sondaggiGestione(k) : invio(k, sid);
+}
+/** Solo Luca: elimina un sondaggio e tutte le sue risposte (per conservarle, meglio «Archivia»). */
+function eliminaSondaggio(k, sid) {
+  const io = richiedi_(k, true);
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const s = sondaggi_().find((x) => x.id === sid);
+    if (!s) throw new Error('Sondaggio non trovato.');
+    const r = risposte_(sid), righe = Object.keys(r).map((x) => r[x].riga).sort((a, b) => b - a);
+    const sr = scheda_('Risposte'); righe.forEach((n) => sr.deleteRow(n));
+    scheda_('Sondaggi').deleteRow(s.riga);
+    dimentica_('Risposte'); dimentica_('Sondaggi'); delete MEMO_.sondaggi;
+    scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', 'eliminato ' + sid + ' · ' + s.titolo + ' · ' + righe.length + ' risposte']);
+  } finally { lock.releaseLock(); }
+  return sondaggiGestione(k);
 }
 /** Pagina Invio: destinatari (anche quelli previsti ma esclusi), stato, link e telefono. */
 function invio(k, sid) {
@@ -905,7 +1007,7 @@ function invio(k, sid) {
   const varz = (leggiImpostazione_('calendario', CALENDARIO_BASE_).variazioni || []);
   const ultimaVar = (z) => varz.filter((v) => {
     const m = String(v.data).slice(0, 7);
-    return v.creata && (v.tipo === 'spostata' ? z.mesi.indexOf(m) >= 0 : z.comitive === m);
+    return v.creata && (v.tipo === 'spostata' ? z.mesi.indexOf(m) >= 0 : z.comitive.indexOf(m) >= 0);
   }).map((v) => v.creata).sort().pop() || '';
   const persone = prev.map((p) => {
     const z = sezioniPer_(p, s.dati);
@@ -913,14 +1015,14 @@ function invio(k, sid) {
     const uv = x ? ultimaVar(z) : '';
     return {
       id: p.id, nome: p.nome, n: p.n, tel: p.tel, incluso: s.dati.destinatari.indexOf(p.id) >= 0, link: codici[p.id] ? url + '?k=' + codici[p.id] : '',
-      sezioni: (z.mesi.length ? ['Adunanze: ' + z.mesi.map(nomeMese_).join(', ')] : []).concat(z.comitive ? ['Comitive: ' + nomeMese_(z.comitive)] : []).concat(z.oem ? ['Opera pubblica: ' + nomeMese_(z.oem)] : []),
+      sezioni: (z.mesi.length ? ['Adunanze: ' + z.mesi.map(nomeMese_).join(', ')] : []).concat(z.comitive.length ? ['Comitive: ' + z.comitive.map(nomeMese_).join(', ')] : []).concat(z.oem ? ['Opera pubblica: ' + nomeMese_(z.oem)] : []),
       inviato: (s.dati.inviati || {})[p.id] || [], risposto: !!x, tardi: x ? x.tardi : false,
       quando: x ? Utilities.formatDate(new Date(x.ultima), 'Europe/Rome', 'dd/MM HH:mm') : '',
       assenze: x ? x.r.assenze.length : 0, comitive: x ? x.r.comitive.length : 0, turni: x ? (x.r.turni || []).length : 0,
       avvisare: !!(uv && uv > iso_(x.ultima)) && !((s.dati.avvisati || {})[p.id] >= uv),
     };
   });
-  return { id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', stato: s.stato, scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), persone: persone };
+  return { id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', colore: TIPI_SONDAGGIO_[tipoSondaggio_(s.dati)].colore, stato: s.stato, scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), persone: persone };
 }
 /** Risultati: per ogni adunanza chi non c'è, per ogni comitiva chi può condurre. */
 function risultati(k, sid) {
@@ -930,7 +1032,8 @@ function risultati(k, sid) {
   const r = risposte_(sid);
   const nomi = {}; persone_().forEach((p) => { nomi[p.id] = p.nome; });
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
-  const mesi = {}; (s.dati.mesiNominati || []).concat(s.dati.mesiReparti || []).forEach((m) => { mesi[m] = true; }); if (s.dati.comitive) mesi[s.dati.comitive] = true; if (s.dati.mese) mesi[s.dati.mese] = true;
+  const mesi = {}; (s.dati.mesiNominati || []).concat(s.dati.mesiReparti || []).concat(mesiComitive_(s.dati)).forEach((m) => { mesi[m] = true; }); if (s.dati.mese) mesi[s.dati.mese] = true;
+  const adMesi = (s.dati.mesiNominati || []).concat(s.dati.mesiReparti || []);
   const assenti = {}, offerte = {}, turni = {};
   Object.keys(r).forEach((id) => {
     r[id].r.assenze.forEach((x) => { (assenti[x] = assenti[x] || []).push(nomi[id] || id); });
@@ -940,13 +1043,14 @@ function risultati(k, sid) {
   const sett = [];
   Object.keys(mesi).sort().forEach((m) => settimane_(cal, m).forEach((w) => {
     if (s.dati.tipo === 'oem') { w.adunanze = []; w.comitive = []; w.turni = turniOem_(w.lunedi); w.turni.forEach((t) => { t.offerte = turni[t.k] || []; }); sett.push(w); return; }
+    if (adMesi.indexOf(m) < 0) w.adunanze = [];
     w.adunanze.forEach((a) => { a.assenti = assenti[a.k] || []; });
-    w.comitive = s.dati.comitive === m ? w.comitive : [];
+    w.comitive = mesiComitive_(s.dati).indexOf(m) >= 0 ? w.comitive : [];
     w.comitive.forEach((c) => { c.offerte = offerte[c.k] || []; });
     w.turni = [];
     sett.push(w);
   }));
-  return { id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', settimane: sett, risposte: Object.keys(r).length, destinatari: s.dati.destinatari.length };
+  return { id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', colore: TIPI_SONDAGGIO_[tipoSondaggio_(s.dati)].colore, settimane: sett, risposte: Object.keys(r).length, destinatari: s.dati.destinatari.length };
 }
 
 
@@ -1032,7 +1136,7 @@ function risposteDelMese_(mese, campo) {
     s.dati.destinatari.forEach((id) => {
       const p = pers[id]; if (!p) return;
       const z = sezioniPer_(p, s.dati);
-      const copre = campo === 'comitive' ? z.comitive === mese : z.mesi.indexOf(mese) >= 0;
+      const copre = campo === 'comitive' ? z.comitive.indexOf(mese) >= 0 : z.mesi.indexOf(mese) >= 0;
       if (!copre) return;
       previsti[id] = true;
       const x = r[id];
