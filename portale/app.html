@@ -137,6 +137,12 @@ th.ro,thead tr.t th.ro,thead tr.r th.ro{opacity:.45}
 .sd-sep{display:flex;align-items:center;gap:10px;padding:12px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#A86F00}
 .sd-sep:after{content:"";flex:1;height:1px;background:#ecd9b3}
 .sd-sep+.sd-row{border-top:none}
+.sd-row.off .sd-box{background:#B9B2A3}.sd-row.off .sd-motivo{margin-left:auto;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7A8590;text-align:right;max-width:150px}
+.sd-new{display:inline-block;margin-left:6px;background:#F2C66D;color:#1F2630;border-radius:999px;padding:1px 7px;font-size:9.5px;font-weight:700;letter-spacing:.08em;vertical-align:middle}
+.sd-sep.oem{color:#4D5A68}.sd-sep.oem:after{background:#D9D6D0}
+.sd-btn.si.on.oem{background:var(--pc);border-color:var(--pc)}
+.sd-box.sd-oem{background:var(--pc)}
+.st.warn2{background:#FBF1DC;color:#9A6A00}
 .sd-via{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:12px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13.5px;color:var(--slate)}
 .sd-via input{border:1px solid var(--rule);border-radius:8px;padding:7px 8px;font-size:14px}
 .sd-end{max-width:520px;margin:18px auto 0;display:grid;gap:10px}
@@ -184,6 +190,27 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   var AMB = ['inf', 'fs', 'reparti', 'comitive', 'oem'];
   var COL_AMB = { tutto: '#3E4A59', inf: '#A8432B', fs: '#521F46', reparti: '#4D5A68', comitive: '#A86F00', oem: '#A86F00' };
   var ABBR = { 'Anziano': 'Anziano', 'Servitore di ministero': 'Servitore', 'Nessuna': '' };
+
+  /* ── moduli (turnazione reparti, comitive…): si scaricano da GitHub la prima volta che servono ── */
+  var BASE = window.__BASE || 'https://raw.githubusercontent.com/lucamasullo91-coder/programmi-adunanze/main/portale/';
+  var PC = window.PC = { S: S, app: app, viste: {}, srv: srv, toast: toast, esc: esc, testata: testata, cap: cap,
+    disegna: function () { disegna(); }, vai: function (v) { vai(v); } };
+  var caricati = {};
+  function carica(nomi) {
+    return Promise.all(nomi.map(function (n) {
+      if (caricati[n]) return caricati[n];
+      return (caricati[n] = fetch(BASE + n + '?v=' + Date.now()).then(function (r) { if (!r.ok) throw new Error('GitHub ' + r.status + ' (' + n + ')'); return r.text(); }).then(function (t) {
+        var el = document.createElement(/\.css$/.test(n) ? 'style' : 'script'); el.textContent = t; (/\.css$/.test(n) ? document.head : document.body).appendChild(el);
+      }).catch(function (e) { delete caricati[n]; throw e; }));
+    }));
+  }
+  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'comitive.js'] };
+  function apriModulo(v) {
+    S.vista = v; window.scrollTo(0, 0);
+    if (PC.viste[v]) return disegna();
+    app.innerHTML = testata(v === 'reparti' ? 'Turnazione reparti' : 'Comitive', '', 'home') + '<p class="nota">Carico…</p>';
+    carica(MODULI[v]).then(function () { if (S.vista === v) disegna(); }).catch(function (e) { toast(e.message, true); });
+  }
 
   /* ── server ── */
   function srv(fn) {
@@ -281,8 +308,9 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
         '<button class="tile" data-go="accessi" style="--c:#4D5A68"><b>Accessi</b><span>Link personali e permessi</span></button>' +
         '<button class="tile" data-go="registro" style="--c:#7A7A7A"><b>Registro</b><span>Chi ha fatto cosa e quando</span></button>';
     }
-    var futuri = [['Programma infrasettimanale', '#A8432B', 'inf'], ['Programma fine settimana', '#521F46', 'fs'],
-      ['Turnazione reparti', '#4D5A68', 'reparti'], ['Comitive', '#A86F00', 'comitive'], ['Espositori OEM', '#A86F00', 'oem']];
+    if (io.tutto || io.ambiti.indexOf('reparti') >= 0) t += '<button class="tile" data-mod="reparti" style="--c:#4D5A68"><b>Turnazione reparti</b><span>Proposta automatica, assenze, pulizie, foglio A4</span></button>';
+    if (io.tutto || io.ambiti.indexOf('comitive') >= 0) t += '<button class="tile" data-mod="comitive" style="--c:#A86F00"><b>Comitive</b><span>Programma del mese dalle offerte del sondaggio</span></button>';
+    var futuri = [['Programma infrasettimanale', '#A8432B', 'inf'], ['Programma fine settimana', '#521F46', 'fs'], ['Espositori OEM', '#2F7F8C', 'oem']];
     futuri.forEach(function (m) { if (io.tutto || io.ambiti.indexOf(m[2]) >= 0) t += '<div class="tile off" style="--c:' + m[1] + '"><b>' + m[0] + '</b><span>Nel portale tra poco</span></div>'; });
     return h + '<p class="nota">I tuoi ambiti:</p>' + chipsAmbiti(io.ambiti) + '<div style="height:14px"></div>' + t + '</div>';
   }
@@ -293,7 +321,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     if (!M) {
       srv('modulo', S.sid, S.perConto || null).then(function (m) {
         S.mod = m; S.scelte = {};
-        if (m.risposta) { m.risposta.assenze.forEach(function (x) { S.scelte[x] = true; }); m.risposta.comitive.forEach(function (x) { S.scelte[x] = true; }); }
+        if (m.risposta) { m.risposta.assenze.forEach(function (x) { S.scelte[x] = true; }); m.risposta.comitive.forEach(function (x) { S.scelte[x] = true; }); (m.risposta.turni || []).forEach(function (x) { S.scelte[x] = true; }); }
         disegna();
       }).catch(function (e) { toast(e.message, true); });
       return '<p class="nota">Carico il sondaggio…</p>';
@@ -304,20 +332,29 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       '<h1>Ciao ' + esc(M.persona.nome) + '</h1>' +
       (S.perConto ? '<p class="sd-intro"><b>Stai compilando per suo conto.</b></p>' : '') +
       '<p class="sd-intro">' + (M.periodo ? esc(cap(M.periodo)) + '. Sei già segnato presente: tocca «Non ci sono» solo dove sai già che mancherai.' : '') +
-      (M.comitive ? ' Comitive di ' + esc(M.comitive) + ': tocca «Posso condurre» dove puoi.' : '') + '</p>' +
+      (M.comitive ? ' Comitive di ' + esc(M.comitive) + ': tocca «Posso condurre» dove puoi.' : '') +
+      (M.oem ? 'Opera pubblica di ' + esc(M.oem) + ': tocca «Posso esserci» per ogni turno a cui puoi partecipare.' : '') + '</p>' +
       '<span class="sd-scad">' + (M.chiuso ? 'Scaduto il ' : 'Rispondi entro ') + esc(M.scadenzaTesto) + '</span></div>';
     if (M.periodo) h += '<div class="sd-via">Sarai via per qualche giorno? Dal <input type="date" id="via1"> al <input type="date" id="via2"> <button class="btn small" id="viaOk">Segna «non ci sono»</button></div>';
     h += '<div class="sd-weeks">' + M.settimane.map(function (w, i) {
       var r = '<section class="sd-wk"><div class="sd-wh"><span>' + (i + 1) + 'ª settimana</span><span>' + giorni(w.dal, w.al) + '</span></div>';
       if (w.speciale) r += '<div class="sd-sp">' + esc(w.speciale.nome) + (w.speciale.luogo ? ' · ' + esc(w.speciale.luogo) : '') + (w.speciale.adunanze === false ? ' · nessuna adunanza in Sala' : '') + '</div>';
       w.adunanze.forEach(function (a) {
-        r += '<div class="sd-row"><div class="sd-box ' + (a.tipo === 'inf' ? 'sd-inf' : 'sd-fs') + '"><small>' + (a.tipo === 'inf' ? 'INFRASETTIMANALE' : 'FINE SETTIMANA') + '</small><b>' + esc(a.etichetta) + '</b>' +
-          (a.ora ? '<span class="det">' + esc(a.ora) + '</span>' : '') + '</div><button class="sd-btn no' + (sc[a.k] ? ' on' : '') + '" data-sk="' + esc(a.k) + '">NON CI SONO</button></div>';
+        r += '<div class="sd-row"><div class="sd-box ' + (a.tipo === 'inf' ? 'sd-inf' : 'sd-fs') + '"><small>' + (a.tipo === 'inf' ? 'INFRASETTIMANALE' : 'FINE SETTIMANA') + (a.nuova ? '<span class="sd-new">NUOVA DATA</span>' : '') + '</small><b>' + esc(a.etichetta) + '</b>' +
+          (a.ora || a.spostata ? '<span class="det">' + esc(a.ora) + (a.spostata && a.motivo ? ' · ' + esc(a.motivo) : '') + '</span>' : '') + '</div><button class="sd-btn no' + (sc[a.k] ? ' on' : '') + '" data-sk="' + esc(a.k) + '">NON CI SONO</button></div>';
       });
       if (w.comitive.length) {
         r += '<div class="sd-sep">Disponibilità comitive</div>' + w.comitive.map(function (c) {
-          return '<div class="sd-row"><div class="sd-box sd-com"><small>COMITIVA · ' + esc(c.ora) + '</small><b>' + esc(c.etichetta) + '</b><span class="det">' + esc(c.luogo) + '</span></div>' +
+          if (c.annullata) return '<div class="sd-row off"><div class="sd-box sd-com"><small>COMITIVA · ' + esc(c.ora) + '</small><b>' + esc(c.etichetta) + '</b><span class="det">' + esc(c.luogo) + '</span></div>' +
+            '<span class="sd-motivo">' + esc(c.motivo || 'Non si tiene') + '</span></div>';
+          return '<div class="sd-row"><div class="sd-box sd-com"><small>COMITIVA · ' + esc(c.ora) + (c.nuova ? '<span class="sd-new">NUOVA</span>' : '') + '</small><b>' + esc(c.etichetta) + '</b><span class="det">' + esc(c.luogo) + '</span></div>' +
             '<button class="sd-btn si' + (sc[c.k] ? ' on' : '') + '" data-sk="' + esc(c.k) + '">POSSO CONDURRE</button></div>';
+        }).join('');
+      }
+      if ((w.turni || []).length) {
+        r += '<div class="sd-sep oem">Opera pubblica · espositori</div>' + w.turni.map(function (t) {
+          return '<div class="sd-row" style="--pc:' + esc(t.colore) + '"><div class="sd-box sd-oem"><small>' + esc(t.postazione.toUpperCase()) + '</small><b>' + esc(t.etichetta) + '</b><span class="det">' + esc(t.ora) + '</span></div>' +
+            '<button class="sd-btn si oem' + (sc[t.k] ? ' on' : '') + '" data-sk="' + esc(t.k) + '">POSSO ESSERCI</button></div>';
         }).join('');
       }
       return r + '</section>';
@@ -335,14 +372,16 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   }
   function inviaRisposta(sempre) {
     var M = S.mod, a = [], c = [];
+    var tu = [];
     M.settimane.forEach(function (w) {
       w.adunanze.forEach(function (x) { if (!sempre && S.scelte[x.k]) a.push(x.k); });
-      w.comitive.forEach(function (x) { if (S.scelte[x.k]) c.push(x.k); });
+      w.comitive.forEach(function (x) { if (S.scelte[x.k] && !x.annullata) c.push(x.k); });
+      (w.turni || []).forEach(function (x) { if (S.scelte[x.k]) tu.push(x.k); });
     });
     if (!sempre && !a.length && !c.length && M.periodo && !M.risposta) { document.getElementById('sdErr').textContent = 'Segna almeno una scelta, oppure premi «Ci sono sempre».'; return; }
     if (sempre) M.settimane.forEach(function (w) { w.adunanze.forEach(function (x) { delete S.scelte[x.k]; }); });
     var b = document.getElementById('sdInvia'); if (b) b.disabled = true;
-    srv('rispondi', M.id, { assenze: a, comitive: c }, S.perConto || null).then(function (r) {
+    srv('rispondi', M.id, { assenze: a, comitive: c, turni: tu }, S.perConto || null).then(function (r) {
       M.risposta = { assenze: a, comitive: c };
       var nome = M.persona.nome;
       S.fatto = (S.perConto ? 'Salvato per ' + nome + '. ' : 'Grazie ' + nome + '. ') +
@@ -376,9 +415,15 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       '<label>Scadenza<input type="date" id="gScad"></label>' +
       '<label>Destinatari<select id="gDest"><option value="tutti">Tutti i previsti</option><option value="nessuno">Nessuno: li scelgo io (prova)</option></select></label>' +
       '</div><button class="btn" id="gCrea">Crea il sondaggio</button>';
+    h += '<h3 class="t">Sondaggio dell\'opera pubblica</h3><p class="nota">È un sondaggio a parte, con un link a parte: va solo agli abilitati OEM (la spunta OEM in anagrafica) e chiede i turni alle postazioni del mese.</p><div class="form">' +
+      '<label>Titolo<input id="oTit" value="Opera pubblica di ' + cap(MESI[Number(prossimo(1).slice(5)) - 1]) + '"></label>' +
+      '<label>Mese<select id="oMese">' + mesiOpz(prossimo(1), false) + '</select></label>' +
+      '<label>Scadenza<input type="date" id="oScad"></label>' +
+      '<label>Destinatari<select id="oDest"><option value="tutti">Tutti gli abilitati OEM</option><option value="nessuno">Nessuno: li scelgo io (prova)</option></select></label>' +
+      '</div><button class="btn" id="oCrea" style="background:#2F7F8C;border-color:#2F7F8C">Crea il sondaggio OEM</button>';
     h += '<h3 class="t">Sondaggi</h3>' + (S.sond.length ? '<div class="gs">' + S.sond.map(function (x) {
       return '<div class="p" style="--c:' + (x.stato === 'aperto' ? '#A8432B' : '#9AA3AD') + '"><div class="top"><b>' + esc(x.titolo) + '</b><span class="st ' + (x.stato === 'aperto' ? 'ok' : '') + '">' + esc(x.stato) + '</span></div>' +
-        '<div class="nota" style="margin:0">Scadenza ' + esc(x.dati.scadenza) + ' · risposte ' + x.risposte + ' su ' + x.destinatari + '</div>' +
+        '<div class="nota" style="margin:0">' + (x.dati.tipo === 'oem' ? '<b>Opera pubblica</b> · ' : '') + 'Scadenza ' + esc(x.dati.scadenza) + ' · risposte ' + x.risposte + ' su ' + x.destinatari + '</div>' +
         '<div class="az" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small" data-inv="' + esc(x.id) + '">Invio dei link</button><button class="btn small soft" data-ris="' + esc(x.id) + '">Risultati</button></div></div>';
     }).join('') + '</div>' : '<p class="nota">Ancora nessuno.</p>');
     return h;
@@ -392,8 +437,9 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     h = testata('Invio dei link', esc(I.titolo), 'sondaggi');
     h += '<div class="form"><label>Scadenza<input type="date" id="iScad" value="' + esc(I.scadenza) + '"></label>' +
       '<label>Stato<select id="iStato"><option value="aperto"' + (I.stato === 'aperto' ? ' selected' : '') + '>Aperto</option><option value="chiuso"' + (I.stato !== 'aperto' ? ' selected' : '') + '>Chiuso</option></select></label></div>';
-    h += '<p class="nota"><b>' + dentro.length + '</b> destinatari · inviati <b>' + inv + '</b> · hanno risposto <b>' + risp + '</b> · mancano <b>' + (dentro.length - risp) + '</b></p>';
-    h += '<div class="bar"><span class="seg">' + [['inclusi', 'Destinatari'], ['mancano', 'Non hanno risposto'], ['risposto', 'Hanno risposto'], ['esclusi', 'Esclusi']].map(function (o) {
+    var avv = dentro.filter(function (p) { return p.avvisare; }).length;
+    h += '<p class="nota"><b>' + dentro.length + '</b> destinatari · inviati <b>' + inv + '</b> · hanno risposto <b>' + risp + '</b> · mancano <b>' + (dentro.length - risp) + '</b>' + (avv ? ' · <b style="color:#9A6A00">' + avv + ' da avvisare</b> di una modifica al calendario' : '') + '</p>';
+    h += '<div class="bar"><span class="seg">' + [['inclusi', 'Destinatari'], ['mancano', 'Non hanno risposto'], ['risposto', 'Hanno risposto'], ['avvisare', 'Da avvisare'], ['esclusi', 'Esclusi']].map(function (o) {
       return '<button data-fi="' + o[0] + '" class="' + (f === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</span>' +
       (f === 'esclusi' ? '<button class="btn small soft" data-tutti="1">Includi tutti</button>' : '<button class="btn small soft" data-tutti="0">Escludi tutti</button>') + '</div>';
     var lista = I.persone.filter(function (p) {
@@ -401,14 +447,17 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       if (!p.incluso) return false;
       if (f === 'mancano') return !p.risposto;
       if (f === 'risposto') return p.risposto;
+      if (f === 'avvisare') return p.avvisare;
       return true;
     });
     h += '<div class="gs">' + lista.map(function (p) {
       var st = p.risposto ? '<span class="st ' + (p.tardi ? 'late' : 'ok') + '">' + (p.tardi ? 'risposto dopo la scadenza' : 'risposto') + ' ' + esc(p.quando) + '</span>' :
         p.inviato.length ? '<span class="st wait">inviato ' + esc(p.inviato[p.inviato.length - 1].slice(8) + '/' + p.inviato[p.inviato.length - 1].slice(5, 7)) + (p.inviato.length > 1 ? ' · ' + p.inviato.length + ' volte' : '') + '</span>' : '<span class="st">da inviare</span>';
       return '<div class="p' + (p.incluso ? '' : ' fuori') + '" style="--c:' + (p.risposto ? '#2E7D4F' : '#A8432B') + '"><div class="top"><b>' + esc(p.nome) + '</b>' + st + '</div>' +
-        '<div class="nota" style="margin:0">' + p.sezioni.map(esc).join(' · ') + (p.risposto ? ' — assenze ' + p.assenze + (p.comitive ? ', comitive ' + p.comitive : '') : '') + (p.tel ? '' : ' · <i>senza telefono</i>') + '</div>' +
+        (p.avvisare ? '<span class="st warn2">Ha risposto prima di una modifica al calendario: avvisalo</span>' : '') +
+        '<div class="nota" style="margin:0">' + p.sezioni.map(esc).join(' · ') + (p.risposto ? (I.tipo === 'oem' ? ' — turni ' + p.turni : ' — assenze ' + p.assenze + (p.comitive ? ', comitive ' + p.comitive : '')) : '') + (p.tel ? '' : ' · <i>senza telefono</i>') + '</div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (p.incluso ? '<button class="btn small" data-wai="' + esc(p.id) + '">' + (p.inviato.length && !p.risposto ? 'Promemoria WhatsApp' : 'WhatsApp') + '</button>' +
+        (p.avvisare ? '<button class="btn small" style="background:#A86F00;border-color:#A86F00" data-avv="' + esc(p.id) + '">Avvisa su WhatsApp</button>' : '') +
         '<button class="btn small soft" data-cpi="' + esc(p.id) + '">Copia link</button><button class="btn small soft" data-per="' + esc(p.id) + '">Compila per lui</button>' : '') +
         '<button class="btn small soft" data-inc="' + esc(p.id) + '">' + (p.incluso ? 'Escludi' : 'Includi') + '</button></div></div>';
     }).join('') + '</div>';
@@ -422,7 +471,8 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     return h + '<div class="res">' + R.settimane.map(function (w) {
       var r = '<div class="w"><h4>' + giorni(w.dal, w.al) + (w.speciale ? ' · ' + esc(w.speciale.nome) : '') + '</h4>';
       w.adunanze.forEach(function (a) { r += '<div class="i" style="--c:' + (a.tipo === 'inf' ? '#A8432B' : '#521F46') + '"><b>' + (a.tipo === 'inf' ? 'INFRASETTIMANALE' : 'FINE SETTIMANA') + ' · ' + esc(a.etichetta) + '</b><span>' + (a.assenti.length ? 'Non ci sono: ' + a.assenti.map(esc).join(', ') : 'Nessuna assenza segnalata') + '</span></div>'; });
-      w.comitive.forEach(function (c) { r += '<div class="i" style="--c:#A86F00"><b>COMITIVA · ' + esc(c.etichetta) + ' · ' + esc(c.ora) + ' · ' + esc(c.luogo) + '</b><span>' + (c.offerte.length ? 'Possono condurre: ' + c.offerte.map(esc).join(', ') : 'Nessuna offerta') + '</span></div>'; });
+      w.comitive.forEach(function (c) { r += '<div class="i" style="--c:' + (c.annullata ? '#9AA3AD' : '#A86F00') + '"><b>COMITIVA · ' + esc(c.etichetta) + ' · ' + esc(c.ora) + ' · ' + esc(c.luogo) + '</b><span>' + (c.annullata ? 'Non si tiene' + (c.motivo ? ': ' + esc(c.motivo) : '') : c.offerte.length ? 'Possono condurre: ' + c.offerte.map(esc).join(', ') : 'Nessuna offerta') + '</span></div>'; });
+      (w.turni || []).forEach(function (t) { r += '<div class="i" style="--c:' + esc(t.colore) + '"><b>' + esc(t.postazione.toUpperCase()) + ' · ' + esc(t.etichetta) + ' · ' + esc(t.ora) + '</b><span>' + (t.offerte.length ? 'Possono esserci: ' + t.offerte.map(esc).join(', ') : 'Nessuno') + '</span></div>'; });
       return r + '</div>';
     }).join('') + '</div>';
   }
@@ -450,14 +500,39 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       (C.comitive || []).map(function (p, i) {
         return '<div class="r">' + selG('c' + i + '.g', p.g) + ' ore <input size="5" data-cf="c' + i + '.ora" value="' + esc(p.ora) + '"> · <input data-cf="c' + i + '.luogo" value="' + esc(p.luogo) + '"> <button class="btn small soft" data-crm="comitive.' + i + '">Togli</button></div>';
       }).join('') + '</div><button class="btn small soft" data-cadd="comitive">+ Comitiva</button>';
+    var TV = { annullata: 'Comitiva annullata', aggiunta: 'Comitiva aggiunta', spostata: 'Adunanza spostata' };
+    h += '<h3 class="t">Variazioni</h3><p class="nota">Valgono per il sondaggio, il programma delle comitive e la turnazione reparti. Una comitiva annullata resta nel sondaggio e nel programma, grigia e con il motivo. Se cambi qualcosa a sondaggio già inviato, in «Invio dei link» trovi chi avvisare.</p><div class="cal">' +
+      (C.variazioni || []).map(function (v, i) {
+        var r = '<div class="r"><b style="min-width:150px;display:inline-block;color:' + (v.tipo === 'spostata' ? '#A8432B' : '#A86F00') + '">' + TV[v.tipo] + '</b> il <input type="date" data-cf="v' + i + '.data" value="' + esc(v.data) + '">';
+        if (v.tipo === 'spostata') r += ' · <select data-cf="v' + i + '.adunanza"><option value="inf"' + (v.adunanza !== 'fs' ? ' selected' : '') + '>infrasettimanale</option><option value="fs"' + (v.adunanza === 'fs' ? ' selected' : '') + '>fine settimana</option></select> ore <input size="5" data-cf="v' + i + '.ora" value="' + esc(v.ora || '') + '" placeholder="19:30">';
+        else r += ' ore <input size="5" data-cf="v' + i + '.ora" value="' + esc(v.ora || '') + '" placeholder="' + (v.tipo === 'annullata' ? 'tutte' : '17:00') + '">';
+        if (v.tipo === 'aggiunta') r += ' · <input data-cf="v' + i + '.luogo" value="' + esc(v.luogo || '') + '" placeholder="Luogo">';
+        r += ' · <input data-cf="v' + i + '.motivo" value="' + esc(v.motivo || '') + '" placeholder="' + (v.tipo === 'annullata' ? 'Motivo (es. Adunanza infrasettimanale)' : 'Nota (facoltativa)') + '" style="min-width:220px">';
+        return r + ' <button class="btn small soft" data-crm="variazioni.' + i + '">Togli</button></div>';
+      }).join('') + '</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small soft" data-cadd="var-annullata">+ Comitiva annullata</button><button class="btn small soft" data-cadd="var-aggiunta">+ Comitiva aggiunta</button><button class="btn small soft" data-cadd="var-spostata">+ Adunanza spostata</button></div>';
     return h + '<div style="height:16px"></div><button class="btn" id="calSalva">Salva il calendario</button>';
+  }
+  /** Un'adunanza spostata in un giorno con una comitiva del pomeriggio: la comitiva di quel giorno si annulla (grigia, con il motivo). */
+  function annullaComitiveSovrapposte() {
+    var C = S.cal, aggiunte = 0;
+    (C.variazioni || []).forEach(function (v) {
+      if (v.tipo !== 'spostata' || !v.data) return;
+      var g = new Date(v.data + 'T12:00:00Z').getUTCDay();
+      (C.comitive || []).forEach(function (c) {
+        if (Number(c.g) !== g || parseInt(c.ora, 10) < 14) return;
+        if ((C.variazioni || []).some(function (x) { return x.tipo === 'annullata' && x.data === v.data && (!x.ora || x.ora === c.ora); })) return;
+        C.variazioni.push({ tipo: 'annullata', data: v.data, ora: c.ora, motivo: v.adunanza === 'fs' ? 'Adunanza del fine settimana' : 'Adunanza infrasettimanale' });
+        aggiunte++;
+      });
+    });
+    return aggiunte;
   }
   function leggiCal() {
     var C = S.cal;
     app.querySelectorAll('[data-cf]').forEach(function (el) {
-      var k = el.dataset.cf, m = /^([psc])(\d+)\.(.+)$/.exec(k); if (!m) return;
-      var arr = m[1] === 'p' ? C.periodi : m[1] === 's' ? C.speciali : C.comitive, o = arr[Number(m[2])], path = m[3].split('.');
-      var v = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? Number(el.value) : el.value;
+      var k = el.dataset.cf, m = /^([pscv])(\d+)\.(.+)$/.exec(k); if (!m) return;
+      var arr = m[1] === 'p' ? C.periodi : m[1] === 's' ? C.speciali : m[1] === 'v' ? C.variazioni : C.comitive, o = arr[Number(m[2])], path = m[3].split('.');
+      var v = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' && m[1] !== 'v' ? Number(el.value) : el.value;
       if (path.length === 2) o[path[0]][path[1]] = v; else o[path[0]] = v;
     });
   }
@@ -598,7 +673,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     var v = S.vista;
     var y = window.scrollY, tw0 = app.querySelector('.tw');
     if (tw0 && S.vista === 'anagrafica') { S._twx = tw0.scrollLeft; S._twy = tw0.scrollTop; }
-    app.innerHTML = v === 'modulo' ? moduloV() : v === 'sondaggi' ? sondaggiV() : v === 'invio' ? invioV() : v === 'risultati' ? risultatiV() : v === 'calendario' ? calendarioV() : v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
+    app.innerHTML = PC.viste[v] ? PC.viste[v]() : v === 'modulo' ? moduloV() : v === 'sondaggi' ? sondaggiV() : v === 'invio' ? invioV() : v === 'risultati' ? risultatiV() : v === 'calendario' ? calendarioV() : v === 'anagrafica' ? anagrafica() : v === 'scheda' ? scheda() : v === 'nuovo' ? nuovo() : v === 'accessi' ? accessiV() : v === 'registro' ? registroV() : home();
     if (v === 'anagrafica' || v === 'accessi') window.scrollTo(0, y);
     var tw = app.querySelector('.tw');
     if (tw && S._tw) { tw.scrollLeft = S._twx || 0; tw.scrollTop = S._twy || 0; }
@@ -674,7 +749,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   window.addEventListener('beforeunload', function (e) { if (coda.length || inVolo) { e.preventDefault(); e.returnValue = ''; } });
 
   app.addEventListener('click', function (e) {
-    var u = e.target.closest('[data-sid],[data-sk],#sdSempre,#sdInvia,#viaOk,#gCrea,[data-inv],[data-ris],[data-fi],[data-tutti],[data-wai],[data-cpi],[data-per],[data-inc],[data-crm],[data-cadd],#calSalva');
+    var u = e.target.closest('[data-sid],[data-sk],#sdSempre,#sdInvia,#viaOk,#gCrea,#oCrea,[data-avv],[data-inv],[data-ris],[data-fi],[data-tutti],[data-wai],[data-cpi],[data-per],[data-inc],[data-crm],[data-cadd],#calSalva');
     if (!u) return;
     e.stopImmediatePropagation();
     if (u.dataset.sid) { S.sid = u.dataset.sid; S.mod = null; S.perConto = null; S.fatto = ''; return vai('modulo'); }
@@ -693,6 +768,19 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       var d = { titolo: g('gTit'), mesiNominati: [g('gN1'), g('gN2')].filter(Boolean), mesiReparti: [g('gR')].filter(Boolean), comitive: g('gC'), scadenza: g('gScad'), soloQuesti: g('gDest') === 'nessuno' ? ['-'] : [] };
       u.disabled = true;
       return srv('creaSondaggio', d).then(function (r) { S.sond = r; disegna(); toast('Sondaggio creato'); }).catch(function (err) { u.disabled = false; toast(err.message, true); });
+    }
+    if (u.id === 'oCrea') {
+      var go = function (i) { return document.getElementById(i).value; };
+      u.disabled = true;
+      return srv('creaSondaggio', { tipo: 'oem', titolo: go('oTit'), mese: go('oMese'), scadenza: go('oScad'), soloQuesti: go('oDest') === 'nessuno' ? ['-'] : [] }).then(function (r) { S.sond = r; disegna(); toast('Sondaggio OEM creato'); }).catch(function (err) { u.disabled = false; toast(err.message, true); });
+    }
+    if (u.dataset.avv) {
+      var pa = S.inv.persone.filter(function (p) { return p.id === u.dataset.avv; })[0];
+      var nm = pa.n || pa.nome.split(' ').slice(1).join(' ');
+      var tx = 'Ciao ' + nm + ', nel calendario del sondaggio delle disponibilità (' + S.inv.titolo.toLowerCase() + ') è cambiato qualcosa: le novità sono segnate in giallo. Puoi ricontrollare dal tuo link personale?\n' + pa.link;
+      var tl = String(pa.tel || '').replace(/\D/g, ''); if (tl.length === 10 && tl[0] === '3') tl = '39' + tl;
+      window.open('https://wa.me/' + tl + '?text=' + encodeURIComponent(tx), '_blank');
+      return srv('impostaSondaggio', S.sidG, { avvisato: pa.id }).then(function (r) { S.inv = r; disegna(); });
     }
     if (u.dataset.inv) { S.sidG = u.dataset.inv; S.inv = null; S.filtroInv = 'inclusi'; return vai('invio'); }
     if (u.dataset.ris) { S.sidG = u.dataset.ris; S.ris = null; return vai('risultati'); }
@@ -719,13 +807,19 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       return srv('impostaSondaggio', S.sidG, { inviato: pp.id }).then(function (r) { S.inv = r; disegna(); });
     }
     if (u.dataset.per) { S.sid = S.sidG; S.perConto = u.dataset.per; S.mod = null; S.fatto = ''; return vai('modulo'); }
+    if (u.dataset.cadd && /^var-/.test(u.dataset.cadd)) {
+      leggiCal(); S.cal.variazioni = S.cal.variazioni || [];
+      var tv = u.dataset.cadd.slice(4);
+      S.cal.variazioni.push(tv === 'spostata' ? { tipo: tv, data: '', adunanza: 'inf', ora: '19:30', motivo: '' } : { tipo: tv, data: '', ora: '', luogo: tv === 'aggiunta' ? 'Sala del Regno' : '', motivo: '' });
+      return disegna();
+    }
     if (u.dataset.cadd) {
       leggiCal();
       var nuovo = { periodi: { dal: '', infra: { g: 3, ora: '19:30' }, fs: { g: 0, ora: '' } }, speciali: { lunedi: '', nome: '', luogo: '', adunanze: false, comitive: true }, comitive: { g: 4, ora: '9:30', luogo: '' } }[u.dataset.cadd];
       (S.cal[u.dataset.cadd] = S.cal[u.dataset.cadd] || []).push(nuovo); return disegna();
     }
     if (u.dataset.crm) { leggiCal(); var pz = u.dataset.crm.split('.'); S.cal[pz[0]].splice(Number(pz[1]), 1); return disegna(); }
-    if (u.id === 'calSalva') { leggiCal(); return srv('salvaCalendario', S.cal).then(function (r) { S.cal = r; disegna(); toast('Calendario salvato'); }).catch(function (err) { toast(err.message, true); }); }
+    if (u.id === 'calSalva') { leggiCal(); var na = annullaComitiveSovrapposte(); if (na) toast('Annullate ' + na + ' comitive del pomeriggio nei giorni con l\'adunanza spostata'); return srv('salvaCalendario', S.cal).then(function (r) { S.cal = r; disegna(); toast('Calendario salvato'); }).catch(function (err) { toast(err.message, true); }); }
   }, true);
   app.addEventListener('change', function (e) {
     var t = e.target;
@@ -734,9 +828,10 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   }, true);
 
   app.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-go],[data-id],[data-modo],[data-pid],[data-copia],[data-wa],[data-rig],[data-att],[data-collab],#nOk');
+    var t = e.target.closest('[data-mod],[data-go],[data-id],[data-modo],[data-pid],[data-copia],[data-wa],[data-rig],[data-att],[data-collab],#nOk');
     if (!t) return;
-    if (t.dataset.go) { clearTimeout(timer); invia(); return vai(t.dataset.go); }
+    if (t.dataset.mod) return apriModulo(t.dataset.mod);
+    if (t.dataset.go) { clearTimeout(timer); invia(); if (MODULI[t.dataset.go]) return apriModulo(t.dataset.go); return vai(t.dataset.go); }
     if (t.dataset.modo) { S.modo = t.dataset.modo; return disegna(); }
     if (t.dataset.collab) { S.soloCollab = t.dataset.collab === '1'; return disegna(); }
     if (t.id === 'nOk') {

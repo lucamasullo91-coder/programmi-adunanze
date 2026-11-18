@@ -73,26 +73,45 @@ function doGet(e) {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
+/* ───────────────────────── Velocità: letture una volta sola ─────────────────────────
+ * Ogni chiamata dal portale è un'esecuzione a sé. Dentro un'esecuzione ogni scheda si legge una volta sola (MEMO_);
+ * tra un'esecuzione e l'altra i codici di accesso stanno nella cache dello script (6 ore), che si svuota appena
+ * cambia qualcosa in Accessi. La cache vive sui server di Google, legata a questo script: nessuno la vede. */
+const MEMO_ = {};
+function valori_(nome) {
+  if (!MEMO_[nome]) {
+    const sh = SpreadsheetApp.getActive().getSheetByName(nome);
+    MEMO_[nome] = sh && sh.getLastRow() > 0 ? sh.getDataRange().getValues() : [];
+  }
+  return MEMO_[nome];
+}
+function dimentica_(nome) { delete MEMO_[nome]; if (nome === FOGLIO) delete MEMO_.persone; if (nome === 'Accessi') try { CacheService.getScriptCache().remove('accessi'); } catch (e) {} }
+
 /* ───────────────────────── Accessi ───────────────────────── */
+
+function mappaAccessi_() {
+  const c = CacheService.getScriptCache();
+  const t = c.get('accessi');
+  if (t) return JSON.parse(t);
+  const m = {};
+  valori_('Accessi').slice(1).forEach((r, i) => {
+    if (r[0] && r[2] && r[4] === true) m[String(r[2])] = [String(r[0]), String(r[1]), String(r[3] || ''), i + 2];
+  });
+  try { c.put('accessi', JSON.stringify(m), 21600); } catch (e) {}
+  return m;
+}
 
 /** Chi sta usando il portale: { id, nome, ambiti:[…], tutto } oppure null. */
 function utente_(k) {
   k = String(k || '').trim();
   if (k.length < 12) return null;
-  const sh = scheda_('Accessi');
-  const n = sh.getLastRow();
-  if (n < 2) return null;
-  const righe = sh.getRange(2, 1, n - 1, 6).getValues();
-  for (let i = 0; i < righe.length; i++) {
-    const [id, nome, codice, ambiti, attivo] = righe[i];
-    if (String(codice) === k && attivo === true) {
-      const a = String(ambiti || '').split(',').map((x) => x.trim()).filter(Boolean);
-      const tutto = a.indexOf('tutto') >= 0;
-      return { id: String(id), nome: String(nome), ambiti: tutto ? ['tutto'].concat(AMBITI) : a, tutto: tutto, riga: i + 2 };
-    }
-  }
-  return null;
+  const x = mappaAccessi_()[k];
+  if (!x) return null;
+  const a = x[2].split(',').map((y) => y.trim()).filter(Boolean);
+  const tutto = a.indexOf('tutto') >= 0;
+  return { id: x[0], nome: x[1], ambiti: tutto ? ['tutto'].concat(AMBITI) : a, tutto: tutto, riga: x[3] };
 }
+function haAmbito_(io, a) { return io.tutto || io.ambiti.indexOf(a) >= 0; }
 function richiedi_(k, serveTutto) {
   const io = utente_(k);
   if (!io) throw new Error('Link non valido o disattivato.');
@@ -128,8 +147,9 @@ function ambitoSezione_(sez) {
 
 /** Le colonne della scheda: titolo, sezione, colore, regola di sblocco, ambito, tipo. */
 function struttura_(sh) {
-  const nc = sh.getLastColumn();
-  const testa = sh.getRange(RIGA_SEZIONI, 1, 3, nc).getValues();
+  const tutto = valori_(FOGLIO);
+  const nc = tutto.length ? tutto[0].length : sh.getLastColumn();
+  const testa = tutto.slice(RIGA_SEZIONI - 1, RIGA_SEZIONI + 2);
   const col = [];
   let sez = '';
   for (let c = 1; c <= nc; c++) {
@@ -191,10 +211,8 @@ function rigaOggetto_(riga, r, col) {
   return { riga: riga, id: String(r[C.id - 1]), v: v };
 }
 function leggiFratelli_(sh, col, tutto) {
-  const n = sh.getLastRow() - RIGA_DATI + 1;
-  if (n < 1) return [];
-  const nc = sh.getLastColumn();
-  const dati = sh.getRange(RIGA_DATI, 1, n, nc).getValues();
+  const dati = valori_(FOGLIO).slice(RIGA_DATI - 1);
+  if (!dati.length) return [];
   const out = [];
   dati.forEach((r, i) => {
     if (!r[C.nome - 1]) return;
@@ -342,6 +360,7 @@ function aggiungi(k, d) {
     sistemaRiga_(sh, pos, col, reg, io, true);
     const acc = scheda_('Accessi');
     acc.appendRow([id, cn, nuovoCodice_(), '', true, '', '']);
+    dimentica_('Accessi'); dimentica_(FOGLIO);
     scheda_('Registro').getRange(scheda_('Registro').getLastRow() + 1, 1, reg.length, 5).setValues(reg);
     return portale(k);
   } finally {
@@ -389,6 +408,7 @@ function impostaAccesso(k, d) {
   }
   if (d.rigenera) { sh.getRange(riga, 3).setValue(nuovoCodice_()); reg.push('nuovo codice (il vecchio link non funziona più)'); }
   if (reg.length) scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'accessi', nome + ' · ' + reg.join(' · ')]);
+  dimentica_('Accessi');
   return accessi(k);
 }
 
@@ -405,6 +425,9 @@ function registro(k, quanti) {
 
 /** Un accesso al giorno per persona finisce nel Registro; «Ultimo accesso» si aggiorna sempre. */
 function segnaAccesso_(io) {
+  const c = CacheService.getScriptCache(), ck = 'visto:' + io.id;
+  if (c.get(ck)) return; // al massimo una scrittura ogni 20 minuti per persona
+  try { c.put(ck, '1', 1200); } catch (e) {}
   const sh = scheda_('Accessi');
   const ora = new Date();
   const prima = sh.getRange(io.riga, 6).getValue();
@@ -470,6 +493,7 @@ function impostazione() {
     nuove.push([String(r[0]), String(r[C.nome - 1]), nuovoCodice_(), luca ? 'tutto' : '', true, '', '']);
   });
   if (nuove.length) acc.getRange(acc.getLastRow() + 1, 1, nuove.length, 7).setValues(nuove);
+  dimentica_('Accessi');
   acc.getRange(2, 5, Math.max(acc.getLastRow() - 1, 1), 1).insertCheckboxes();
   scheda_('Registro');
   aggiornaSblocchi();
@@ -589,15 +613,16 @@ const CALENDARIO_BASE_ = {
 };
 
 function leggiImpostazione_(chiave, base) {
-  const sh = scheda_('Impostazioni');
-  const n = sh.getLastRow();
-  if (n > 1) for (const [k, v] of sh.getRange(2, 1, n - 1, 2).getValues()) if (String(k) === chiave && v) return JSON.parse(String(v));
+  scheda_('Impostazioni');
+  for (const r of valori_('Impostazioni').slice(1)) if (String(r[0]) === chiave && r[1]) return JSON.parse(String(r[1]));
   return base;
 }
 function scriviImpostazione_(chiave, valore) {
   const sh = scheda_('Impostazioni');
   const n = sh.getLastRow();
   const txt = JSON.stringify(valore);
+  if (txt.length > 49000) throw new Error('Dati troppo grandi per una cella (' + chiave + ').');
+  dimentica_('Impostazioni');
   if (n > 1) {
     const k = sh.getRange(2, 1, n - 1, 1).getValues();
     for (let i = 0; i < k.length; i++) if (String(k[i][0]) === chiave) { sh.getRange(i + 2, 2).setValue(txt); return; }
@@ -617,6 +642,8 @@ function lunediDel_(mese) { // tutti i lunedì del mese AAAA-MM
   while (s_(d).slice(0, 7) === mese) { out.push(s_(d)); d.setUTCDate(d.getUTCDate() + 7); }
   return out;
 }
+function lunediDi_(data) { const d = d_(data); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return s_(d); }
+function pad_(ora) { return String(ora || '').padStart(5, '0'); }
 function periodo_(cal, data) {
   let p = cal.periodi[0];
   cal.periodi.slice().sort((a, b) => (a.dal < b.dal ? -1 : 1)).forEach((x) => { if (x.dal <= data) p = x; });
@@ -640,7 +667,23 @@ function settimane_(cal, mese) {
       const data = piu_(lun, off(c.g));
       comitive.push({ k: data + '|' + c.ora, data: data, ora: c.ora, luogo: c.luogo });
     });
-    comitive.sort((a, b) => (a.data + a.ora < b.data + b.ora ? -1 : 1));
+    // Variazioni: adunanze spostate, comitive annullate (restano grigie con il motivo) o aggiunte
+    (cal.variazioni || []).forEach((v) => {
+      if (!v.data || lunediDi_(v.data) !== lun) return;
+      if (v.tipo === 'spostata') {
+        const a = adunanze.find((x) => x.tipo === v.adunanza);
+        if (a) { a.data = v.data; if (v.ora) a.ora = v.ora; a.spostata = true; a.motivo = v.motivo || ''; a.creata = v.creata || ''; }
+      } else if (v.tipo === 'annullata') {
+        comitive.forEach((c) => { if (c.data === v.data && (!v.ora || c.ora === v.ora)) { c.annullata = true; c.motivo = v.motivo || ''; c.creata = v.creata || ''; } });
+      } else if (v.tipo === 'aggiunta' && v.ora) {
+        const k = v.data + '|' + v.ora;
+        const gia = comitive.find((c) => c.k === k);
+        if (gia) { gia.annullata = false; gia.luogo = v.luogo || gia.luogo; }
+        else comitive.push({ k: k, data: v.data, ora: v.ora, luogo: v.luogo || '', aggiunta: true, motivo: v.motivo || '', creata: v.creata || '' });
+      }
+    });
+    comitive.sort((a, b) => (a.data + pad_(a.ora) < b.data + pad_(b.ora) ? -1 : 1));
+    adunanze.sort((a, b) => (a.data < b.data ? -1 : 1));
     adunanze.forEach((a) => { a.etichetta = breve_(a.data); });
     comitive.forEach((c) => { c.etichetta = breve_(c.data); });
     return { lunedi: lun, dal: lun, al: piu_(lun, 6), speciale: sp, adunanze: adunanze, comitive: comitive };
@@ -649,40 +692,57 @@ function settimane_(cal, mese) {
 
 /* ── chi riceve cosa ── */
 function persone_() {
-  const sh = SpreadsheetApp.getActive().getSheetByName(FOGLIO);
-  const n = sh.getLastRow() - RIGA_DATI + 1;
-  if (n < 1) return [];
-  return sh.getRange(RIGA_DATI, 1, n, C.oem).getValues().filter((r) => r[C.nome - 1] && r[C.stato - 1] === 'Attivo').map((r) => ({
+  if (MEMO_.persone) return MEMO_.persone;
+  return MEMO_.persone = valori_(FOGLIO).slice(RIGA_DATI - 1).filter((r) => r[C.nome - 1] && r[C.stato - 1] === 'Attivo').map((r) => ({
     id: String(r[C.id - 1]), nome: String(r[C.nome - 1]), n: String(r[C.n - 1] || ''), tel: String(r[C.tel - 1] || ''),
     nominato: r[C.nomina - 1] === 'Anziano' || r[C.nomina - 1] === 'Servitore di ministero', reparti: r[C.reparti - 1] === true, oem: r[C.oem - 1] === true,
+    cognome: String(r[C.cognome - 1] || ''), alias: String(r[C.alias - 1] || ''), gruppo: String(r[C.gruppo - 1] || ''), sesso: String(r[C.sesso - 1] || ''),
+    servizio: String(r[C.servizio - 1] || ''), nucleo: String(r[C.nucleo - 1] || ''), riga: r,
   }));
 }
 /** Le sezioni che una persona deve compilare in un sondaggio. */
 function sezioniPer_(p, d) {
-  const sez = { mesi: [], comitive: '' };
+  const sez = { mesi: [], comitive: '', oem: '' };
+  if (d.tipo === 'oem') { if (p.oem) sez.oem = d.mese; return sez; }
   if (p.nominato) { sez.mesi = (d.mesiNominati || []).slice(); if (d.comitive) sez.comitive = d.comitive; }
   else if (p.reparti) sez.mesi = (d.mesiReparti || []).slice();
   return sez;
 }
-function previsti_(d) { return persone_().filter((p) => { const z = sezioniPer_(p, d); return z.mesi.length || z.comitive; }); }
+function previsti_(d) { return persone_().filter((p) => { const z = sezioniPer_(p, d); return z.mesi.length || z.comitive || z.oem; }); }
+function haSezioni_(z) { return !!(z.mesi.length || z.comitive || z.oem); }
+
+/* ── opera pubblica con gli espositori: postazioni e fasce (le stesse del programma espositori) ── */
+const POSTAZIONI_BASE_ = [
+  { id: 'sd', nome: 'San Donato', colore: '#2F7F8C', sfondo: '#E6F0F2', fasce: [{ g: 1, ora: '9:00–10:30' }, { g: 1, ora: '17:00–18:30' }, { g: 4, ora: '17:00–18:30' }, { g: 5, ora: '9:00–10:30' }] },
+  { id: 'it', nome: 'Italsider', colore: '#2E75B5', sfondo: '#EAF2FA', fasce: [{ g: 2, ora: '9:00–10:30' }, { g: 3, ora: '9:00–10:30' }] },
+  { id: 'so', nome: 'Soccavo', colore: '#A8432B', sfondo: '#F7ECE8', fasce: [{ g: 1, ora: '9:00–10:30' }, { g: 1, ora: '17:00–18:30' }, { g: 2, ora: '9:00–10:30' }, { g: 3, ora: '9:00–10:30' }, { g: 4, ora: '17:00–18:30' }, { g: 5, ora: '9:00–10:30' }] },
+  { id: 'pv', nome: 'Piazza Vittoria', colore: '#6B2A5C', sfondo: '#F3ECF1', fasce: [{ g: 0, ora: '17:00–19:00' }] },
+];
+function turniOem_(lun) {
+  const post = leggiImpostazione_('postazioni', POSTAZIONI_BASE_);
+  const out = [];
+  for (let i = 0; i < 7; i++) {
+    const data = piu_(lun, i), g = d_(data).getUTCDay();
+    post.forEach((p) => p.fasce.forEach((f) => { if (f.g === g) out.push({ k: data + '|' + p.id + '|' + f.ora, data: data, ora: f.ora, postazione: p.nome, colore: p.colore, sfondo: p.sfondo, etichetta: breve_(data) }); }));
+  }
+  return out.sort((a, b) => (a.data + pad_(a.ora) < b.data + pad_(b.ora) ? -1 : 1));
+}
 
 /* ── archivio dei sondaggi ── */
 function sondaggi_() {
-  const sh = scheda_('Sondaggi');
-  const n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, 5).getValues().filter((r) => r[0]).map((r, i) => ({ id: String(r[0]), titolo: String(r[1]), dati: JSON.parse(String(r[2])), stato: String(r[3]), riga: i + 2 }));
+  scheda_('Sondaggi');
+  return valori_('Sondaggi').slice(1).map((r, i) => r[0] ? ({ id: String(r[0]), titolo: String(r[1]), dati: JSON.parse(String(r[2])), stato: String(r[3]), riga: i + 2 }) : null).filter(Boolean);
 }
-function salvaSondaggio_(s) { scheda_('Sondaggi').getRange(s.riga, 2, 1, 3).setValues([[s.titolo, JSON.stringify(s.dati), s.stato]]); }
+function salvaSondaggio_(s) { scheda_('Sondaggi').getRange(s.riga, 2, 1, 3).setValues([[s.titolo, JSON.stringify(s.dati), s.stato]]); dimentica_('Sondaggi'); }
 function risposte_(sid) {
-  const sh = scheda_('Risposte');
-  const n = sh.getLastRow();
+  scheda_('Risposte');
   const out = {};
-  if (n > 1) sh.getRange(2, 1, n - 1, 7).getValues().forEach((r, i) => {
+  valori_('Risposte').slice(1).forEach((r, i) => {
     if (String(r[0]) === sid) out[String(r[1])] = { r: JSON.parse(String(r[3] || '{}')), prima: r[4], ultima: r[5], tardi: r[6] === true, riga: i + 2 };
   });
   return out;
 }
+function iso_(d) { return d ? Utilities.formatDate(new Date(d), 'Europe/Rome', "yyyy-MM-dd'T'HH:mm:ss") : ''; }
 function oggi_() { return Utilities.formatDate(new Date(), 'Europe/Rome', 'yyyy-MM-dd'); }
 
 /** I sondaggi aperti che riguardano questa persona (per la pagina iniziale). */
@@ -691,7 +751,7 @@ function sondaggiPer_(id) {
   if (!p) return [];
   return sondaggi_().filter((s) => s.stato === 'aperto' && s.dati.destinatari.indexOf(id) >= 0).map((s) => {
     const z = sezioniPer_(p, s.dati);
-    if (!z.mesi.length && !z.comitive) return null;
+    if (!haSezioni_(z)) return null;
     const r = risposte_(s.id)[id];
     return { id: s.id, titolo: s.titolo, scadenza: s.dati.scadenza, risposto: !!r };
   }).filter(Boolean);
@@ -710,18 +770,22 @@ function modulo(k, sid, perConto) {
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
   const mesi = z.mesi.slice();
   if (z.comitive && mesi.indexOf(z.comitive) < 0) mesi.push(z.comitive);
+  if (z.oem && mesi.indexOf(z.oem) < 0) mesi.push(z.oem);
   mesi.sort();
   const sett = [];
   mesi.forEach((m) => settimane_(cal, m).forEach((w) => {
     w.mese = m;
     if (z.mesi.indexOf(m) < 0) w.adunanze = [];
     if (z.comitive !== m) w.comitive = [];
-    if (w.adunanze.length || w.comitive.length || w.speciale) sett.push(w);
+    w.turni = z.oem === m ? turniOem_(w.lunedi) : [];
+    if (w.adunanze.length || w.comitive.length || w.turni.length || (w.speciale && !z.oem)) sett.push(w);
   }));
   const r = risposte_(sid)[chi];
+  const quando = r ? iso_(r.ultima) : '';
+  if (r) sett.forEach((w) => { w.comitive.forEach((c) => { if (c.creata && c.creata > quando) c.nuova = true; }); w.adunanze.forEach((a) => { if (a.creata && a.creata > quando) a.nuova = true; }); });
   return {
-    id: s.id, titolo: s.titolo, scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), chiuso: s.dati.scadenza < oggi_(),
-    persona: { id: p.id, nome: p.n || p.nome }, periodo: z.mesi.map(nomeMese_).join(' e '), comitive: z.comitive ? nomeMese_(z.comitive) : '',
+    id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), chiuso: s.dati.scadenza < oggi_(),
+    persona: { id: p.id, nome: p.n || p.nome }, periodo: z.mesi.map(nomeMese_).join(' e '), comitive: z.comitive ? nomeMese_(z.comitive) : '', oem: z.oem ? nomeMese_(z.oem) : '',
     settimane: sett, risposta: r ? r.r : null,
   };
 }
@@ -733,10 +797,11 @@ function rispondi(k, sid, risposta, perConto) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     const m = modulo(k, sid, perConto);
-    const valide = {}; m.settimane.forEach((w) => { w.adunanze.forEach((a) => { valide[a.k] = 'a'; }); w.comitive.forEach((c) => { valide[c.k] = 'c'; }); });
+    const valide = {}; m.settimane.forEach((w) => { w.adunanze.forEach((a) => { valide[a.k] = 'a'; }); w.comitive.forEach((c) => { if (!c.annullata) valide[c.k] = 'c'; }); (w.turni || []).forEach((t) => { valide[t.k] = 't'; }); });
     const pulita = {
       assenze: (risposta.assenze || []).filter((x) => valide[x] === 'a'),
       comitive: (risposta.comitive || []).filter((x) => valide[x] === 'c'),
+      turni: (risposta.turni || []).filter((x) => valide[x] === 't'),
       note: String(risposta.note || '').slice(0, 300),
     };
     const sh = scheda_('Risposte');
@@ -746,8 +811,9 @@ function rispondi(k, sid, risposta, perConto) {
     const nome = persone_().find((x) => x.id === chi).nome;
     if (prima) sh.getRange(prima.riga, 4, 1, 4).setValues([[JSON.stringify(pulita), prima.prima, ora, tardi || prima.tardi]]);
     else sh.appendRow([sid, chi, nome, JSON.stringify(pulita), ora, ora, tardi]);
-    scheda_('Registro').appendRow([ora, io.id, io.nome, perConto ? 'risposta per conto' : 'risposta', nome + ' · ' + sid + ' · assenze ' + pulita.assenze.length + ', comitive ' + pulita.comitive.length + (tardi ? ' · DOPO LA SCADENZA' : '')]);
-    return { ok: true, assenze: pulita.assenze.length, comitive: pulita.comitive.length, tardi: tardi };
+    dimentica_('Risposte');
+    scheda_('Registro').appendRow([ora, io.id, io.nome, perConto ? 'risposta per conto' : 'risposta', nome + ' · ' + sid + ' · assenze ' + pulita.assenze.length + ', comitive ' + pulita.comitive.length + (pulita.turni.length ? ', turni OEM ' + pulita.turni.length : '') + (tardi ? ' · DOPO LA SCADENZA' : '')]);
+    return { ok: true, assenze: pulita.assenze.length, comitive: pulita.comitive.length, turni: pulita.turni.length, tardi: tardi };
   } finally { lock.releaseLock(); }
 }
 
@@ -756,6 +822,9 @@ function calendario(k) { richiedi_(k, true); return leggiImpostazione_('calendar
 function salvaCalendario(k, cal) {
   const io = richiedi_(k, true);
   if (!cal || !cal.periodi || !cal.periodi.length) throw new Error('Serve almeno un periodo con gli orari delle adunanze.');
+  const adesso = Utilities.formatDate(new Date(), 'Europe/Rome', "yyyy-MM-dd'T'HH:mm:ss");
+  cal.variazioni = (cal.variazioni || []).filter((v) => v && v.data && v.tipo);
+  cal.variazioni.forEach((v) => { if (!v.creata) v.creata = adesso; });
   scriviImpostazione_('calendario', cal);
   scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'calendario', 'aggiornato']);
   return cal;
@@ -774,11 +843,19 @@ function sondaggiGestione(k) {
 function creaSondaggio(k, d) {
   const io = richiedi_(k, true);
   if (!d.scadenza) throw new Error('Manca la scadenza.');
-  if (!(d.mesiNominati || []).length && !(d.mesiReparti || []).length && !d.comitive) throw new Error('Scegli almeno una sezione.');
-  const dati = { mesiNominati: d.mesiNominati || [], mesiReparti: d.mesiReparti || [], comitive: d.comitive || '', scadenza: d.scadenza, inviati: {} };
+  let dati;
+  if (d.tipo === 'oem') {
+    if (!d.mese) throw new Error('Scegli il mese dell\'opera pubblica.');
+    dati = { tipo: 'oem', mese: d.mese, mesiNominati: [], mesiReparti: [], comitive: '', scadenza: d.scadenza, inviati: {} };
+  } else {
+    if (!(d.mesiNominati || []).length && !(d.mesiReparti || []).length && !d.comitive) throw new Error('Scegli almeno una sezione.');
+    dati = { mesiNominati: d.mesiNominati || [], mesiReparti: d.mesiReparti || [], comitive: d.comitive || '', scadenza: d.scadenza, inviati: {} };
+  }
   dati.destinatari = (d.soloQuesti && d.soloQuesti.length ? previsti_(dati).filter((p) => d.soloQuesti.indexOf(p.id) >= 0) : previsti_(dati)).map((p) => p.id);
-  const id = 'S' + Utilities.formatDate(new Date(), 'Europe/Rome', 'yyMMddHHmm');
+  let id = 'S' + Utilities.formatDate(new Date(), 'Europe/Rome', 'yyMMddHHmm');
+  if (sondaggi_().some((x) => x.id === id)) id += 'b';
   scheda_('Sondaggi').appendRow([id, d.titolo || 'Disponibilità', JSON.stringify(dati), 'aperto', new Date()]);
+  dimentica_('Sondaggi');
   scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', 'creato ' + id + ' · ' + (d.titolo || '') + ' · ' + dati.destinatari.length + ' destinatari']);
   return sondaggiGestione(k);
 }
@@ -793,8 +870,9 @@ function impostaSondaggio(k, sid, d) {
   (d.aggiungi || []).forEach((x) => { if (s.dati.destinatari.indexOf(x) < 0) s.dati.destinatari.push(x); });
   if (d.togli) s.dati.destinatari = s.dati.destinatari.filter((x) => d.togli.indexOf(x) < 0);
   if (d.inviato) { s.dati.inviati = s.dati.inviati || {}; s.dati.inviati[d.inviato] = (s.dati.inviati[d.inviato] || []).concat([oggi_()]); }
+  if (d.avvisato) { s.dati.avvisati = s.dati.avvisati || {}; s.dati.avvisati[d.avvisato] = iso_(new Date()); }
   salvaSondaggio_(s);
-  if (!d.inviato) scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', sid + ' · ' + JSON.stringify(d)]);
+  if (!d.inviato && !d.avvisato) scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'sondaggio', sid + ' · ' + JSON.stringify(d)]);
   return invio(k, sid);
 }
 /** Pagina Invio: destinatari (anche quelli previsti ma esclusi), stato, link e telefono. */
@@ -807,18 +885,25 @@ function invio(k, sid) {
   const r = risposte_(sid);
   const url = ScriptApp.getService().getUrl();
   const prev = previsti_(s.dati);
+  const varz = (leggiImpostazione_('calendario', CALENDARIO_BASE_).variazioni || []);
+  const ultimaVar = (z) => varz.filter((v) => {
+    const m = String(v.data).slice(0, 7);
+    return v.creata && (v.tipo === 'spostata' ? z.mesi.indexOf(m) >= 0 : z.comitive === m);
+  }).map((v) => v.creata).sort().pop() || '';
   const persone = prev.map((p) => {
     const z = sezioniPer_(p, s.dati);
     const x = r[p.id];
+    const uv = x ? ultimaVar(z) : '';
     return {
       id: p.id, nome: p.nome, n: p.n, tel: p.tel, incluso: s.dati.destinatari.indexOf(p.id) >= 0, link: codici[p.id] ? url + '?k=' + codici[p.id] : '',
-      sezioni: (z.mesi.length ? ['Adunanze: ' + z.mesi.map(nomeMese_).join(', ')] : []).concat(z.comitive ? ['Comitive: ' + nomeMese_(z.comitive)] : []),
+      sezioni: (z.mesi.length ? ['Adunanze: ' + z.mesi.map(nomeMese_).join(', ')] : []).concat(z.comitive ? ['Comitive: ' + nomeMese_(z.comitive)] : []).concat(z.oem ? ['Opera pubblica: ' + nomeMese_(z.oem)] : []),
       inviato: (s.dati.inviati || {})[p.id] || [], risposto: !!x, tardi: x ? x.tardi : false,
       quando: x ? Utilities.formatDate(new Date(x.ultima), 'Europe/Rome', 'dd/MM HH:mm') : '',
-      assenze: x ? x.r.assenze.length : 0, comitive: x ? x.r.comitive.length : 0,
+      assenze: x ? x.r.assenze.length : 0, comitive: x ? x.r.comitive.length : 0, turni: x ? (x.r.turni || []).length : 0,
+      avvisare: !!(uv && uv > iso_(x.ultima)) && !((s.dati.avvisati || {})[p.id] >= uv),
     };
   });
-  return { id: s.id, titolo: s.titolo, stato: s.stato, scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), persone: persone };
+  return { id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', stato: s.stato, scadenza: s.dati.scadenza, scadenzaTesto: breve_(s.dati.scadenza), persone: persone };
 }
 /** Risultati: per ogni adunanza chi non c'è, per ogni comitiva chi può condurre. */
 function risultati(k, sid) {
@@ -828,18 +913,345 @@ function risultati(k, sid) {
   const r = risposte_(sid);
   const nomi = {}; persone_().forEach((p) => { nomi[p.id] = p.nome; });
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
-  const mesi = {}; (s.dati.mesiNominati || []).concat(s.dati.mesiReparti || []).forEach((m) => { mesi[m] = true; }); if (s.dati.comitive) mesi[s.dati.comitive] = true;
-  const assenti = {}, offerte = {};
+  const mesi = {}; (s.dati.mesiNominati || []).concat(s.dati.mesiReparti || []).forEach((m) => { mesi[m] = true; }); if (s.dati.comitive) mesi[s.dati.comitive] = true; if (s.dati.mese) mesi[s.dati.mese] = true;
+  const assenti = {}, offerte = {}, turni = {};
   Object.keys(r).forEach((id) => {
     r[id].r.assenze.forEach((x) => { (assenti[x] = assenti[x] || []).push(nomi[id] || id); });
     r[id].r.comitive.forEach((x) => { (offerte[x] = offerte[x] || []).push(nomi[id] || id); });
+    (r[id].r.turni || []).forEach((x) => { (turni[x] = turni[x] || []).push(nomi[id] || id); });
   });
   const sett = [];
   Object.keys(mesi).sort().forEach((m) => settimane_(cal, m).forEach((w) => {
+    if (s.dati.tipo === 'oem') { w.adunanze = []; w.comitive = []; w.turni = turniOem_(w.lunedi); w.turni.forEach((t) => { t.offerte = turni[t.k] || []; }); sett.push(w); return; }
     w.adunanze.forEach((a) => { a.assenti = assenti[a.k] || []; });
     w.comitive = s.dati.comitive === m ? w.comitive : [];
     w.comitive.forEach((c) => { c.offerte = offerte[c.k] || []; });
+    w.turni = [];
     sett.push(w);
   }));
-  return { id: s.id, titolo: s.titolo, settimane: sett, risposte: Object.keys(r).length, destinatari: s.dati.destinatari.length };
+  return { id: s.id, titolo: s.titolo, tipo: s.dati.tipo || '', settimane: sett, risposte: Object.keys(r).length, destinatari: s.dati.destinatari.length };
+}
+
+
+/* ═════════════════════════ Turnazione reparti ═════════════════════════
+ * La proposta si calcola nella pagina (stesso motore e stesse regole dell'artefatto di dicembre e di Congregation Manager).
+ * Qui il server prepara i dati: abilitazioni dall'anagrafica, assenze dal sondaggio, parti dal Foglio «Programmi adunanze»,
+ * storico dei mesi prima; e salva la turnazione del mese nella scheda Impostazioni (chiave reparti:AAAA-MM). */
+
+const INCARICHI_COL_ = {
+  'Coordinatore uscieri': 'USC_COORD', 'Ingresso': 'USC_ING', 'Auditorium': 'USC_AUD', 'Parcheggio': 'USC_PAR',
+  'Podio': 'AV_POD', 'Microfonisti': 'AV_MIC', 'Mixer': 'AV_MIX', 'PC': 'AV_PC', 'Letteratura': 'LET', 'Territori': 'TER',
+  'Coordinatore pulizie': 'PUL_COORD', 'Referente pulizie': 'PUL_REF',
+};
+
+function richiediAmbito_(k, ambito) {
+  const io = richiedi_(k);
+  if (!haAmbito_(io, ambito)) throw new Error('Non hai il permesso per questa sezione.');
+  return io;
+}
+function meseDopo_(mese, n) { const d = d_(mese + '-01'); d.setUTCMonth(d.getUTCMonth() + n); return s_(d).slice(0, 7); }
+function prossimoMese_() { return meseDopo_(oggi_().slice(0, 7), 1); }
+
+/** Turni in forma compatta: «2026-12-07|I|USC_COORD|1|F046» (I infrasettimanale, F fine settimana, S tutta la settimana). */
+function scompatta_(t) {
+  if (Array.isArray(t)) return t;
+  return String(t || '').split(';').filter(Boolean).map((x) => {
+    const [s, T, inc, pos, p] = x.split('|');
+    return { settimana_id: s, adunanza_id: T === 'S' ? null : s + (T === 'I' ? '-INFRA' : '-FINE'), incarico_id: inc, posizione: Number(pos), persona_id: p };
+  });
+}
+function compatta_(turni) {
+  return (turni || []).filter((t) => t && t.persona_id && t.settimana_id && t.incarico_id).map((t) =>
+    [t.settimana_id, !t.adunanza_id ? 'S' : /INFRA$/.test(t.adunanza_id) ? 'I' : 'F', t.incarico_id, Number(t.posizione) || 1, t.persona_id].join('|')).join(';');
+}
+
+function sigla_p_(p) { return (p.n ? p.n.charAt(0) + '. ' : '') + String(p.cognome || p.nome).toUpperCase(); }
+function sigle_(lista) {
+  const out = {}, conta = {};
+  lista.forEach((p) => { const s = sigla_p_(p); conta[s] = (conta[s] || 0) + 1; });
+  lista.forEach((p) => { const s = sigla_p_(p); out[p.id] = conta[s] > 1 ? (p.n + ' ' + p.cognome).toUpperCase() : s; });
+  return out;
+}
+
+/** Abilitazioni ai reparti dall'anagrafica: solo chi è «in turnazione». */
+function abilitazioniReparti_() {
+  const col = struttura_(SpreadsheetApp.getActive().getSheetByName(FOGLIO)).filter((x) => x.tipo === 'check' && /^REPARTI/i.test(x.sezione) && INCARICHI_COL_[x.titolo]);
+  const out = [], visti = {};
+  persone_().filter((p) => p.reparti).forEach((p) => col.forEach((x) => {
+    if (p.riga[x.c - 1] !== true) return;
+    const inc = INCARICHI_COL_[x.titolo];
+    const ad = /^PUL_/.test(inc) ? 'TUTTE' : /fine/i.test(x.sezione) ? 'FINE' : 'INFRA';
+    const k = p.id + '|' + inc + '|' + ad;
+    if (!visti[k]) { visti[k] = true; out.push({ persona_id: p.id, incarico_id: inc, adunanze: ad }); }
+  }));
+  return out;
+}
+
+/** Le adunanze del mese per la turnazione (anche quelle che non si tengono, segnate «nessuna»). */
+function adunanzeReparti_(cal, sett, nessuna) {
+  const out = [];
+  sett.forEach((w) => {
+    const p = periodo_(cal, w.lunedi), off = (g) => (g + 6) % 7;
+    const base = [
+      { tipo: 'INFRA', data: piu_(w.lunedi, off(p.infra.g)), ora: p.infra.ora },
+      { tipo: 'FINE', data: piu_(w.lunedi, off(p.fs.g)), ora: p.fs.ora },
+    ];
+    base.forEach((b) => {
+      const vera = w.adunanze.find((a) => (a.tipo === 'inf' ? 'INFRA' : 'FINE') === b.tipo);
+      const id = w.lunedi + '-' + b.tipo;
+      out.push({ id: id, settimana_id: w.lunedi, tipo: b.tipo, data: vera ? vera.data : b.data, ora: vera ? vera.ora : b.ora,
+        spostata: !!(vera && vera.spostata), nessuna: !vera || !!(nessuna || {})[id] });
+    });
+  });
+  return out;
+}
+
+/** Le risposte ai sondaggi che coprono questo mese: per ogni persona l'ultima risposta. */
+function risposteDelMese_(mese, campo) {
+  const out = {}, previsti = {};
+  const pers = {}; persone_().forEach((p) => { pers[p.id] = p; });
+  sondaggi_().filter((s) => s.dati.tipo !== 'oem').forEach((s) => {
+    const r = risposte_(s.id);
+    s.dati.destinatari.forEach((id) => {
+      const p = pers[id]; if (!p) return;
+      const z = sezioniPer_(p, s.dati);
+      const copre = campo === 'comitive' ? z.comitive === mese : z.mesi.indexOf(mese) >= 0;
+      if (!copre) return;
+      previsti[id] = true;
+      const x = r[id];
+      if (!x) return;
+      const q = iso_(x.ultima);
+      if (!out[id] || out[id].quando < q) out[id] = { quando: q, r: x.r, sondaggio: s.titolo };
+    });
+  });
+  return { risposte: out, previsti: previsti };
+}
+
+/* ── parti delle adunanze lette dal Foglio «Programmi adunanze» ── */
+function norm_(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z' ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function chiaveNome_(s) { return norm_(s).split(' ').filter(Boolean).sort().join(' '); }
+function indiceNomi_() {
+  const m = {};
+  persone_().forEach((p) => {
+    [p.n + ' ' + p.cognome].concat(String(p.alias || '').split(/[,;]/)).forEach((x) => {
+      const k = chiaveNome_(x);
+      if (k) { m[k] = m[k] || []; if (m[k].indexOf(p.id) < 0) m[k].push(p.id); }
+    });
+  });
+  return m;
+}
+/** Le righe della guida che impegnano durante l'adunanza (regola di Luca). Dalla guida su GitHub, tenuta in cache 6 ore. */
+function partiEsclusive_(mese) {
+  const c = CacheService.getScriptCache(), key = 'guida:' + mese;
+  const t = c.get(key);
+  if (t) return JSON.parse(t);
+  let g;
+  try {
+    const r = UrlFetchApp.fetch(REPO + 'dati/' + mese + '.json', { muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return [];
+    g = JSON.parse(r.getContentText());
+  } catch (e) { return []; }
+  const out = [];
+  (g.settimane || []).forEach((w) => (w.carte || []).forEach((ca) => {
+    const ad = String(ca.id).replace(/-inf$/, '-INFRA').replace(/-fs$/, '-FINE');
+    (ca.sezioni || []).forEach((z) => (z.righe || []).forEach((r) => {
+      if (!r.campi) return;
+      const sez = String(z.titolo || '');
+      const add = (campo, nome) => out.push({ riga: r.id, campo: campo, ad: ad, codice: nome });
+      if (r.ruolo === 'Presidente') add('chi', 'Presidente');
+      else if (ca.tipo === 'INFRA' && /tesori/i.test(sez) && r.ruolo !== 'Stud.') add('chi', 'Tesori · ' + r.titolo);
+      else if (ca.tipo === 'INFRA' && /vita cristiana/i.test(sez) && r.tipo !== 'cantico') {
+        if (r.ruolo === 'Cond.') { add('chi', 'Studio biblico · conduttore'); if (r.campi.indexOf('chi2') >= 0) add('chi2', 'Studio biblico · lettore'); }
+        else add('chi', 'Vita cristiana · ' + r.titolo);
+      } else if (ca.tipo === 'FINE' && /torre/i.test(sez) && /conduttore|lettore/i.test(String(r.titolo))) add('chi', 'Torre di Guardia · ' + String(r.titolo).toLowerCase());
+    }));
+  }));
+  try { c.put(key, JSON.stringify(out), 21600); } catch (e) {}
+  return out;
+}
+function partiProgrammi_(mese) {
+  const id = leggiImpostazione_('foglioProgrammi', '');
+  if (!id) return { parti: [], ignote: [], errore: 'Manca il collegamento al Foglio «Programmi adunanze».' };
+  let val = {};
+  try {
+    const sh = SpreadsheetApp.openById(id).getSheetByName('Programma');
+    if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach((r) => { if (r[0]) val[String(r[0])] = String(r[1] || ''); });
+  } catch (e) { return { parti: [], ignote: [], errore: 'Non riesco ad aprire il Foglio «Programmi adunanze» (' + e.message + ').' }; }
+  const idx = indiceNomi_();
+  const parti = [], ignote = [];
+  partiEsclusive_(mese).forEach((x) => {
+    const nome = String(val[x.riga + ':' + x.campo] || '').trim();
+    if (!nome) return;
+    const ids = idx[chiaveNome_(nome)];
+    if (ids && ids.length === 1) parti.push({ adunanza_id: x.ad, assegnata_id: ids[0], effettiva_id: null, codice: x.codice });
+    else ignote.push({ adunanza_id: x.ad, nome: nome, codice: x.codice, doppi: ids || [] });
+  });
+  return { parti: parti, ignote: ignote, errore: '' };
+}
+
+/** Tutto quello che serve alla pagina della turnazione di un mese. */
+function reparti(k, mese) {
+  richiediAmbito_(k, 'reparti');
+  mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : prossimoMese_();
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const sett = settimane_(cal, mese);
+  const stato = leggiImpostazione_('reparti:' + mese, null) || {};
+  stato.turni = scompatta_(stato.turni);
+  ['assenze', 'gruppi', 'generali', 'nessuna', 'eventi', 'togli'].forEach((x) => { stato[x] = stato[x] || {}; });
+  stato.periodi = stato.periodi || [];
+  sett.forEach((w) => {
+    if (w.speciale && !stato.eventi[w.lunedi] && !stato.eventiTolti) stato.eventi[w.lunedi] = { tipo: w.speciale.nome, luogo: w.speciale.luogo || '', orario: '', tema: '', nota: '' };
+    if (w.speciale && w.speciale.adunanze === false) { stato.nessuna[w.lunedi + '-INFRA'] = true; stato.nessuna[w.lunedi + '-FINE'] = true; }
+  });
+  const adunanze = adunanzeReparti_(cal, sett, stato.nessuna);
+  const pInc = abilitazioniReparti_();
+  const inTurno = {}; pInc.forEach((x) => { inTurno[x.persona_id] = true; });
+
+  // Assenze dal sondaggio (chiave adunanza = lunedì-INFRA / lunedì-FINE, la stessa della turnazione)
+  const rd = risposteDelMese_(mese, 'adunanze');
+  const sondaggio = {}, risposto = {}, mancano = [];
+  Object.keys(rd.risposte).forEach((id) => { risposto[id] = rd.risposte[id].quando; rd.risposte[id].r.assenze.forEach((a) => { if (adunanze.some((x) => x.id === a)) sondaggio[id + '|' + a] = true; }); });
+  Object.keys(rd.previsti).forEach((id) => { if (inTurno[id] && !risposto[id]) mancano.push(id); });
+
+  // Storico: i mesi prima salvati nel portale, più quello importato dall'artefatto
+  const primo = sett.length ? sett[0].lunedi : mese + '-01';
+  let storico = [], adPrima = [];
+  const imp = leggiImpostazione_('reparti:storico', null);
+  if (imp) {
+    storico = scompatta_(imp.t).filter((t) => t.settimana_id < primo);
+    adPrima = String(imp.a || '').split(';').filter(Boolean).map((x) => { const [id, data] = x.split('|'); return { id: id, settimana_id: id.slice(0, 10), tipo: /INFRA$/.test(id) ? 'INFRA' : 'FINE', data: data, nessuna: false }; });
+  }
+  for (let i = 3; i >= 1; i--) {
+    const m = meseDopo_(mese, -i);
+    const x = leggiImpostazione_('reparti:' + m, null);
+    if (!x) continue;
+    const t = scompatta_(x.turni);
+    const sw = {}; t.forEach((y) => { sw[y.settimana_id] = true; });
+    storico = storico.filter((y) => !sw[y.settimana_id]).concat(t);
+    adunanzeReparti_(cal, settimane_(cal, m), x.nessuna || {}).forEach((a) => { if (!adPrima.some((b) => b.id === a.id)) adPrima.push(a); });
+  }
+  const prima = piu_(primo, -7);
+  const settimanaPrima = storico.some((t) => t.settimana_id === prima) ? { id: prima, lunedi: prima } : null;
+
+  const pr = partiProgrammi_(mese);
+  const servono = {}; Object.keys(inTurno).forEach((id) => { servono[id] = true; });
+  stato.turni.forEach((t) => { servono[t.persona_id] = true; });
+  Object.keys(stato.generali).forEach((s) => { const g = stato.generali[s]; if (g.coord) servono[g.coord] = true; if (g.ref) servono[g.ref] = true; });
+  const lista = persone_().filter((p) => servono[p.id]);
+  const sg = sigle_(lista);
+  return {
+    mese: mese, nomeMese: nomeMese_(mese), oggi: oggi_(),
+    settimane: sett.map((w) => ({ id: w.lunedi, lunedi: w.lunedi })),
+    adunanze: adunanze,
+    orari: { infra: orarioTesto_(cal, sett, 'infra'), fs: orarioTesto_(cal, sett, 'fs') },
+    persone: lista.map((p) => ({ id: p.id, sigla: sg[p.id], nome: p.n, cognome: p.cognome, gruppo: p.gruppo })),
+    pInc: pInc, sondaggio: sondaggio, risposto: risposto, mancano: mancano,
+    parti: pr.parti, partiIgnote: pr.ignote, partiErrore: pr.errore,
+    storico: storico, settimanaPrima: settimanaPrima, adunanzePrima: settimanaPrima ? adPrima.filter((a) => a.settimana_id === prima) : [],
+    gruppiPulizie: LISTE[8], stato: stato,
+  };
+}
+function orarioTesto_(cal, sett, q) {
+  const G = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+  const p = periodo_(cal, sett.length ? sett[0].lunedi : oggi_());
+  return G[p[q].g] + (p[q].ora ? ' ' + p[q].ora : '');
+}
+
+/** Salva la turnazione del mese (la pagina manda tutto lo stato, che resta piccolo). */
+function salvaReparti(k, mese, stato) {
+  const io = richiediAmbito_(k, 'reparti');
+  if (!/^\d{4}-\d{2}$/.test(mese || '')) throw new Error('Mese non valido.');
+  const ids = {}; persone_().forEach((p) => { ids[p.id] = true; });
+  const pulito = {
+    turni: compatta_((stato.turni || []).filter((t) => ids[t.persona_id])),
+    assenze: stato.assenze || {}, periodi: (stato.periodi || []).filter((x) => x && ids[x.persona_id] && x.dal),
+    gruppi: stato.gruppi || {}, generali: stato.generali || {}, nessuna: stato.nessuna || {}, eventi: stato.eventi || {},
+    togli: stato.togli || {}, eventiTolti: !!stato.eventiTolti, importato: stato.importato || '', compatto: 1,
+  };
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try { scriviImpostazione_('reparti:' + mese, pulito); } finally { lock.releaseLock(); }
+  registroUnaVolta_(io, 'reparti', 'turnazione reparti di ' + nomeMese_(mese) + ' modificata');
+  return { ok: true, quando: Utilities.formatDate(new Date(), 'Europe/Rome', 'HH:mm') };
+}
+/** Nel Registro una riga per persona e argomento ogni ora, non una a ogni salvataggio. */
+function registroUnaVolta_(io, azione, cosa) {
+  const c = CacheService.getScriptCache(), ck = 'reg:' + io.id + ':' + cosa;
+  if (c.get(ck)) return;
+  try { c.put(ck, '1', 3600); } catch (e) {}
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, azione, cosa]);
+}
+
+/** Collega un nome scritto nei programmi a una persona dell'anagrafica («Altri modi di scrivere»). Solo Luca. */
+function aggiungiAlias(k, id, testo) {
+  const io = richiedi_(k, true);
+  testo = String(testo || '').trim();
+  if (!testo) throw new Error('Nome vuoto.');
+  const sh = SpreadsheetApp.getActive().getSheetByName(FOGLIO);
+  const riga = rigaDi_(sh, id);
+  if (!riga) throw new Error('Persona non trovata.');
+  const prima = String(sh.getRange(riga, C.alias).getValue() || '');
+  const lista = prima.split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+  if (lista.map(chiaveNome_).indexOf(chiaveNome_(testo)) < 0) lista.push(testo);
+  sh.getRange(riga, C.alias).setValue(lista.join(', '));
+  dimentica_(FOGLIO);
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'modifica', sh.getRange(riga, C.nome).getValue() + ' · Altri modi di scrivere: ' + lista.join(', ')]);
+  return true;
+}
+
+
+/* ═════════════════════════ Programma comitive ═════════════════════════ */
+
+function colonnaComitive_() {
+  return struttura_(SpreadsheetApp.getActive().getSheetByName(FOGLIO)).find((x) => x.tipo === 'check' && /comitive/i.test(x.sezione) && /congregazione/i.test(x.titolo));
+}
+function comitive(k, mese) {
+  richiediAmbito_(k, 'comitive');
+  mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : prossimoMese_();
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const sett = settimane_(cal, mese);
+  const colC = colonnaComitive_();
+  const rd = risposteDelMese_(mese, 'comitive');
+  const offerte = {}, risposto = {};
+  Object.keys(rd.risposte).forEach((id) => { risposto[id] = rd.risposte[id].quando; (rd.risposte[id].r.comitive || []).forEach((c) => { (offerte[c] = offerte[c] || []).push(id); }); });
+  const abil = persone_().filter((p) => colC ? p.riga[colC.c - 1] === true : p.nominato);
+  const serve = {}; abil.forEach((p) => { serve[p.id] = true; }); Object.keys(offerte).forEach((c) => offerte[c].forEach((id) => { serve[id] = true; }));
+  const stato = leggiImpostazione_('comitive:' + mese, null) || {};
+  ['assegnati', 'nascoste', 'note', 'domeniche'].forEach((x) => { stato[x] = stato[x] || {}; });
+  Object.keys(stato.assegnati).forEach((c) => { if (stato.assegnati[c]) serve[stato.assegnati[c]] = true; });
+  const storico = {};
+  for (let i = 1; i <= 2; i++) {
+    const x = leggiImpostazione_('comitive:' + meseDopo_(mese, -i), null);
+    if (x && x.assegnati) Object.keys(x.assegnati).forEach((c) => { const id = x.assegnati[c]; if (id) storico[id] = (storico[id] || 0) + 1; });
+  }
+  const lista = persone_().filter((p) => serve[p.id]);
+  const sg = sigle_(lista);
+  return {
+    mese: mese, nomeMese: nomeMese_(mese),
+    settimane: sett.map((w) => ({ lunedi: w.lunedi, dal: w.dal, al: w.al, speciale: w.speciale, comitive: w.comitive, domenica: w.al,
+      adunanze: w.adunanze.map((a) => ({ tipo: a.tipo, data: a.data, ora: a.ora, spostata: !!a.spostata })) })),
+    conduttori: lista.map((p) => ({ id: p.id, sigla: sg[p.id], nome: p.n, cognome: p.cognome, gruppo: p.gruppo, abilitato: !!(colC ? p.riga[colC.c - 1] === true : p.nominato) })),
+    offerte: offerte, risposto: risposto, previsti: Object.keys(rd.previsti), storico: storico, stato: stato,
+    sedi: (cal.comitive || []).map((c) => c.luogo).filter((x, i, a) => x && a.indexOf(x) === i),
+  };
+}
+function salvaComitive(k, mese, stato) {
+  const io = richiediAmbito_(k, 'comitive');
+  if (!/^\d{4}-\d{2}$/.test(mese || '')) throw new Error('Mese non valido.');
+  const ids = {}; persone_().forEach((p) => { ids[p.id] = true; });
+  const ass = {}; Object.keys(stato.assegnati || {}).forEach((c) => { if (ids[stato.assegnati[c]]) ass[c] = stato.assegnati[c]; });
+  const pulito = { assegnati: ass, nascoste: stato.nascoste || {}, note: stato.note || {}, domeniche: stato.domeniche || {} };
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try { scriviImpostazione_('comitive:' + mese, pulito); } finally { lock.releaseLock(); }
+  registroUnaVolta_(io, 'comitive', 'programma comitive di ' + nomeMese_(mese) + ' modificato');
+  return { ok: true, quando: Utilities.formatDate(new Date(), 'Europe/Rome', 'HH:mm') };
+}
+
+/** Da eseguire una volta dall'editor dopo questo aggiornamento: chiede a Google i permessi nuovi
+ *  (leggere il Foglio «Programmi adunanze» e la guida su GitHub). Non modifica niente. */
+function autorizza() {
+  soloProprietario_();
+  const id = leggiImpostazione_('foglioProgrammi', '');
+  if (id) SpreadsheetApp.openById(id).getName();
+  UrlFetchApp.fetch(REPO + 'README.md', { muteHttpExceptions: true });
+  return 'Permessi a posto.';
 }

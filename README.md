@@ -79,3 +79,17 @@ il Foglio non si condivide con nessuno e lo script manda a ciascuno solo i dati 
   in turnazione, mese delle comitive, scadenza e destinatari. Ognuno vede solo le sezioni che lo riguardano. Chiavi:
   adunanza `<lunedì>-INFRA|FINE`, comitiva `<data>|<ora>`. Le risposte dopo la scadenza sono segnate.
   Pagine per Luca: Sondaggi (crea), Invio dei link (WhatsApp, promemoria, compila per conto), Risultati.
+- **Variazioni** del calendario: comitiva annullata (resta grigia con il motivo), comitiva aggiunta, adunanza spostata
+  (annulla da sola le comitive del pomeriggio di quel giorno). Valgono per sondaggio, comitive e reparti; chi ha
+  risposto prima di una variazione compare in «Da avvisare».
+- **Sondaggio dell'opera pubblica** (`tipo: oem`): a parte, solo per gli abilitati OEM, con i turni delle postazioni
+  del mese (chiave `<data>|<postazione>|<fascia>`).
+- **Turnazione reparti** (`portale/reparti.js` + `portale/motore-reparti.js`): stesso motore e stesse regole
+  dell'artefatto di dicembre. Abilitazioni dall'anagrafica, assenze dal sondaggio e quelle segnate a mano (anche
+  «dal… al…»), parti dal Foglio «Programmi adunanze» (chiave `foglioProgrammi` in Impostazioni, righe della guida su
+  GitHub), storico dei mesi prima. Si salva in Impostazioni (`reparti:AAAA-MM`, turni in forma compatta). Foglio A4
+  generale e personale con `portale/stampa.css`.
+- **Comitive** (`portale/comitive.js`): offerte dal sondaggio, proposta con priorità a chi ha una sola disponibilità
+  e quote proporzionali alle offerte; tre versioni del foglio A4. Si salva in `comitive:AAAA-MM`.
+- Velocità: dentro ogni chiamata ogni scheda si legge una volta sola; i codici di accesso stanno nella cache dello
+  script (si svuota a ogni modifica degli Accessi).
