@@ -9,7 +9,7 @@ import { cssCaratteri } from "../Rendering";
 import type { Carta, Foglio } from "../tipi";
 import { ALTEZZA, Immagine, LARGHEZZA, pngDi, type Modello } from "./immagine";
 import { PannelloWhatsApp } from "./Pannello";
-import { REPARTI, intervallo, modelliReparti, quandoSett, type ConfRep, type Rep, type SettWA, type Vede } from "./reparti";
+import { chiaveAd, giornoIt, intervallo, modelliReparti, quandoSett, type ConfRep, type Rep, type SettWA, type Vede } from "./reparti";
 
 export type StatoWA = { vede: Vede; reparti: Record<string, SettWA>; conferme: Record<string, ConfRep>; cong: string };
 type Props = {
@@ -40,6 +40,13 @@ async function png(el: HTMLElement) {
   return pngDi(el, toPng as never, css || undefined);
 }
 
+const NOMI_REP: Record<string, string> = { av: "Audio/Video", usc: "Uscieri", let: "Letteratura e territori", pul: "Pulizie" };
+const nomeFile = (k: string) => {
+  if (k === "pul") return "pulizie";
+  const [d, t, r] = k.split("|");
+  return `${(d ?? "").replace(/-/g, "")} ${t === "INFRA" ? "infrasettimanale" : "fine-settimana"} ${(NOMI_REP[r ?? ""] ?? r ?? "").toLowerCase().replace(/[^a-z]+/g, "-")}`;
+};
+
 export function ProntoWhatsApp(p: Props) {
   const cong = p.wa.cong;
   const lun0 = lunediOggi();
@@ -57,16 +64,18 @@ export function ProntoWhatsApp(p: Props) {
   const [lavoro, setLavoro] = useState("");
   const nodi = useRef(new Map<string, HTMLDivElement>());
   const vedeAd = p.wa.vede.pres || p.wa.vede.prove.INFRA || p.wa.vede.prove.FINE || !!p.wa.vede.comp;
+  const conf = p.wa.conferme[scelta];
+  const firma = rep ? JSON.stringify(modelli) : "";
 
-  async function scaricaReparti() {
-    setLavoro("rep");
+  async function scarica(chiavi: string[], id: string) {
+    setLavoro(id);
     try {
       const files: File[] = [];
-      for (const [k, nome] of REPARTI) {
+      for (const k of chiavi) {
         const el = nodi.current.get(k);
         if (!modelli[k] || !el) continue;
         const b = await (await fetch(await png(el))).blob();
-        files.push(new File([b], `Reparto ${nome.replace("/", "-")} ${scelta}.png`, { type: "image/png" }));
+        files.push(new File([b], `Reparto ${nomeFile(k)}.png`, { type: "image/png" }));
       }
       const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
       if (nav.canShare?.({ files })) {
@@ -90,9 +99,48 @@ export function ProntoWhatsApp(p: Props) {
       setLavoro("");
     }
   }
-
-  const conf = p.wa.conferme[scelta];
-  const firma = rep ? JSON.stringify(modelli) : "";
+  /** A box with the department images (already confirmed: they come from what is published). */
+  const riquadro = (titolo: string, sotto: string, chiavi: string[], id: string) => {
+    const ks = chiavi.filter((k) => modelli[k]);
+    if (!ks.length) return null;
+    return (
+      <article className="wa-voce ok" key={id}>
+        <header>
+          <div>
+            <b>{titolo}</b>
+            <span>{sotto}</span>
+          </div>
+          {p.wa.vede.luca && (
+            <span className={`wa-stato ${conf?.firma === firma ? "ok" : "cambiata"}`}>{conf?.firma === firma ? "Pronta per Telegram" : "Preparo le immagini per Telegram…"}</span>
+          )}
+        </header>
+        <div className={`wa-mini ${ks.length > 2 ? "quattro" : ""}`}>
+          {ks.map((k) => (
+            <button key={k} type="button" className="wa-th" onClick={() => setGrande(modelli[k]!)} aria-label="Ingrandisci">
+              <Scalata className="wa-th-in">
+                <Immagine
+                  m={modelli[k]!}
+                  rif={(el) => {
+                    if (el) nodi.current.set(k, el);
+                  }}
+                />
+              </Scalata>
+              <span>{NOMI_REP[k === "pul" ? "pul" : k.split("|")[2] ?? ""]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="pa-azioni">
+          <span />
+          <button className="pa-btn sec" disabled={!!lavoro} onClick={() => void scarica(ks, id)}>
+            {lavoro === id ? "Un momento…" : "Scarica"}
+          </button>
+        </div>
+      </article>
+    );
+  };
+  // The meetings of the week in order (from the program and from the published rotation).
+  const tipi: ("INFRA" | "FINE")[] = ["INFRA", "FINE"];
+  const adDi = (t: "INFRA" | "FINE") => rep?.adunanze.find((a) => a.tipo === t);
   return (
     <div className="wa-pan">
       <div className="wa-sett">
@@ -108,62 +156,41 @@ export function ProntoWhatsApp(p: Props) {
           </select>
         </label>
       </div>
-      {vedeAd && (
+      {modelli.pul && (
         <>
-          <h2 className="wa-h">Adunanze</h2>
-          <PannelloWhatsApp
-            fogli={p.fogli}
-            valori={p.valori}
-            podio={p.podio}
-            email={p.email}
-            puo={p.puo}
-            tipi={["INFRA", "FINE"]}
-            salva={p.salva}
-            carica={p.carica}
-            settimana={scelta}
-            vede={p.wa.vede}
-          />
+          <h2 className="wa-h">Pulizie della settimana</h2>
+          {riquadro("Reparto Pulizie", "Dal programma pulizie pubblicato: confermata in automatico", ["pul"], "pul")}
         </>
       )}
-      {Object.keys(modelli).length > 0 && (
-        <>
-          <h2 className="wa-h">Reparti</h2>
-          <article className="wa-voce ok">
-            <header>
-              <div>
-                <b>Turnazione reparti</b>
-                <span>Pubblicata: confermata in automatico</span>
-              </div>
-              {p.wa.vede.luca && (
-                <span className={`wa-stato ${conf?.firma === firma ? "ok" : "cambiata"}`}>
-                  {conf?.firma === firma ? "Pronta per Telegram" : "Preparo le immagini per Telegram…"}
-                </span>
-              )}
-            </header>
-            <div className="wa-mini quattro">
-              {REPARTI.filter(([k]) => modelli[k]).map(([k, nome]) => (
-                <button key={k} type="button" className="wa-th" onClick={() => setGrande(modelli[k]!)} aria-label="Ingrandisci">
-                  <Scalata className="wa-th-in">
-                    <Immagine
-                      m={modelli[k]!}
-                      rif={(el) => {
-                        if (el) nodi.current.set(k, el);
-                      }}
-                    />
-                  </Scalata>
-                  <span>{nome}</span>
-                </button>
-              ))}
-            </div>
-            <div className="pa-azioni">
-              <span />
-              <button className="pa-btn sec" disabled={!!lavoro} onClick={() => void scaricaReparti()}>
-                {lavoro === "rep" ? "Un momento…" : "Scarica"}
-              </button>
-            </div>
-          </article>
-        </>
-      )}
+      {tipi.map((t) => {
+        const a = adDi(t);
+        const chiavi = a ? (["av", "usc", "let"] as Rep[]).map((k) => chiaveAd(a, k)) : [];
+        const qualcosa = vedeAd || chiavi.some((k) => modelli[k]);
+        if (!qualcosa) return null;
+        return (
+          <section key={t} className="wa-ad">
+            <h2 className="wa-h">
+              {t === "INFRA" ? "Adunanza infrasettimanale" : "Adunanza del fine settimana"}
+              {a ? ` · ${giornoIt(a.data)}` : ""}
+            </h2>
+            {vedeAd && (
+              <PannelloWhatsApp
+                fogli={p.fogli}
+                valori={p.valori}
+                podio={p.podio}
+                email={p.email}
+                puo={p.puo}
+                tipi={[t]}
+                salva={p.salva}
+                carica={p.carica}
+                settimana={scelta}
+                vede={p.wa.vede}
+              />
+            )}
+            {a && riquadro("Turnazione reparti", "Pubblicata: confermata in automatico", chiavi, t)}
+          </section>
+        );
+      })}
       {!vedeAd && !rep && <p className="pa-msg">La turnazione di questa settimana non è ancora pubblicata.</p>}
       {p.wa.vede.luca && <GeneraReparti wa={p.wa} carica={p.carica} conferma={p.confermaReparti} />}
       {grande && (
@@ -200,7 +227,7 @@ export function GeneraReparti({
     [wa, fatte],
   );
   const ora = coda[0];
-  const nodi = useRef(new Map<Rep, HTMLDivElement>());
+  const nodi = useRef(new Map<string, HTMLDivElement>());
   const conta = useRef(0);
   useEffect(() => {
     if (!ora) {
@@ -211,12 +238,12 @@ export function GeneraReparti({
     const t = setTimeout(async () => {
       try {
         await document.fonts.ready;
-        const ids: Partial<Record<Rep, string>> = {};
-        for (const [k, nome] of REPARTI) {
+        const ids: Record<string, string> = {};
+        for (const k of Object.keys(ora.m)) {
           const el = nodi.current.get(k);
-          if (!ora.m[k] || !el) continue;
+          if (!el) continue;
           const d = await png(el);
-          ids[k] = await carica(d.split(",")[1]!, `${ora.s.lunedi.replace(/-/g, "")} reparto ${nome.toLowerCase().replace(/[^a-z]+/g, "-")}.png`);
+          ids[k] = await carica(d.split(",")[1]!, `${ora.s.lunedi.replace(/-/g, "")} reparto ${nomeFile(k)}.png`);
         }
         await conferma(ora.s.lunedi, { firma: ora.firma, quando: quandoSett(ora.s), png: ids });
         conta.current++;
@@ -233,7 +260,7 @@ export function GeneraReparti({
   if (!ora) return null;
   return (
     <div className="wa-fuori" aria-hidden>
-      {REPARTI.filter(([k]) => ora.m[k]).map(([k]) => (
+      {Object.keys(ora.m).map((k) => (
         <Immagine
           key={ora.s.lunedi + k}
           m={ora.m[k]!}
@@ -267,6 +294,7 @@ export const CSS_PRONTO = `
 .wa-sett { display: flex; gap: 10px; align-items: end; }
 .wa-sett label { display: grid; gap: 4px; font-size: 12px; color: var(--pa-muted); font-weight: 600; }
 .wa-sett select { font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--pa-line); border-radius: 10px; background: #fff; color: var(--pa-ink); }
+.wa-ad { display: grid; gap: 14px; }
 .wa-h { margin: 6px 4px -4px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--pa-muted); }
 .wa-mini.quattro { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .wa-fuori { position: fixed; left: -20000px; top: 0; width: ${LARGHEZZA}px; height: ${ALTEZZA}px; overflow: hidden; pointer-events: none; }

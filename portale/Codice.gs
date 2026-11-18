@@ -2052,23 +2052,22 @@ function waQualcosa_(v) { return v.pres || v.prove.INFRA || v.prove.FINE || Obje
 function repartiWA_(vede) {
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
   const nomi = {}; persone_().forEach((p) => { nomi[p.id] = { v: (p.n + ' ' + p.cognome).trim(), nome: p.n, cognome: p.cognome }; });
+  const nome = (v) => { if (!v) return null; if (String(v).indexOf('txt:') === 0) return { v: String(v).slice(4) }; return nomi[v] || null; };
   const out = {};
   const SEZ = { usc: [['USC_COORD', 'Coordinatore', 1], ['USC_ING', 'Ingresso', 1], ['USC_AUD', 'Auditorium', 2], ['USC_PAR', 'Parcheggio', 2]],
     av: [['AV_POD', 'Podio', 1], ['AV_MIC', 'Microfono', 2], ['AV_MIX', 'Mixer', 1], ['AV_PC', 'PC', 1]], let: [['LET', 'Letteratura', 1], ['TER', 'Territori', 1]] };
+  const vedeAd = vede.rep.av || vede.rep.usc || vede.rep.let;
   [-1, 0, 1, 2].forEach((n) => {
-    const m = meseDopo_(oggi_().slice(0, 7), n);
-    const pub = leggiImpostazione_('pub:reparti:' + m, null);
-    if (!pub || !pub.dati) return;
-    const x = JSON.parse(JSON.stringify(pub.dati)), sett = settimane_(cal, m);
-    x.turni = scompatta_(x.turni); x.gruppi = x.gruppi || {}; x.generali = x.generali || {};
-    applicaPulizie_(x, sett.map((w) => w.lunedi), true);
-    const turni = x.turni;
-    const ads = adunanzeReparti_(cal, sett, x.nessuna || {});
+    const m = meseDopo_(oggi_().slice(0, 7), n), sett = settimane_(cal, m);
+    const pub = vedeAd ? leggiImpostazione_('pub:reparti:' + m, null) : null;
+    const x = pub && pub.dati ? JSON.parse(JSON.stringify(pub.dati)) : null;
+    const turni = x ? scompatta_(x.turni) : [];
+    const ads = adunanzeReparti_(cal, sett, (x && x.nessuna) || {});
     sett.forEach((w) => {
       if (out[w.lunedi] || w.lunedi < piu_(oggi_(), -6)) return;
-      const chi = (inc, pos, ad) => { const t = turni.find((y) => y.settimana_id === w.lunedi && y.incarico_id === inc && y.posizione === pos && y.adunanza_id === ad); return t && nomi[t.persona_id] ? nomi[t.persona_id] : null; };
-      const s = { lunedi: w.lunedi, al: piu_(w.lunedi, 6), adunanze: [], pubblicato: pub.quando };
-      ads.filter((a) => a.settimana_id === w.lunedi && !a.nessuna).forEach((a) => {
+      const chi = (inc, pos, ad) => { const t = turni.find((y) => y.settimana_id === w.lunedi && y.incarico_id === inc && y.posizione === pos && y.adunanza_id === ad); return t ? nome(t.persona_id) : null; };
+      const s = { lunedi: w.lunedi, al: piu_(w.lunedi, 6), adunanze: [], pubblicato: pub ? pub.quando : '' };
+      if (x) ads.filter((a) => a.settimana_id === w.lunedi && !a.nessuna).forEach((a) => {
         const ad = { tipo: a.tipo, data: a.data, ora: a.ora };
         Object.keys(SEZ).forEach((k) => {
           if (!vede.rep[k]) return;
@@ -2077,12 +2076,14 @@ function repartiWA_(vede) {
         });
         s.adunanze.push(ad);
       });
-      if (vede.rep.pul) {
-        const g = (x.generali || {})[w.lunedi];
-        s.pul = { gruppo: (x.gruppi || {})[w.lunedi] || '', coord: chi('PUL_COORD', 1, null), ref: chi('PUL_REF', 1, null),
-          generale: g && g.attiva ? { gruppo: g.gruppo || '', coord: g.coord && nomi[g.coord] || null, ref: g.ref && nomi[g.ref] || null } : null };
+      // pulizie: dal programma pulizie pubblicato
+      const e = vede.rep.pul ? puliziaSettimana_(w.lunedi, true) : null;
+      if (e && (e.g || e.c || e.r || e.gg || e.gd)) {
+        s.pul = { gruppo: e.g || '', coord: nome(e.c), ref: nome(e.r),
+          generale: e.gg || e.gd || e.gc || e.gr ? { gruppo: e.gg || '', data: e.gd || '', coord: nome(e.gc), ref: nome(e.gr) } : null };
+        if (!s.adunanze.length) s.quando = ads.filter((a) => a.settimana_id === w.lunedi && !a.nessuna).map((a) => a.data + ' ' + (a.ora || '19:30')).sort()[0] || '';
       }
-      out[w.lunedi] = s;
+      if (s.adunanze.length || s.pul) out[w.lunedi] = s;
     });
   });
   return out;
@@ -2125,7 +2126,12 @@ function inviiReparti_(p, chat, giorni, ora, adesso) {
     if (stato === firma) return;
     const agg = stato ? '🔄 Aggiornamento · ' : '';
     const sett = 'settimana dal ' + Utilities.formatDate(dataRoma_(lun + ' 12:00'), 'Europe/Rome', 'dd/MM');
-    Object.keys(WA_REPARTI_).forEach((x) => { const id = (c.png || {})[x]; if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + 'Reparto ' + WA_REPARTI_[x] + ' · ' + sett, photo: DriveApp.getFileById(id).getBlob() }); });
+    // prima le pulizie della settimana, poi ogni adunanza con Audio/Video, Uscieri, Letteratura e territori
+    Object.keys(c.png || {}).sort((a, b) => (a === 'pul' ? -1 : b === 'pul' ? 1 : a < b ? -1 : 1)).forEach((x) => {
+      const id = c.png[x], m = /^(\d{4}-\d{2}-\d{2})\|(INFRA|FINE)\|(\w+)$/.exec(x);
+      const testo = x === 'pul' ? 'Reparto Pulizie · ' + sett : m ? 'Reparto ' + (WA_REPARTI_[m[3]] || m[3]) + ' · ' + (m[2] === 'INFRA' ? 'infrasettimanale ' : 'fine settimana ') + m[1].slice(8) + '/' + m[1].slice(5, 7) : 'Reparto ' + (WA_REPARTI_[x] || x) + ' · ' + sett;
+      if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + testo, photo: DriveApp.getFileById(id).getBlob() });
+    });
     p.setProperty(statoK, firma);
   });
 }
