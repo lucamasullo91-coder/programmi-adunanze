@@ -75,7 +75,7 @@
       h += '<div class="bc-sez" style="--c:#A86F00"><h3>Programma comitive</h3><p class="nota">' + quando(d.comitive.quando) + '</p><div class="rp-bar">' +
         (scelte.length > 1 ? '<select data-bc="com">' + scelte.map((v) => '<option value="' + v + '"' + (v === B.com ? ' selected' : '') + '>' + nomi[v] + '</option>').join('') + '</select>' : '') +
         '<button class="btn soft" data-bc="stampa" data-v="bcCom">Stampa / Salva PDF</button></div>' +
-        '<div class="rp-anteprima fa4"><div class="pgm-fit" data-fit="bcCom"><div class="pgm-scale">' + P.fogli.comitive(d.comitive, B.com === 'personale' ? 'p:' + d.io.id : B.com) + '</div></div></div></div>';
+        '<div class="rp-anteprima cm4"><div class="pgm-fit" data-fit="bcCom"><div class="pgm-scale">' + P.fogli.comitive(d.comitive, B.com === 'personale' ? 'p:' + d.io.id : B.com) + '</div></div></div></div>';
     }
     // Espositori
     if (d.espositori) {

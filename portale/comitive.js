@@ -123,33 +123,45 @@
   .cm-r.off{background:#F4F3EF}.cm-r.off .q b{color:#9AA3AD}.cm-r.nasc{opacity:.55}
   .cm-r .az{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .cm-r.dom .q b{color:#4D5A68}
-  .fa4 .pgm.cm h1{color:#A86F00}
-  .fa4 .cm-orari{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-top:10px}
-  .fa4 .cm-orari div{background:#FBF1DC;border-left:3px solid #A86F00;border-radius:3px;padding:5px 8px}
-  .fa4 .cm-orari span{display:block;font-size:7.6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A86F00}
-  .fa4 .cm-orari b{font-size:11.5px;font-weight:600;color:#4D5A68}
-  .fa4 table.cm-t{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:2px}
-  .fa4 table.cm-t td{border-bottom:1px solid #ECE2CC;padding:4px 6px;vertical-align:middle}
-  .fa4 table.cm-t td.dq{width:62px;text-align:center;background:#FBF1DC;border-bottom:2px solid #fff}
-  .fa4 table.cm-t td.dq small{display:block;font-size:7.5px;font-weight:700;letter-spacing:.12em;color:#A86F00}
-  .fa4 table.cm-t td.dq b{display:block;font-size:17px;line-height:1;color:#7A5200}
-  .fa4 table.cm-t td.ora{width:58px;font-weight:700;color:#4D5A68}
-  .fa4 table.cm-t td.luogo{color:#4D5A68}
-  .fa4 table.cm-t td.chi{text-align:right;font-weight:700;text-transform:uppercase;white-space:nowrap;font-size:11px}
-  .fa4 table.cm-t tr.off td{color:#9AA3AD}.fa4 table.cm-t tr.off td.dq{background:#EEECE7}.fa4 table.cm-t tr.off td.dq small,.fa4 table.cm-t tr.off td.dq b{color:#9AA3AD}
-  .fa4 table.cm-t tr.off td.chi{font-weight:600;text-transform:none;font-style:italic}
-  .fa4 table.cm-t tr.dom td.dq{background:#ECEEF1}.fa4 table.cm-t tr.dom td.dq small,.fa4 table.cm-t tr.dom td.dq b{color:#4D5A68}
-  .fa4 .cm-mio{flex:0 1 300px;min-width:230px;border-left:3px solid #A86F00;background:#FBF1DC;border-radius:3px;padding:8px 11px;align-self:start}
-  .fa4 .cm-mio span{display:block;font-size:8.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#A86F00}
-  .fa4 .cm-mio b.nm{display:block;font-size:13px;margin:2px 0 6px;color:#1F2630}
-  .fa4 .cm-mio div{font-size:10.5px;line-height:1.55}.fa4 .cm-mio div b{color:#7A5200}`;
+  .cm-dom{display:grid;gap:8px;padding:10px 12px;border-top:1px solid #EFEDE8;background:#FAF8F4}
+  .cm-dom>p.h{margin:0;font-size:13px;color:var(--slate)}.cm-dom>p.h b{color:#521F46}
+  .cm-slot{border:1px solid var(--rule);border-left:4px solid #521F46;border-radius:6px;background:#fff;padding:8px 10px;display:grid;gap:6px}
+  .cm-slot.nasc{opacity:.55}
+  .cm-slot .gr{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .cm-chip{border:1.5px solid #521F46;color:#521F46;background:#fff;border-radius:999px;padding:3px 10px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .cm-chip.on{background:#521F46;color:#fff}
+  .cm-slot .et{font-size:12px;color:var(--slate);margin-left:4px}
+  .cm-ic{margin-left:auto;border:1px solid var(--rule);background:#fff;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px}
+  .cm-ic+.cm-ic{margin-left:0}.cm-ic.x{color:#B3261E}
+  .cm-slot .rr{display:grid;grid-template-columns:96px 1fr;gap:6px}
+  .cm-slot input,.cm-slot select{border:1px solid var(--rule);border-radius:6px;padding:6px 8px;background:#fff;font:inherit;font-size:13.5px;width:100%}
+  .cm-add{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .cm-add select{border:1px solid var(--rule);border-radius:6px;padding:5px 8px;background:#fff;font:inherit;font-size:12.5px}
+  .cm-vis{font-size:12px;font-weight:600;color:#A8432B}
+  .cm-pan{border:1px solid var(--rule);border-radius:8px;background:#fff;margin:0 0 10px;padding:8px 12px}
+  .cm-pan>summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--slate)}
+  .cm-pan .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:8px}
+  .cm-pan label{display:grid;gap:3px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate)}
+  .cm-pan input[type=text],.cm-pan input:not([type]){border:1px solid var(--rule);border-radius:6px;padding:6px 8px;font:inherit;font-size:13.5px;text-transform:none;letter-spacing:0;font-weight:500}
+  .cm-pan .sl{display:grid;grid-template-columns:10rem 1fr 3rem;gap:8px;align-items:center;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500}
+  .cm-pan .sl.r{grid-template-columns:minmax(0,9rem) 1fr 3rem auto}
+  .cm-pan ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+  .cm-pan li{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;border-bottom:1px solid #F0EEE9;padding:3px 0}
+  .cm-pan li b{min-width:92px}.cm-pan li i{font-style:normal;font-size:10px;color:var(--muted);border:1px solid var(--rule);border-radius:4px;padding:0 4px}
+  .cm-pan .chip2{border:1px solid var(--rule);background:#fff;border-radius:999px;padding:2px 9px;font:inherit;font-size:12px;cursor:pointer}
+  .cm-pan .chip2.on{background:#A86F00;border-color:#A86F00;color:#fff}
+  .cm-pan .pp{display:grid;grid-template-columns:9rem 1fr auto;gap:8px;align-items:center;margin-top:6px;font-size:12.5px}
+  .cm-pan .pp input[type=text]{border:1px solid var(--rule);border-radius:6px;padding:6px 8px;font:inherit}
+  .rp-anteprima.cm4{background:#EDEBE6;border-radius:8px;padding:12px}`;
   document.head.appendChild(css);
 
+  const pref = (k, v) => { try { return localStorage.getItem(k) || v; } catch (e) { return v; } };
+  const salvaPref = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* niente memoria */ } };
+  const chiDi = (v) => (v === 'tabella' ? P.fogliCM.SALA : v && v.slice(0, 2) === 'p:' ? v.slice(2) : '');
   P.fogli = P.fogli || {};
+  /** Il foglio A4 (lo stesso di Congregation Manager) per una versione: generale, tabella, p:<id>. */
   P.fogli.comitive = function (dati, versione) {
-    const prima = { d: C.d, st: C.st, pers: C.pers, mese: C.mese, versione: C.versione };
-    C.d = dati; C.st = dati.stato; C.pers = new Map(dati.conduttori.map((p) => [p.id, p])); C.mese = dati.mese; C.versione = versione || 'generale';
-    try { return foglio(); } finally { Object.assign(C, prima); }
+    return P.fogliCM.carta(dati, chiDi(versione || 'generale'), pref('cm-comitive-variante', 'schede'), pref('cm-margini', 'standard'));
   };
   function pubblicazione() {
     if (!C.pub) { C.pub = { carico: true }; P.srv('statoPubblicazione', 'comitive', C.mese).then((x) => { C.pub = x; rd(); }).catch(() => { C.pub = { pubblicato: false }; }); }
@@ -182,6 +194,7 @@
       .concat(fuori.length ? ['Si sono offerti ma non hanno comitive: ' + fuori.map(sigla).join(', ')] : []);
     if (av.length) h += '<details class="rp-rev" open><summary>Da rivedere (' + av.length + ')</summary><ul>' + av.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></details>';
     const abil = C.d.conduttori.filter((p) => p.abilitato).sort((x, y) => x.cognome.localeCompare(y.cognome, 'it'));
+    h += sediDatalist();
     C.d.settimane.forEach((w, i) => {
       h += '<section class="cm-wk"><h3><b>' + (i + 1) + 'ª settimana</b><span>' + intervallo(w.lunedi) + '</span>' + (w.speciale ? '<span style="color:#521F46">' + esc(w.speciale.nome) + '</span>' : '') + '</h3>';
       w.comitive.forEach((c) => {
@@ -195,9 +208,7 @@
           '<div><select data-cm="chi" data-k="' + esc(c.k) + '"' + (nasc ? ' disabled' : '') + '>' + opz + '</select>' + info + '</div>' +
           '<div class="az"><input data-cm="nota" data-k="' + esc(c.k) + '" value="' + esc(C.st.note[c.k] || '') + '" placeholder="Nota (facoltativa)" style="flex:1"><label style="font-size:12px;white-space:nowrap"><input type="checkbox" data-cm="nascondi" data-k="' + esc(c.k) + '"' + (nasc ? ' checked' : '') + ' style="width:auto"> nascondi</label></div></div>';
       });
-      const dm = C.st.domeniche[w.domenica] || {};
-      h += '<div class="cm-r dom"><div class="q"><b>' + esc(lungo(w.domenica)) + '</b><span>Comitive di gruppo</span></div><div><input data-cm="dom" data-k="' + w.domenica + '" data-v="gruppi" value="' + esc(dm.gruppi || '') + '" placeholder="Gruppi (es. Agnello e Sodano · Muto e Ciotola)"></div>' +
-        '<div class="az"><input data-cm="dom" data-k="' + w.domenica + '" data-v="conduttore" value="' + esc(dm.conduttore || '') + '" placeholder="Conduttori (facoltativo)"></div></div>';
+      h += domenica(w, i, '');
       h += '</section>';
     });
     // equità
@@ -208,40 +219,162 @@
     return h;
   }
 
-  /* ── foglio A4 ── */
-  function vistaFoglio() {
-    const conds = [...new Set(Object.values(C.st.assegnati))].filter(Boolean).sort((x, y) => sigla(x).localeCompare(sigla(y)));
-    let h = '<div class="rp-bar"><select data-cm="versione"><option value="generale"' + (C.versione === 'generale' ? ' selected' : '') + '>Generale · per i nominati</option><option value="tabella"' + (C.versione === 'tabella' ? ' selected' : '') + '>Tabella informazioni · senza conduttori della domenica</option>' +
-      conds.map((id) => '<option value="p:' + id + '"' + (C.versione === 'p:' + id ? ' selected' : '') + '>Personale · ' + esc(nomeIntero(id)) + '</option>').join('') + '</select><button class="btn" data-cm="stampa" style="background:#A86F00;border-color:#A86F00">Stampa / Salva PDF</button></div>' +
-      '<p class="rp-aiuto">Nella finestra di stampa scegli «Salva come PDF», A4, margini «Nessuno», grafica di sfondo attiva. Le comitive nascoste non compaiono; quelle annullate restano grigie con il motivo.</p>';
-    return h + '<div class="rp-anteprima fa4"><div class="pgm-fit" id="cmFit"><div class="pgm-scale" id="cmScale">' + foglio() + '</div></div></div>';
+  /* ── domeniche dei gruppi (come in Congregation Manager): una riga per comitiva, salvata da sola ── */
+  const DOM = { d: null, mese: '', carico: false };
+  const ctxDom = () => (S.vista === 'domeniche' ? DOM.d : C.d);
+  function righeDom() { const d = ctxDom(); return (d.foglio && d.foglio.domeniche) || []; }
+  function salvaDom(riga, togli) {
+    const d = ctxDom();
+    return P.srv('salvaDomenica', d.mese, riga, !!togli).then((r) => { d.foglio.domeniche = r; if (C.pub && C.pub.pubblicato && S.vista === 'comitive') C.pub.cambiato = true; rd(); }).catch((e) => P.toast(e.message, true));
   }
-  function foglio() {
-    const v = C.versione, me = v.slice(0, 2) === 'p:' ? v.slice(2) : '', tab = v === 'tabella';
-    const mk = (id) => (id ? (id === me ? '<mark>' + esc(sigla(id)) + '</mark>' : esc(sigla(id))) : '');
-    const base = [...new Map(tutte().filter((c) => !c.aggiunta).map((c) => [zn(c.data).dow + '|' + c.ora, c])).values()].sort((a, b) => ((zn(a.data).dow + 6) % 7) - ((zn(b.data).dow + 6) % 7));
-    let h = '<article class="pgm cm pgm-print"><header class="pgm-head"><div class="left"><div class="cong">Napoli Pianura Trencia</div><div class="gold"></div><h1>Programma comitive</h1><div class="mese">' + nomeMese(C.mese).toUpperCase() + '</div>' +
-      '<div class="cm-orari">' + base.map((c) => '<div><span>' + G[zn(c.data).dow] + ' · ' + esc(c.ora) + '</span><b>' + esc(c.luogo) + '</b></div>').join('') + '</div></div>';
-    if (me) {
-      const mie = attive().filter((c) => C.st.assegnati[c.k] === me);
-      h += '<div class="cm-mio"><span>Le mie comitive · ' + mie.length + '</span><b class="nm">' + esc(nomeIntero(me)) + '</b>' + mie.map((c) => '<div><b>' + esc(GB[zn(c.data).dow] + ' ' + zn(c.data).d) + '</b> · ' + esc(c.ora) + ' · ' + esc(c.luogo) + '</div>').join('') + '</div>';
-    }
-    h += '</header>';
-    C.d.settimane.forEach((w, i) => {
-      const righe = w.comitive.filter((c) => !C.st.nascoste[c.k]).map((c) => {
-        const t = zn(c.data), off = !!c.annullata;
-        return '<tr class="' + (off ? 'off' : '') + '"><td class="dq"><small>' + GB[t.dow] + '</small><b>' + t.d + '</b></td><td class="ora">' + esc(c.ora) + '</td><td class="luogo">' + esc(c.luogo) + (C.st.note[c.k] ? ' · ' + esc(C.st.note[c.k]) : '') + '</td><td class="chi">' + (off ? esc(c.motivo || 'Non si tiene') : mk(C.st.assegnati[c.k])) + '</td></tr>';
-      });
-      const dm = C.st.domeniche[w.domenica] || {};
-      if (dm.gruppi || dm.conduttore) {
-        const t = zn(w.domenica);
-        righe.push('<tr class="dom"><td class="dq"><small>' + GB[t.dow] + '</small><b>' + t.d + '</b></td><td class="ora">Gruppi</td><td class="luogo">' + esc(dm.gruppi || '') + '</td><td class="chi">' + (tab ? '' : esc(dm.conduttore || '')) + '</td></tr>');
-      }
-      if (!righe.length && !w.speciale) return;
-      h += '<section class="pgm-week"><h2><b>' + (i + 1) + 'ª settimana</b><i>|</i><span>' + intervallo(w.lunedi) + '</span>' + (w.speciale ? '<i>|</i><span>' + esc(w.speciale.nome) + '</span>' : '') + '</h2><table class="cm-t"><tbody>' + righe.join('') + '</tbody></table></section>';
+  function domenica(w, n, mio) {
+    const F = P.fogliCM, d = ctxDom(), ids = d.foglio.gruppi, data = w.domenica;
+    const qui = righeDom().filter((r) => r.data === data && (!mio || r.gruppi.indexOf(mio) >= 0));
+    const tutteQui = righeDom().filter((r) => r.data === data);
+    const liberi = ids.filter((g) => !tutteQui.some((r) => r.gruppi.indexOf(g) >= 0));
+    const sedi = d.sedi || [];
+    const cond = (d.conduttori || []).filter((p) => p.abilitato), condIds = new Set(cond.map((p) => p.id));
+    const altri = (d.foglio.fratelli || []).filter((p) => !condIds.has(p.id));
+    const vis = ((d.settimane.find((x) => x.domenica === data) || {}).comitive || []).filter((c) => c.data === data);
+    let h = '<div class="cm-dom"><p class="h">Domenica <b>' + esc(lungo(data).replace(/^Domenica /, '')) + '</b> · comitive dei gruppi</p>';
+    qui.forEach((r, i) => {
+      const id = 'r' + r.id;
+      h += '<div class="cm-slot' + (r.nascosta ? ' nasc' : '') + '">' + (tutteQui.length > 1 || r.nascosta ? '<small style="color:var(--slate);font-weight:600">' + (tutteQui.length > 1 ? (tutteQui.indexOf(r) + 1) + 'ª comitiva' : '') + (r.nascosta ? ' · nascosta dal foglio' : '') + '</small>' : '') +
+        '<div class="gr">' + (mio ? '<span class="cm-chip on">' + esc(mio) + '</span>' : ids.map((g) => '<button class="cm-chip' + (r.gruppi.indexOf(g) >= 0 ? ' on' : '') + '" data-cmd="gruppo" data-id="' + esc(r.id) + '" data-g="' + esc(g) + '">' + esc(g) + '</button>').join('')) +
+        '<span class="et">' + esc(F.etichettaGruppi(r.gruppi, ids)) + '</span>' +
+        (mio ? '' : '<button class="cm-ic" data-cmd="nascondi" data-id="' + esc(r.id) + '" title="' + (r.nascosta ? 'Rimetti sul foglio' : 'Nascondi dal foglio (resta qui)') + '">' + (r.nascosta ? 'Mostra' : 'Nascondi') + '</button>') +
+        (!mio || r.gruppi.join() === mio ? '<button class="cm-ic x" data-cmd="togli" data-id="' + esc(r.id) + '" title="Togli questa comitiva">✕</button>' : '') + '</div>' +
+        '<div class="rr"><input type="time" data-cmd="ora" data-id="' + esc(r.id) + '" value="' + esc(String(r.ora).padStart(5, '0')) + '">' +
+        '<input list="cmSedi" data-cmd="luogo" data-id="' + esc(r.id) + '" value="' + esc(r.luogo) + '" placeholder="Luogo"></div>' +
+        '<select data-cmd="cond" data-id="' + esc(r.id) + '"><option value="">— conduttore da comunicare —</option>' +
+        '<optgroup label="Conduttori">' + cond.map((p) => '<option value="' + p.id + '"' + (r.conduttore === p.id ? ' selected' : '') + '>' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</optgroup>' +
+        '<optgroup label="Altri fratelli">' + altri.map((p) => '<option value="' + p.id + '"' + (r.conduttore === p.id ? ' selected' : '') + '>' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</optgroup>' +
+        '<optgroup label="Altro"><option value="@scrivi"' + (!r.conduttore && r.esterno ? ' selected' : '') + '>Scrivo io il nome (es. sorvegliante di circoscrizione)…</option></optgroup></select>' +
+        (!r.conduttore && (r.esterno || C.scrivi === r.id) ? '<input data-cmd="esterno" data-id="' + esc(r.id) + '" value="' + esc(r.esterno || '') + '" placeholder="Nome e cognome">' : '') + '</div>';
     });
-    return h + '<footer class="pgm-foot"><span><b>Programma comitive</b><span>' + P.cap(nomeMese(C.mese)) + '</span></span><span class="code">cmpgm' + C.mese.slice(2, 4) + C.mese.slice(5, 7) + (tab ? '-T' : me ? '-P' : '-G') + '</span></footer></article>';
+    if (mio) {
+      if (liberi.indexOf(mio) >= 0) h += '<div class="cm-add"><button class="btn small soft" data-cmd="crea" data-d="' + data + '" data-gs="' + esc(mio) + '">+ Comitiva del gruppo ' + esc(mio) + '</button></div>';
+    } else if (liberi.length) {
+      const coppia = F.coppiaDellaDomenica(ids, n);
+      h += '<div class="cm-add">' + (liberi.length === ids.length ? '<button class="btn small soft" data-cmd="crea" data-d="' + data + '" data-gs="' + esc(ids.join('|')) + '">+ Tutti i gruppi in Sala</button>' : '') +
+        (liberi.length === ids.length && ids.length >= 4 ? '<button class="btn small soft" data-cmd="due" data-d="' + data + '">+ Due comitive in Sala: ' + esc(ids[0] + '-' + ids[1]) + ' e ' + esc(ids[2] + '-' + ids[3]) + '</button>' : '') +
+        (ids.length > 2 && coppia.every((g) => liberi.indexOf(g) >= 0) ? '<button class="btn small soft" data-cmd="crea" data-d="' + data + '" data-gs="' + esc(coppia.join('|')) + '">+ ' + esc(F.etichettaGruppi(coppia, ids)) + '</button>' : '') +
+        '<select data-cmd="uno" data-d="' + data + '"><option value="">+ Un gruppo…</option>' + liberi.map((g) => '<option value="' + esc(g) + '">Gruppo ' + esc(g) + '</option>').join('') + '</select></div>';
+    }
+    vis.filter((c) => !c.annullata).forEach((c) => { h += '<p class="cm-vis">Comitiva della domenica ore ' + esc(c.ora) + ' (dal calendario): sul foglio va accanto al titolo «Domenica».</p>'; });
+    if (!mio && qui.length) h += '<div><button class="btn small soft" data-cmd="ripeti" data-d="' + data + '" title="Copia gruppi, orario e luogo sulle domeniche ancora vuote del mese; i conduttori li scegli tu">↻ Ripeti per il mese</button></div>';
+    if (!qui.length && !vis.length) h += '<p class="nota" style="margin:0">Nessuna comitiva inserita: sul foglio questa domenica resta vuota.</p>';
+    return h + '</div>';
   }
+  const sediDatalist = () => '<datalist id="cmSedi">' + ((ctxDom() || {}).sedi || []).map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist>';
+  function nuovaRiga(data, gruppi, n) {
+    const d = ctxDom(), sedi = d.sedi || [];
+    const sala = sedi.find((x) => /sala/i.test(x)) || sedi[0] || 'Sala del Regno';
+    return { id: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), data: data, ora: '09:30', luogo: sala, gruppi: gruppi, n: n || 1, conduttore: '', esterno: '' };
+  }
+  function trova(id) { return righeDom().find((r) => r.id === id); }
+  function azioneDom(u) {
+    const c = u.dataset.cmd, r = u.dataset.id ? trova(u.dataset.id) : null, mio = S.vista === 'domeniche' ? DOM.d.gruppo : '';
+    if (c === 'gruppo') {
+      const g = u.dataset.g, x = Object.assign({}, r, { gruppi: r.gruppi.slice() });
+      if (x.gruppi.indexOf(g) >= 0) { x.gruppi = x.gruppi.filter((y) => y !== g); return x.gruppi.length ? salvaDom(x) : salvaDom(r, true); }
+      const altrove = righeDom().find((y) => y.data === r.data && y.id !== r.id && y.gruppi.indexOf(g) >= 0);
+      x.gruppi.push(g); x.gruppi.sort((a, b) => ctxDom().foglio.gruppi.indexOf(a) - ctxDom().foglio.gruppi.indexOf(b));
+      const via = altrove ? (altrove.gruppi.length > 1 ? salvaDom(Object.assign({}, altrove, { gruppi: altrove.gruppi.filter((y) => y !== g) })) : salvaDom(altrove, true)) : Promise.resolve();
+      return via.then(() => salvaDom(x));
+    }
+    if (c === 'nascondi') return salvaDom(Object.assign({}, r, { nascosta: !r.nascosta }));
+    if (c === 'togli') { if (!confirm('Tolgo questa comitiva della domenica?')) return; return salvaDom(r, true); }
+    if (c === 'crea') return salvaDom(nuovaRiga(u.dataset.d, u.dataset.gs.split('|')));
+    if (c === 'due') { const ids = ctxDom().foglio.gruppi; return salvaDom(nuovaRiga(u.dataset.d, ids.slice(0, 2), 1)).then(() => salvaDom(nuovaRiga(u.dataset.d, ids.slice(2, 4), 2))); }
+    if (c === 'ripeti') {
+      const mod = righeDom().filter((y) => y.data === u.dataset.d);
+      const vuote = ctxDom().settimane.map((w) => w.domenica).filter((dd) => dd !== u.dataset.d && !righeDom().some((y) => y.data === dd));
+      if (!vuote.length) return P.toast('Nessuna domenica vuota da riempire');
+      let p = Promise.resolve();
+      vuote.forEach((dd) => mod.forEach((m) => { p = p.then(() => salvaDom(Object.assign(nuovaRiga(dd, m.gruppi.slice(), m.n), { ora: m.ora, luogo: m.luogo }))); }));
+      return p.then(() => P.toast('Copiata su ' + vuote.length + (vuote.length === 1 ? ' domenica' : ' domeniche')));
+    }
+    return mio;
+  }
+  function cambiaDom(u) {
+    const c = u.dataset.cmd, r = u.dataset.id ? trova(u.dataset.id) : null;
+    if (c === 'uno') { if (!u.value) return; return salvaDom(nuovaRiga(u.dataset.d, [u.value])); }
+    if (!r) return;
+    if (c === 'ora' && u.value) return salvaDom(Object.assign({}, r, { ora: u.value }));
+    if (c === 'luogo') return salvaDom(Object.assign({}, r, { luogo: u.value.trim() }));
+    if (c === 'esterno') return salvaDom(Object.assign({}, r, { esterno: u.value.trim(), conduttore: '' }));
+    if (c === 'cond') { if (u.value === '@scrivi') { C.scrivi = r.id; return rd(); } return salvaDom(Object.assign({}, r, { conduttore: u.value, esterno: '' })); }
+  }
+  /** Il sorvegliante o l'assistente di un gruppo: le domeniche del suo gruppo. */
+  P.viste.domeniche = function () {
+    const h0 = P.testata('Domeniche del gruppo', DOM.d ? esc(DOM.d.nomeMese) : '', 'home');
+    if (!DOM.d) {
+      if (!DOM.carico) { DOM.carico = true; P.srv('domenicheGruppo', DOM.mese || '').then((d) => { DOM.d = d; DOM.mese = d.mese; DOM.carico = false; P.disegna(); }).catch((e) => { DOM.carico = false; P.toast(e.message, true); }); }
+      return h0 + '<p class="nota">Carico…</p>';
+    }
+    const oggi = new Date().toISOString().slice(0, 7), mesi = [0, 1, 2].map((n) => meseDopo(oggi, n));
+    let h = h0 + '<div class="rp-bar"><select data-cmd="meseDom">' + mesi.map((m) => '<option value="' + m + '"' + (m === DOM.mese ? ' selected' : '') + '>' + P.cap(nomeMese(m)) + '</option>').join('') + '</select></div>';
+    h += '<p class="rp-aiuto">Qui compili le comitive della domenica del gruppo <b>' + esc(DOM.d.gruppo) + '</b>: orario, luogo e conduttore. Le comitive con altri gruppi le vedi e puoi metterci il conduttore; come si dividono i gruppi lo decide chi cura il programma delle comitive.</p>' + sediDatalist();
+    DOM.d.settimane.forEach((w, i) => { h += '<section class="cm-wk"><h3><b>' + (i + 1) + 'ª settimana</b><span>' + intervallo(w.lunedi) + '</span></h3>' + domenica(Object.assign({ comitive: [] }, w), i, DOM.d.gruppo) + '</section>'; });
+    return h;
+  };
+  P.app.addEventListener('click', (e) => {
+    if (S.vista !== 'comitive' && S.vista !== 'domeniche') return;
+    const u = e.target.closest('[data-cmd]');
+    if (!u || u.tagName === 'SELECT' || u.tagName === 'INPUT') return;
+    azioneDom(u);
+  });
+  P.app.addEventListener('change', (e) => {
+    if (S.vista !== 'comitive' && S.vista !== 'domeniche') return;
+    const u = e.target.closest('[data-cmd]');
+    if (!u) return;
+    if (u.dataset.cmd === 'meseDom') { DOM.mese = u.value; DOM.d = null; return P.disegna(); }
+    cambiaDom(u);
+  });
+
+  /* ── foglio A4 (come in Congregation Manager) ── */
+  function vistaFoglio() {
+    const F = P.fogliCM, D = C.d, imp = C.st.impostazioni || (C.st.impostazioni = {});
+    const variante = pref('cm-comitive-variante', 'schede'), margini = pref('cm-margini', 'standard');
+    const pers = F.conduttoriComitive(D);
+    let h = '<div class="rp-bar"><select data-cm="versione"><option value="generale"' + (C.versione === 'generale' ? ' selected' : '') + '>Programma generale · nominati</option><option value="tabella"' + (C.versione === 'tabella' ? ' selected' : '') + '>Tabella informazioni · senza conduttori della domenica</option>' +
+      pers.map((p) => '<option value="p:' + p.id + '"' + (C.versione === 'p:' + p.id ? ' selected' : '') + '>Personale · ' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</select>' +
+      '<span class="seg">' + [['schede', 'Schede'], ['tabella', 'Tabella']].map((v) => '<button data-cm="variante" data-v="' + v[0] + '" class="' + (variante === v[0] ? 'on' : '') + '">' + v[1] + '</button>').join('') + '</span>' +
+      '<select data-cm="margini">' + Object.keys(F.MARGINI).map((k) => '<option value="' + k + '"' + (margini === k ? ' selected' : '') + '>Margini ' + F.MARGINI[k].label.toLowerCase() + '</option>').join('') + '</select>' +
+      '<button class="btn" data-cm="stampa" style="background:#A86F00;border-color:#A86F00">Stampa / Salva PDF</button></div>' +
+      '<p class="rp-aiuto">Nella finestra di stampa scegli «Salva come PDF», A4, margini «Nessuno», grafica di sfondo attiva. Le comitive nascoste non compaiono; quelle annullate restano grigie con il motivo.</p>';
+    const piede = (D.foglio && D.foglio.piede) || {};
+    h += '<details class="cm-pan"><summary>Impostazioni del foglio · sorvegliante, assistenti e piè di pagina</summary><div class="g">' +
+      '<label>Sorvegliante del servizio<input data-cm="imp" data-v="sorvegliante" value="' + esc(imp.sorvegliante || '') + '" placeholder="es. P. Guerrazzi"></label>' +
+      '<label>Assistenti<input data-cm="imp" data-v="assistenti" value="' + esc(imp.assistenti || '') + '" placeholder="es. L. Masullo, D. Diodati"></label>' +
+      '<label>Domeniche (se non ci sono comitive dei gruppi)<input data-cm="imp" data-v="domeniche" value="' + esc(imp.domeniche || '') + '" placeholder="tutte le domeniche"></label></div>' +
+      '<p class="nota" style="margin:10px 0 0">Piè di pagina (vale per tutti i mesi). Vuoto = il testo di sempre. Puoi usare {mese}, {sorvegliante}, {assistenti}.</p>' +
+      F.PARTI_PIEDE.map((x) => '<div class="pp"><span>' + x[1] + '</span><input type="text" data-cm="piede" data-v="' + x[0] + '" value="' + esc(piede[x[0]] || '') + '" placeholder="' + esc(x[2]) + '"><label style="display:flex;gap:4px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" data-cm="piedeNo" data-v="' + x[0] + '"' + ((piede.nascosti || []).indexOf(x[0]) >= 0 ? ' checked' : '') + '> nascondi</label></div>').join('') + '</details>';
+    // orario e luogo per comitiva
+    const L = F.leggiLayout(imp), uscite = [];
+    D.settimane.forEach((w) => w.comitive.forEach((c) => { if (!c.annullata && !C.st.nascoste[c.k]) uscite.push(c); }));
+    h += '<details class="cm-pan"><summary>Orario e luogo sul foglio</summary><p class="nota" style="margin:6px 0 0">Tocca <b>Orario</b> o <b>Luogo</b> per accenderli o spegnerli in quella comitiva: compaiono sopra il nome. <b>Testo</b> li sostituisce con quello che scrivi. Quelle con «auto» seguono la regola: solo fuori dall\'orario solito.</p>' +
+      '<div class="rp-bar" style="margin-top:6px"><button class="btn small soft" data-cm="metaTutte" data-v="ora_luogo">Mostra in tutte</button><button class="btn small soft" data-cm="metaTutte" data-v="ora">Solo orario in tutte</button><button class="btn small soft" data-cm="metaTutte" data-v="nascondi">Nascondi in tutte</button><button class="btn small soft" data-cm="metaTutte" data-v="">Solo fuori orario</button></div><ul>' +
+      uscite.map((c) => {
+        const modo = (L.meta || {})[c.k] || 'auto', std = F.standard(D, c), pred = L.predefinito || 'ora_luogo';
+        const eff = modo === 'auto' ? (std ? 'nascondi' : pred) : modo;
+        const o = eff !== 'testo' && (eff === 'ora_luogo' || eff === 'ora'), lu = eff !== 'testo' && (eff === 'ora_luogo' || eff === 'luogo');
+        return '<li><b>' + F.giornoSigla(c.data) + ' ' + F.day(c.data).d + ' · ' + esc(c.ora) + '</b>' + (modo === 'auto' ? '<i>auto</i>' : '') +
+          '<button class="chip2' + (o ? ' on' : '') + '" data-cm="meta" data-k="' + esc(c.k) + '" data-v="o">Orario</button><button class="chip2' + (lu ? ' on' : '') + '" data-cm="meta" data-k="' + esc(c.k) + '" data-v="l">Luogo</button><button class="chip2' + (eff === 'testo' ? ' on' : '') + '" data-cm="meta" data-k="' + esc(c.k) + '" data-v="t">Testo</button>' +
+          (eff === 'testo' ? '<input data-cm="metaTesto" data-k="' + esc(c.k) + '" value="' + esc((L.testo || {})[c.k] || '') + '" placeholder="es. ore 16 · Parco" style="flex:1;min-width:140px;border:1px solid var(--rule);border-radius:6px;padding:4px 6px">' : '') + '</li>';
+      }).join('') + '</ul></details>';
+    // caratteri
+    const car = L.caratteri || {}, riq = L.riquadri || {};
+    const sl = (nome, dv, v, cls) => '<label class="sl' + (cls || '') + '"><span>' + esc(nome) + '</span><input type="range" min="' + F.MIN_SCALA + '" max="' + F.MAX_SCALA + '" step="0.05" value="' + v + '" ' + dv + '><span style="text-align:right">' + Math.round(v * 100) + '%</span>' + (cls ? '<button class="chip2" ' + dv.replace('data-cm="riq"', 'data-cm="riq0"') + '>100%</button>' : '') + '</label>';
+    h += '<details class="cm-pan"><summary>Caratteri del foglio</summary><div style="display:grid;gap:6px;margin-top:8px">' +
+      F.ZONE.map((z) => sl(z[1], 'data-cm="car" data-v="' + z[0] + '"', car[z[0]] || 1)).join('') + '</div>' +
+      '<p class="nota" style="margin:10px 0 4px">Per riquadro: ingrandisci o rimpicciolisci solo un riquadro (giorno, nomi e orario al suo interno), sopra le misure generali.</p>' +
+      F.riquadri(D).map((g) => '<b style="font-size:12px">' + esc(g.titolo) + '</b><div style="display:grid;gap:4px;margin:2px 0 6px">' + g.voci.map((r) => sl(r.label, 'data-cm="riq" data-k="' + esc(r.chiave) + '"', riq[r.chiave] || 1, ' r')).join('') + '</div>').join('') +
+      '<div style="text-align:right"><button class="btn small soft" data-cm="layout0">Ripristina</button></div></details>';
+    return h + '<div class="rp-anteprima cm4"><div class="pgm-fit" id="cmFit"><div class="pgm-scale" id="cmScale">' + F.carta(D, chiDi(C.versione), variante, margini) + '</div></div></div>';
+  }
+  function layout() { const imp = C.st.impostazioni || (C.st.impostazioni = {}); imp.layout = imp.layout || {}; ['caratteri', 'meta', 'testo', 'riquadri'].forEach((x) => { imp.layout[x] = imp.layout[x] || {}; }); return imp.layout; }
   function adatta() {
     const fit = document.getElementById('cmFit'), sc = document.getElementById('cmScale');
     if (!fit || !sc) return;
@@ -261,6 +394,19 @@
     if (k === 'svuota') { if (!confirm('Tolgo tutti i conduttori del mese?')) return; C.st.assegnati = {}; C.motivi = {}; cambiato(); return rd(); }
     if (k === 'nascondi') { if (u.checked) C.st.nascoste[u.dataset.k] = true; else delete C.st.nascoste[u.dataset.k]; cambiato(); return rd(); }
     if (k === 'stampa') { adatta(); return window.print(); }
+    if (k === 'variante') { salvaPref('cm-comitive-variante', v); return rd(); }
+    if (k === 'meta') {
+      const L = layout(), id = u.dataset.k, F = P.fogliCM, c = C.d.settimane.flatMap((w) => w.comitive).find((x) => x.k === id);
+      const modo = L.meta[id] || 'auto', eff = modo === 'auto' ? (F.standard(C.d, c) ? 'nascondi' : (L.predefinito || 'ora_luogo')) : modo;
+      let o = eff !== 'testo' && (eff === 'ora_luogo' || eff === 'ora'), lu = eff !== 'testo' && (eff === 'ora_luogo' || eff === 'luogo');
+      if (v === 't') L.meta[id] = eff === 'testo' ? 'auto' : 'testo';
+      else { if (v === 'o') o = !o; else lu = !lu; L.meta[id] = o && lu ? 'ora_luogo' : o ? 'ora' : lu ? 'luogo' : 'nascondi'; }
+      if (L.meta[id] === 'auto') delete L.meta[id];
+      cambiato(); return rd();
+    }
+    if (k === 'metaTutte') { const L = layout(); L.meta = {}; if (v) C.d.settimane.forEach((w) => w.comitive.forEach((c) => { if (!c.annullata) L.meta[c.k] = v; })); cambiato(); return rd(); }
+    if (k === 'riq0') { delete layout().riquadri[u.dataset.k]; cambiato(); return rd(); }
+    if (k === 'layout0') { if (!confirm('Riporto il foglio alle misure normali?')) return; C.st.impostazioni.layout = {}; cambiato(); return rd(); }
     if (k === 'pubblica') {
       if (!confirm('Pubblico in bacheca il programma comitive di ' + nomeMese(C.mese) + ' così com\'è adesso?')) return;
       u.disabled = true;
@@ -278,6 +424,16 @@
     if (k === 'chi') { if (u.value) C.st.assegnati[u.dataset.k] = u.value; else delete C.st.assegnati[u.dataset.k]; delete C.motivi[u.dataset.k]; cambiato(); return rd(); }
     if (k === 'nota') { if (u.value.trim()) C.st.note[u.dataset.k] = u.value.trim(); else delete C.st.note[u.dataset.k]; return cambiato(); }
     if (k === 'dom') { const d = C.st.domeniche[u.dataset.k] || (C.st.domeniche[u.dataset.k] = {}); d[u.dataset.v] = u.value.trim(); return cambiato(); }
-    if (k === 'versione') { C.versione = u.value; return P.disegna(); }
+    if (k === 'versione') { C.versione = u.value; return rd(); }
+    if (k === 'margini') { salvaPref('cm-margini', u.value); return rd(); }
+    if (k === 'imp') { (C.st.impostazioni = C.st.impostazioni || {})[u.dataset.v] = u.value.trim(); cambiato(); return rd(); }
+    if (k === 'metaTesto') { layout().testo[u.dataset.k] = u.value; cambiato(); return rd(); }
+    if (k === 'car' || k === 'riq') { const L = layout(), x = Number(u.value); if (k === 'car') { if (x === 1) delete L.caratteri[u.dataset.v]; else L.caratteri[u.dataset.v] = x; } else { if (x === 1) delete L.riquadri[u.dataset.k]; else L.riquadri[u.dataset.k] = x; } cambiato(); return rd(); }
+    if (k === 'piede' || k === 'piedeNo') {
+      const pd = Object.assign({ nascosti: [] }, C.d.foglio.piede || {});
+      if (k === 'piede') { if (u.value.trim()) pd[u.dataset.v] = u.value.trim(); else delete pd[u.dataset.v]; }
+      else pd.nascosti = u.checked ? pd.nascosti.concat([u.dataset.v]) : pd.nascosti.filter((x) => x !== u.dataset.v);
+      return P.srv('salvaPiedeComitive', pd).then((r) => { C.d.foglio.piede = r; rd(); P.toast('Piè di pagina salvato'); }).catch((err) => P.toast(err.message, true));
+    }
   });
 })();

@@ -32,7 +32,8 @@ const LISTE = {
   14: ['Attivo', 'Trasferito', 'Non più attivo'],
 };
 const GRIGIO = '#E3E3E3';
-const RUOLI_REPARTO_ = ['', 'Coordinatore', 'Assistente'];
+const RUOLI_REPARTO_ = ['', 'Sorvegliante', 'Coordinatore del reparto', 'Assistente'];
+const RUOLI_GRUPPO_ = ['', 'Sorvegliante', 'Assistente'];
 
 /* ───────────────────────── Pagina ───────────────────────── */
 
@@ -170,7 +171,7 @@ function struttura_(sh) {
     else if (LISTE[c]) tipo = 'lista';
     if (c === C.id) tipo = 'calc';
     col.push({ c: c, titolo: titolo, sezione: c < PRIMA_ABIL ? 'ANAGRAFICA' : sez, colore: coloreSezione_(c < PRIMA_ABIL ? '' : sez),
-      regola: tipo === 'check' || ruoli ? (regola || 'tutti') : '', ambito: ambito, tipo: tipo, opzioni: ruoli ? RUOLI_REPARTO_ : LISTE[c] || null, ruolo: ruoli,
+      regola: tipo === 'check' || ruoli ? (regola || 'tutti') : '', ambito: ambito, tipo: tipo, opzioni: ruoli ? (/gruppo/i.test(titolo) ? RUOLI_GRUPPO_ : RUOLI_REPARTO_) : LISTE[c] || null, ruolo: ruoli,
       riservata: c === C.tel || sez.toUpperCase() === 'NOTE' });
   }
   return col;
@@ -202,6 +203,8 @@ function portale(k) {
   segnaAccesso_(io);
   const out = { io: { id: io.id, nome: io.nome, ambiti: io.ambiti, tutto: io.tutto }, nomiAmbiti: NOMI_AMBITI };
   try { out.io.wa = waQualcosa_(waVede_(io)); } catch (e) { out.io.wa = false; }
+  try { out.io.gruppo = gruppoGuidato_(io); } catch (e) { out.io.gruppo = ''; }
+  try { out.io.pulizie = puoPulizie_(io); } catch (e) { out.io.pulizie = false; }
   out.sondaggi = sondaggiPer_(io.id);
   if (!io.ambiti.length) return out; // solo sondaggio
   const sh = SpreadsheetApp.getActive().getSheetByName(FOGLIO);
@@ -261,6 +264,7 @@ function salva(k, modifiche) {
         val = String(val || '');
         if (x.opzioni.indexOf(val) < 0) throw new Error('Valore non ammesso per «' + x.titolo + '».');
         if (x.ruolo && val && !abilitato_(x.regola, r[C.sesso - 1], r[C.nomina - 1], r[C.servizio - 1])) throw new Error('I ruoli nei reparti sono solo per ' + x.regola + '.');
+        if (x.ruolo && val === 'Sorvegliante' && !/gruppo/i.test(x.titolo) && r[C.nomina - 1] !== 'Anziano') throw new Error('Il sorvegliante di un reparto è un anziano.');
         if (x.c === C.ruolo && val === 'SDG' && r[C.nomina - 1] !== 'Servitore di ministero') throw new Error('SDG è solo per i servitori di ministero.');
         if (x.c === C.ruolo && val === 'ASS' && r[C.nomina - 1] === 'Nessuna') throw new Error('ASS è solo per anziani e servitori.');
       } else {
@@ -1384,14 +1388,87 @@ function comitive(k, mese) {
     conduttori: lista.map((p) => ({ id: p.id, sigla: sg[p.id], nome: p.n, cognome: p.cognome, gruppo: p.gruppo, abilitato: !!(colC ? p.riga[colC.c - 1] === true : p.nominato) })),
     offerte: offerte, risposto: risposto, previsti: Object.keys(rd.previsti), storico: storico, stato: stato,
     sedi: (cal.comitive || []).map((c) => c.luogo).filter((x, i, a) => x && a.indexOf(x) === i),
+    foglio: datiFoglioComitive_(mese, cal), puoTutto: true,
   };
+}
+/** Le domeniche dei gruppi di un mese: una riga per comitiva { id, data, ora, luogo, gruppi:[nomi], conduttore, esterno, nascosta }. */
+function domenicheMese_(mese) { return (leggiImpostazione_('domeniche:' + mese, { righe: [] }).righe || []); }
+/** I gruppi di servizio, dall'anagrafica (colonna Gruppo), in ordine. */
+function gruppiServizio_() {
+  return persone_().map((p) => p.gruppo).filter((g, i, a) => g && a.indexOf(g) === i).sort((a, b) => a.localeCompare(b, 'it', { numeric: true }));
+}
+/** Quello che serve al foglio comitive (come in Congregation Manager) oltre al programma: colonne, gruppi, domeniche, piè di pagina, fratelli. */
+function datiFoglioComitive_(mese, cal, domeniche) {
+  cal = cal || leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const fratelli = persone_().filter((p) => p.sesso === 'Uomo').map((p) => ({ id: p.id, nome: p.n, cognome: p.cognome, gruppo: p.gruppo }))
+    .sort((a, b) => (a.cognome + a.nome).localeCompare(b.cognome + b.nome, 'it'));
+  return { colonne: (cal.comitive || []).map((c, i) => ({ id: 'c' + i, giorno: Number(c.g) === 0 ? 7 : Number(c.g), ora: String(c.ora || ''), luogo: String(c.luogo || '') })),
+    gruppi: gruppiServizio_(), domeniche: domeniche || domenicheMese_(mese), piede: leggiImpostazione_('comitive:piede', {}), fratelli: fratelli,
+    cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia') };
+}
+/** Il gruppo di cui questa persona è sorvegliante o assistente (colonna «Gruppo di servizio» dei ruoli), oppure ''. */
+function gruppoGuidato_(io) {
+  const p = persone_().find((x) => x.id === io.id);
+  if (!p || !p.gruppo) return '';
+  const r = ruoliReparto_(p);
+  return r['Gruppo di servizio'] ? p.gruppo : '';
+}
+/** Una domenica salvata da sola (sotto chiave, così chi compila contemporaneamente non si sovrascrive).
+ *  Chi ha l'ambito Comitive cambia tutto; il sorvegliante o l'assistente di un gruppo solo le comitive del suo gruppo. */
+function salvaDomenica(k, mese, riga, togli) {
+  const io = richiedi_(k);
+  if (!/^\d{4}-\d{2}$/.test(mese || '')) throw new Error('Mese non valido.');
+  const tutto = haAmbito_(io, 'comitive'), mio = gruppoGuidato_(io);
+  if (!tutto && !mio) throw new Error('Non puoi modificare le domeniche dei gruppi.');
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const righe = domenicheMese_(mese);
+    const i = righe.findIndex((r) => r.id === riga.id), prima = i >= 0 ? righe[i] : null;
+    if (!tutto) {
+      const gp = prima ? prima.gruppi : [], gn = togli ? [] : (riga.gruppi || []);
+      const cambiati = gp.filter((g) => gn.indexOf(g) < 0).concat(gn.filter((g) => gp.indexOf(g) < 0));
+      if ((prima && gp.indexOf(mio) < 0) || cambiati.some((g) => g !== mio) || (togli && gp.some((g) => g !== mio)) || (!prima && gn.join() !== mio))
+        throw new Error('Puoi modificare solo le comitive del gruppo ' + mio + '.');
+    }
+    if (togli) { if (i >= 0) righe.splice(i, 1); }
+    else {
+      const pulita = { id: String(riga.id || ('d' + Date.now().toString(36))), data: String(riga.data), ora: String(riga.ora || ''), luogo: String(riga.luogo || ''),
+        gruppi: (riga.gruppi || []).map(String), n: Number(riga.n) || 1, conduttore: String(riga.conduttore || ''), esterno: String(riga.esterno || '').slice(0, 60), nascosta: !!riga.nascosta };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(pulita.data)) throw new Error('Data non valida.');
+      if (i >= 0) righe[i] = pulita; else righe.push(pulita);
+    }
+    righe.sort((a, b) => (a.data + a.ora + a.n).localeCompare(b.data + b.ora + b.n));
+    scriviImpostazione_('domeniche:' + mese, { righe: righe });
+    registroUnaVolta_(io, 'domeniche', 'domeniche dei gruppi di ' + nomeMese_(mese) + ' modificate');
+    return righe;
+  } finally { lock.releaseLock(); }
+}
+/** Il sorvegliante o l'assistente di un gruppo: le domeniche del mese, per compilare quelle del suo gruppo. */
+function domenicheGruppo(k, mese) {
+  const io = richiedi_(k), mio = gruppoGuidato_(io);
+  if (!mio && !haAmbito_(io, 'comitive')) throw new Error('Non hai un gruppo di servizio da compilare.');
+  mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : prossimoMese_();
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  return { mese: mese, nomeMese: nomeMese_(mese), gruppo: mio, settimane: settimane_(cal, mese).map((w) => ({ lunedi: w.lunedi, domenica: w.al })),
+    foglio: datiFoglioComitive_(mese, cal), sedi: (cal.comitive || []).map((c) => c.luogo).filter((x, i, a) => x && a.indexOf(x) === i) };
+}
+/** Piè di pagina del foglio comitive (per tutti i mesi). */
+function salvaPiedeComitive(k, piede) {
+  const io = richiediAmbito_(k, 'comitive');
+  const out = {}; ['titolo', 'sotto', 'centro', 'codice'].forEach((x) => { if (piede && String(piede[x] || '').trim()) out[x] = String(piede[x]).trim().slice(0, 120); });
+  out.nascosti = ((piede && piede.nascosti) || []).filter((x) => ['titolo', 'sotto', 'centro', 'codice'].indexOf(x) >= 0);
+  scriviImpostazione_('comitive:piede', out);
+  registroUnaVolta_(io, 'comitive', 'piè di pagina del foglio comitive');
+  return out;
 }
 function salvaComitive(k, mese, stato) {
   const io = richiediAmbito_(k, 'comitive');
   if (!/^\d{4}-\d{2}$/.test(mese || '')) throw new Error('Mese non valido.');
   const ids = {}; persone_().forEach((p) => { ids[p.id] = true; });
   const ass = {}; Object.keys(stato.assegnati || {}).forEach((c) => { if (ids[stato.assegnati[c]]) ass[c] = stato.assegnati[c]; });
-  const pulito = { assegnati: ass, nascoste: stato.nascoste || {}, note: stato.note || {}, domeniche: stato.domeniche || {} };
+  const imp = stato.impostazioni || {};
+  const pulito = { assegnati: ass, nascoste: stato.nascoste || {}, note: stato.note || {}, domeniche: stato.domeniche || {},
+    impostazioni: { sorvegliante: String(imp.sorvegliante || '').slice(0, 80), assistenti: String(imp.assistenti || '').slice(0, 120), domeniche: String(imp.domeniche || '').slice(0, 80), layout: imp.layout || {} } };
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try { scriviImpostazione_('comitive:' + mese, pulito); } finally { lock.releaseLock(); }
   registroUnaVolta_(io, 'comitive', 'programma comitive di ' + nomeMese_(mese) + ' modificato');
@@ -1727,6 +1804,7 @@ function pubblica(k, tipo, mese) {
   if (tipo === 'reparti' || tipo === 'comitive') {
     dati = leggiImpostazione_(tipo + ':' + mese, null);
     if (!dati) throw new Error('Non c\'è ancora niente da pubblicare per ' + nomeMese_(mese) + '.');
+    if (tipo === 'comitive') dati.dom = domenicheMese_(mese);
   } else if (tipo === 'espositori') {
     const ss = foglioEspositori_(), sh = oemScheda_(ss, 'Mesi'), r = oemRiga_(ss, sh, mese);
     if (!r) throw new Error('Il programma espositori di ' + nomeMese_(mese) + ' non c\'è ancora.');
@@ -1800,7 +1878,13 @@ function comitivePubblicate_(mese) {
   const lista = persone_().filter((x) => servono[x.id]), sg = sigle_(lista);
   return { mese: mese, nomeMese: nomeMese_(mese), quando: p.quando,
     settimane: sett.map((w) => ({ lunedi: w.lunedi, dal: w.dal, al: w.al, speciale: w.speciale, comitive: w.comitive, domenica: w.al })),
-    conduttori: lista.map((x) => ({ id: x.id, sigla: sg[x.id], nome: x.n, cognome: x.cognome, abilitato: true })), offerte: {}, risposto: {}, previsti: [], storico: {}, stato: st };
+    conduttori: lista.map((x) => ({ id: x.id, sigla: sg[x.id], nome: x.n, cognome: x.cognome, abilitato: true })), offerte: {}, risposto: {}, previsti: [], storico: {}, stato: st,
+    foglio: (function () {
+      const f = datiFoglioComitive_(mese, cal, (st.dom || []).filter((r) => !r.nascosta));
+      const usati = {}; Object.keys(st.assegnati).forEach((c) => { usati[st.assegnati[c]] = 1; }); f.domeniche.forEach((r) => { if (r.conduttore) usati[r.conduttore] = 1; });
+      f.fratelli = f.fratelli.filter((x) => usati[x.id]);
+      return f;
+    })() };
 }
 
 /** La bacheca di una persona per un mese: solo programmi pubblicati, ognuno secondo le sue abilitazioni. */
@@ -1922,6 +2006,14 @@ function ruoliReparto_(p) {
   if (!p || !p.riga) return out;
   struttura_(SpreadsheetApp.getActive().getSheetByName(FOGLIO)).filter((x) => x.ruolo).forEach((x) => { const v = String(p.riga[x.c - 1] || ''); if (v) out[x.titolo] = v; });
   return out;
+}
+/** Coordinatore del reparto (anche il valore di prima «Coordinatore»). */
+const eCoordinatore_ = (v) => v === 'Coordinatore del reparto' || v === 'Coordinatore';
+/** Il programma pulizie lo compila Luca e il coordinatore del reparto Pulizie. */
+function puoPulizie_(io) {
+  if (io.tutto) return true;
+  const p = persone_().find((x) => x.id === io.id);
+  return !!p && eCoordinatore_(ruoliReparto_(p)['Pulizie']);
 }
 function waVede_(io) {
   const p = persone_().find((x) => x.id === io.id) || {};
