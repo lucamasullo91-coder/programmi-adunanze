@@ -52,6 +52,10 @@ type Stato = {
   reparti?: Record<string, RepSett>;
   senzaWA?: boolean;
   bacheca?: boolean;
+  /** Portal: day and time of every meeting from the portal's Calendar ("2027-01-04-fs" → data/ora), the only source. */
+  cal?: Record<string, { data?: string; ora?: string; nessuna?: boolean; spostata?: boolean }>;
+  /** Bacheca: the months with something published (only these are shown). */
+  mesiPubblicati?: Record<string, { inf?: boolean; fs?: boolean }>;
   /** Portal, "Pronto per WhatsApp": what this person may see, the published rotation, the saved department images. */
   wa?: StatoWA;
 };
@@ -153,7 +157,13 @@ function conReparti(g: Foglio, rep: Record<string, RepSett>) {
   }
 }
 
-function applica(f: Foglio, valori: Record<string, string>, foto: Record<string, string>, imp: Record<string, string>, rep?: Record<string, RepSett>): Foglio {
+/** "Mercoledì 6 gennaio" from an ISO date. */
+function titoloData(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
+  const x = new Date(Date.UTC(y, m - 1, d));
+  return `${cap(GIORNI_IT[x.getUTCDay()]!)} ${x.getUTCDate()} ${MESI_IT[x.getUTCMonth()]}`;
+}
+function applica(f: Foglio, valori: Record<string, string>, foto: Record<string, string>, imp: Record<string, string>, cal?: Stato["cal"]): Foglio {
   const g = structuredClone(f);
   if (g.id >= "2027-01") g.stile = { ...g.stile, strisciaGrigia: true };
   g.sorv = imp["sorv"] ?? "";
@@ -161,15 +171,24 @@ function applica(f: Foglio, valori: Record<string, string>, foto: Record<string,
   if (imp["cong"]) g.cong = imp["cong"];
   for (const s of g.settimane)
     for (const c of s.carte) {
-      const reg = c.kicker ? null : regolaPer(c.id, valori); // not on special weeks (Memorial)
+      const dc = cal?.[c.id];
+      if (cal && dc?.data) {
+        // the portal's Calendar decides day and time; an empty time stays "to be decided"
+        c.titolo = titoloData(dc.data);
+        c.ora = dc.ora ?? "";
+        c.oraDaDefinire = !dc.ora;
+      }
+      const reg = c.kicker || (cal && dc?.data) ? null : regolaPer(c.id, valori); // not on special weeks (Memorial)
       if (reg) {
         c.titolo = titoloGiorno(lunediDi(c.id), reg.g);
         if (reg.ora) c.ora = reg.ora;
       }
-      const d = valori[`${c.id}:data`];
-      if (d) c.titolo = d;
-      const o = valori[`${c.id}:ora`];
-      if (o) c.ora = o;
+      if (!(cal && dc?.data)) {
+        const d = valori[`${c.id}:data`];
+        if (d) c.titolo = d;
+        const o = valori[`${c.id}:ora`];
+        if (o) c.ora = o;
+      }
       const ev = valori[`${c.id}:evento`];
       if (ev)
         try {
@@ -198,7 +217,7 @@ function applica(f: Foglio, valori: Record<string, string>, foto: Record<string,
       if (!c) continue;
       const gi = giornoDiTesto(c.titolo ?? "");
       if (gi >= 0) q.etichetta = cap(GIORNI_IT[gi]!);
-      q.ora = c.ora ?? "";
+      q.ora = c.oraDaDefinire ? "ora da definire" : c.ora ?? "";
     }
   return normalizza(g);
 }
@@ -246,6 +265,10 @@ function App() {
     ])
       .then(([s, ind]) => {
         setStato(s);
+        // bacheca: only the two-month periods with something published
+        const pub = s.mesiPubblicati;
+        const bb = pub ? ind.bimestri.filter((b) => b.mesi.some((m) => pub[m])) : ind.bimestri;
+        ind.bimestri = bb.length ? bb : ind.bimestri.slice(0, 1);
         setBimestri(ind.bimestri);
         // Open on the current two-month period (or the next one, if today falls before all of them)
         const d = new Date();
@@ -289,8 +312,8 @@ function App() {
   const fogli = useMemo(
     () =>
       stato
-        ? mesi.filter((m) => base[m]).map((m) => {
-            const g = applica(base[m]!, stato.valori, foto, stato.impostazioni);
+        ? mesi.filter((m) => base[m] && (!stato.mesiPubblicati || stato.mesiPubblicati[m])).map((m) => {
+            const g = applica(base[m]!, stato.valori, foto, stato.impostazioni, stato.cal);
             if (stato.conReparti && stato.reparti) conReparti(g, stato.reparti);
             return g;
           })
@@ -554,7 +577,18 @@ function App() {
             const oraBase = base0?.ora ?? Object.values(base)[0]?.inizio ?? "";
             const g = giornoDiTesto(data);
             const righe: [string, string][] = [];
-            if (seguenti && g >= 0) {
+            if (stato?.cal && !ev && g >= 0) {
+              // portal: the move goes to the Calendar (everyone follows: surveys, rotations, outings, images)
+              const [y, mm, dd] = lunediDi(id).split("-").map(Number) as [number, number, number];
+              const iso = new Date(Date.UTC(y, mm - 1, dd + ((g + 6) % 7))).toISOString().slice(0, 10);
+              try {
+                const cal = await chiama<Stato["cal"]>("spostaAdunanza", id, iso, ora.trim(), seguenti);
+                setStato((x) => (x ? { ...x, cal } : x));
+                righe.push([`${id}:data`, ""], [`${id}:ora`, ""]);
+              } catch (e) {
+                alert("Non spostata: " + (e as Error).message);
+              }
+            } else if (seguenti && g >= 0) {
               // from this week on: one rule, and this week follows it
               righe.push([`regola-${tipoBreve(id)}:${lunediDi(id)}`, JSON.stringify({ g, ora: ora.trim() })]);
               righe.push([`${id}:data`, data.trim() !== titoloGiorno(lunediDi(id), g) ? data.trim() : ""]);

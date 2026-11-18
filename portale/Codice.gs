@@ -1552,7 +1552,7 @@ function pa_stato(k) {
   const p = persone_().find((x) => x.id === io.id) || {};
   const conReparti = !!(io.tutto || p.nominato);
   return { email: io.nome, ruolo: ruolo, impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: podioPerProgramma_(valori),
-    conReparti: conReparti, reparti: conReparti ? repartiPerProgramma_(false) : {}, senzaWA: true };
+    conReparti: conReparti, reparti: conReparti ? repartiPerProgramma_(false) : {}, senzaWA: true, cal: (io.tutto && migraDateProgramma_(valori), calendarioProgramma_()) };
 }
 function pa_salva(k, chiave, valore) {
   const io = richiedi_(k);
@@ -1972,7 +1972,8 @@ function pa_bacheca(k) {
   const ss = foglioProgrammi_();
   const valori = {};
   valori_('Impostazioni').slice(1).forEach((r) => { if (/^pub:programmi-(inf|fs):/.test(String(r[0])) && r[1]) Object.assign(valori, JSON.parse(String(r[1])).dati || {}); });
-  return { email: io.nome, ruolo: 'legge', impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: {}, bacheca: true, conReparti: !!(p.nominato || io.tutto), reparti: (p.nominato || io.tutto) ? repartiPerProgramma_(true) : {} };
+  return { email: io.nome, ruolo: 'legge', impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: {}, bacheca: true, conReparti: !!(p.nominato || io.tutto), reparti: (p.nominato || io.tutto) ? repartiPerProgramma_(true) : {},
+    cal: calendarioProgramma_(), mesiPubblicati: mesiPubblicati_() };
 }
 /** Espositori pubblicati per la bacheca. */
 function oem_bacheca(k) {
@@ -2106,7 +2107,7 @@ function wa_stato(k) {
   const vuole = v.pres || v.prove.INFRA || v.prove.FINE;
   const valori = vuole ? coppie_(ss.getSheetByName('Programma')) : {};
   return { email: io.nome, ruolo: v.comp || 'legge', impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: vuole ? podioPerProgramma_(valori) : {},
-    senzaWA: true, wa: { vede: v, reparti: repartiWA_(v), conferme: v.luca ? confermeRepartiWA_() : {}, cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia') } };
+    senzaWA: true, cal: calendarioProgramma_(), wa: { vede: v, reparti: repartiWA_(v), conferme: v.luca ? confermeRepartiWA_() : {}, cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia') } };
 }
 /** Solo Luca: le immagini dei reparti di una settimana, appena generate (confermate in automatico). */
 function wa_confermaReparti(k, lunedi, rec) {
@@ -2251,4 +2252,83 @@ function puliziePubblicate_(mese) {
   for (let m = 0; m < 12; m++) settimane_(cal, meseDopo_(anno + '-09', m)).forEach((w) => { if (w.speciale) speciali[w.lunedi] = w.speciale; });
   return { anno: anno, quando: pub ? pub.quando : '', settimane: lunediAnno_(anno).map((l) => ({ lunedi: l, al: piu_(l, 6), speciale: speciali[l] || null })), righe: x.righe || {}, nomi: usati,
     cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia') };
+}
+
+
+/* ═════════════════════════ Giorni e orari delle adunanze: solo dal Calendario ═════════════════════════
+ * Il programma delle adunanze prende giorno e orario di ogni adunanza dal Calendario del portale (periodo in vigore
+ * quella settimana + variazioni). Se il compilatore tocca la data per spostare la sua adunanza, lo spostamento diventa
+ * una variazione del Calendario (o un periodo nuovo, «da questa settimana in poi»): così sondaggi, reparti, comitive e
+ * immagini seguono da soli. Orario vuoto nel Calendario = orario da definire (sul programma non se ne inventa uno). */
+function calendarioProgramma_() {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), out = {};
+  for (let n = -3; n <= 9; n++) settimane_(cal, meseDopo_(oggi_().slice(0, 7), n)).forEach((w) => {
+    ['inf', 'fs'].forEach((t) => {
+      const a = w.adunanze.find((x) => x.tipo === t);
+      out[w.lunedi + '-' + t] = a ? { data: a.data, ora: String(a.ora || ''), spostata: !!a.spostata } : { nessuna: true };
+    });
+  });
+  return out;
+}
+/** Il compilatore sposta la sua adunanza: giorno (data ISO della stessa settimana) e orario; seguenti = da questa settimana in poi. */
+function pa_spostaAdunanza(k, cartaId, data, ora, seguenti) {
+  const io = richiedi_(k);
+  const ruolo = ruoloProgrammi_(io);
+  const m = /^(\d{4}-\d{2}-\d{2})-(inf|fs)$/.exec(String(cartaId));
+  if (!m) throw new Error('Adunanza non valida.');
+  const lun = m[1], t = m[2];
+  if (ruolo !== 'tutto' && ruolo !== t) throw new Error('Puoi spostare solo l\'adunanza che compili.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data)) || lunediDi_(data) !== lun) throw new Error('Il giorno deve essere nella stessa settimana.');
+  ora = String(ora || '').trim();
+  if (ora && !/^\d{1,2}:\d{2}$/.test(ora)) throw new Error('Orario non valido (es. 19:30).');
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+    cal.variazioni = (cal.variazioni || []).filter((v) => !(v.tipo === 'spostata' && v.adunanza === t && v.data && lunediDi_(v.data) === lun));
+    const adesso = Utilities.formatDate(new Date(), 'Europe/Rome', "yyyy-MM-dd'T'HH:mm:ss");
+    if (seguenti) {
+      const p = periodo_(cal, lun), nuovo = JSON.parse(JSON.stringify(p));
+      nuovo.dal = lun;
+      nuovo[t === 'inf' ? 'infra' : 'fs'] = { g: d_(data).getUTCDay(), ora: ora };
+      cal.periodi = cal.periodi.filter((x) => x.dal !== lun).concat([nuovo]).sort((a, b) => (a.dal < b.dal ? -1 : 1));
+    } else {
+      const p = periodo_(cal, lun)[t === 'inf' ? 'infra' : 'fs'];
+      const solito = piu_(lun, (p.g + 6) % 7);
+      if (data !== solito || ora !== String(p.ora || '')) cal.variazioni.push({ tipo: 'spostata', adunanza: t, data: data, ora: ora, motivo: '', creata: adesso });
+    }
+    scriviImpostazione_('calendario', cal);
+  } finally { lock.releaseLock(); }
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'calendario', 'adunanza ' + (t === 'inf' ? 'infrasettimanale' : 'del fine settimana') + ' della settimana del ' + lun + ' → ' + data + (ora ? ' ' + ora : '') + (seguenti ? ' (anche le settimane dopo)' : '')]);
+  return calendarioProgramma_();
+}
+/** Una volta: le date cambiate a mano nel programma (settimane da oggi in poi) diventano variazioni del Calendario. */
+function migraDateProgramma_(valori) {
+  if (leggiImpostazione_('migrato:dateProgramma', false)) return;
+  const lun0 = lunediDi_(oggi_()), MM = MESI_LUNGHI_;
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  cal.variazioni = cal.variazioni || [];
+  Object.keys(valori).forEach((key) => {
+    const m = /^(\d{4}-\d{2}-\d{2})-(inf|fs):data$/.exec(key);
+    if (!m || m[1] < lun0 || !valori[key]) return;
+    const lun = m[1], t = m[2], testo = String(valori[key]).toLowerCase();
+    let data = '';
+    const x = /(\d{1,2})\s+([a-zàèéìòù]+)/.exec(testo);
+    if (x && MM.indexOf(x[2]) >= 0) {
+      const mm = MM.indexOf(x[2]) + 1;
+      for (let i = 0; i < 7; i++) { const dd = piu_(lun, i); if (Number(dd.slice(8)) === Number(x[1]) && Number(dd.slice(5, 7)) === mm) data = dd; }
+    }
+    if (!data) return;
+    if (cal.variazioni.some((v) => v.tipo === 'spostata' && v.adunanza === t && v.data && lunediDi_(v.data) === lun)) return;
+    const p = periodo_(cal, lun)[t === 'inf' ? 'infra' : 'fs'];
+    cal.variazioni.push({ tipo: 'spostata', adunanza: t, data: data, ora: String(valori[lun + '-' + t + ':ora'] || p.ora || ''), motivo: '', creata: iso_(new Date()) });
+  });
+  scriviImpostazione_('calendario', cal);
+  scriviImpostazione_('migrato:dateProgramma', true);
+}
+
+/** I mesi del programma delle adunanze pubblicati (infrasettimanale o fine settimana): solo questi vanno in bacheca. */
+function mesiPubblicati_() {
+  const out = {};
+  valori_('Impostazioni').slice(1).forEach((r) => { const m = /^pub:programmi-(inf|fs):(\d{4}-\d{2})$/.exec(String(r[0])); if (m && r[1]) (out[m[2]] = out[m[2]] || {})[m[1]] = true; });
+  return out;
 }

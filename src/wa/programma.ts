@@ -48,7 +48,7 @@ const ruoloDi = (x: string | undefined) => (x ? RUOLI[x] ?? x : undefined);
 const haNome = (r: Riga) => !!(r.campi?.includes("chi") || r.chi);
 const conAssistente = (r: Riga) => !!(r.campi?.includes("chi2") || r.chi2) && r.ruolo2 === "Ass.";
 
-const sottoData = (c: Carta, f: Foglio) => [c.titolo, c.ora || f.inizio].filter(Boolean).join(" · ");
+const sottoData = (c: Carta, f: Foglio) => [c.titolo, c.oraDaDefinire ? "" : c.ora || f.inizio].filter(Boolean).join(" · ");
 
 /** The public talk lines (song, theme, outline, speaker, congregation) of a weekend meeting. */
 function discorsoPubblico(c: Carta, valori: Record<string, string>): Voce[] {

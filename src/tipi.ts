@@ -69,6 +69,8 @@ export type Carta = {
   titolo: string;
   /** Start time, the clock of its rows starts here (empty: the sheet's). */
   ora?: string;
+  /** Portal: the Calendar has no time yet for this meeting (no clock on the rows). */
+  oraDaDefinire?: boolean;
   colore?: string;
   icone?: string[];
   /** Boxed note in the band (visit of the circuit overseer, Bozza…). */
@@ -562,6 +564,7 @@ export function orari(
   inizio: string,
 ): Map<string, { ora: string | null; n: number | null }> {
   const out = new Map<string, { ora: string | null; n: number | null }>();
+  const senza = !!c.oraDaDefinire;
   let t = minuti(c.ora) ?? minuti(inizio) ?? 19 * 60 + 30;
   let n = 0;
   for (const s of c.sezioni)
@@ -569,7 +572,7 @@ export function orari(
       const conOra = r.orario ?? (r.tipo !== "voce" && r.tipo !== "testa");
       const ha = typeof r.min === "number";
       out.set(r.id, {
-        ora: conOra && (ha || r.tipo === "cantico") ? hm(t) : null,
+        ora: !senza && conOra && (ha || r.tipo === "cantico") ? hm(t) : null,
         n: r.numero ? ++n : null,
       });
       if (ha) t += (r.min as number) + (r.extra ?? 0);
