@@ -53,7 +53,7 @@
   function carica(mese) {
     R.carico = true; R.d = null;
     P.srv('reparti', mese || '').then((d) => {
-      R.d = d; R.mese = d.mese; R.st = d.stato; R.pers = new Map(d.persone.map((p) => [p.id, p])); R.carico = false; R.rev = null;
+      R.d = d; R.mese = d.mese; R.st = d.stato; R.pub = null; R.pers = new Map(d.persone.map((p) => [p.id, p])); R.carico = false; R.rev = null;
       if (S.vista === 'reparti') P.disegna();
     }).catch((e) => { R.carico = false; P.toast(e.message, true); });
   }
@@ -65,7 +65,7 @@
   function salva() {
     R.salvo = 'Salvo…'; pill();
     const mese = R.mese;
-    P.srv('salvaReparti', mese, R.st).then((r) => { R.salvo = 'Salvato ' + r.quando; pill(); })
+    P.srv('salvaReparti', mese, R.st).then((r) => { R.salvo = 'Salvato ' + r.quando; pill(); if (R.pub && R.pub.pubblicato && !R.pub.cambiato) { R.pub.cambiato = true; const y = window.scrollY; if (S.vista === 'reparti') { P.disegna(); window.scrollTo(0, y); } } })
       .catch((e) => { R.salvo = 'Non salvato'; pill(); P.toast(e.message, true); });
   }
   function pill() { const el = document.getElementById('rpSalvo'); if (el) { el.textContent = R.salvo; el.className = 'rp-salvo' + (/Non/.test(R.salvo) ? ' err' : /Salvato/.test(R.salvo) ? ' ok' : ''); } }
@@ -125,7 +125,7 @@
     const mesi = [-1, 0, 1, 2].map((n) => meseDopo(R.d.oggi.slice(0, 7), n));
     if (mesi.indexOf(R.mese) < 0) mesi.push(R.mese);
     h += '<div class="rp-bar"><select data-rp="mese">' + mesi.map((m) => '<option value="' + m + '"' + (m === R.mese ? ' selected' : '') + '>' + P.cap(nomeMese(m)) + '</option>').join('') + '</select>' +
-      '<span class="rp-salvo" id="rpSalvo">' + esc(R.salvo) + '</span></div>';
+      pubblicazione() + '<span class="rp-salvo" id="rpSalvo">' + esc(R.salvo) + '</span></div>';
     h += '<div class="rp-tabs">' + [['turni', 'Turni'], ['assenze', 'Assenze e parti'], ['pulizie', 'Pulizie'], ['foglio', 'Foglio A4']].map((t) =>
       '<button data-rp="tab" data-v="' + t[0] + '" class="' + (R.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>').join('') + '</div>';
     if (R.tab === 'assenze') return h + vistaAssenze();
@@ -391,6 +391,23 @@
   new MutationObserver(() => { if (S.vista === 'reparti' && R.tab === 'foglio') requestAnimationFrame(adatta); }).observe(P.app, { childList: true });
   window.addEventListener('resize', () => { if (S.vista === 'reparti' && R.tab === 'foglio') adatta(); });
 
+  /* Il foglio di un mese pubblicato (bacheca): stessi disegni, con i dati pubblicati. */
+  P.fogli = P.fogli || {};
+  P.fogli.reparti = function (dati, chi) {
+    const prima = { d: R.d, st: R.st, pers: R.pers, mese: R.mese };
+    R.d = Object.assign({ sondaggio: {}, parti: [], pInc: [], storico: [] }, dati);
+    R.st = Object.assign({ togli: {}, assenze: {}, periodi: [], gruppi: {}, generali: {}, nessuna: {}, eventi: {} }, dati.stato);
+    R.pers = new Map(dati.persone.map((p) => [p.id, p])); R.mese = dati.mese;
+    try { return foglio(chi || ''); } finally { Object.assign(R, prima); }
+  };
+  function pubblicazione() {
+    if (!R.pub) { R.pub = { carico: true }; P.srv('statoPubblicazione', 'reparti', R.mese).then((x) => { R.pub = x; rd(); }).catch(() => { R.pub = { pubblicato: false }; }); }
+    const x = R.pub;
+    if (x.carico) return '';
+    return '<span class="rp-pub">' + (x.pubblicato ? (x.cambiato ? '<b style="color:#9A6A00">Modificata dopo la pubblicazione del ' + esc(x.quando.slice(8, 10) + '/' + x.quando.slice(5, 7) + ' ' + x.quando.slice(11, 16)) + '</b>' : 'Pubblicata il ' + esc(x.quando.slice(8, 10) + '/' + x.quando.slice(5, 7) + ' alle ' + x.quando.slice(11, 16))) : 'Non ancora in bacheca') +
+      ' <button class="btn small" data-rp="pubblica">' + (x.pubblicato ? 'Pubblica di nuovo' : 'Pubblica in bacheca') + '</button></span>';
+  }
+
   /* ridisegna senza perdere il punto della pagina */
   const rd = () => { const y = window.scrollY; P.disegna(); window.scrollTo(0, y); };
 
@@ -438,6 +455,13 @@
     if (k === 'genOn') { const g = R.st.generali[u.dataset.s] || (R.st.generali[u.dataset.s] = {}); g.attiva = u.checked; cambiato(); return rd(); }
     if (k === 'evRm') { if (!confirm('Tolgo il riquadro dell\'evento da questa settimana?')) return; delete R.st.eventi[u.dataset.s]; R.st.eventiTolti = true; cambiato(); return rd(); }
     if (k === 'stampa') { adatta(); return window.print(); }
+    if (k === 'pubblica') {
+      if (!confirm('Pubblico in bacheca la turnazione di ' + nomeMese(R.mese) + ' così com\'è adesso? I fratelli la vedranno con i loro turni.')) return;
+      u.disabled = true;
+      const vai = () => P.srv('pubblica', 'reparti', R.mese).then((x) => { R.pub = x; P.toast('Pubblicata in bacheca'); rd(); }).catch((err) => { u.disabled = false; P.toast(err.message, true); });
+      if (R.salvo === 'Da salvare' || R.salvo === 'Salvo…') { clearTimeout(R.coda); return P.srv('salvaReparti', R.mese, R.st).then(vai); }
+      return vai();
+    }
   });
   P.app.addEventListener('change', (e) => {
     if (S.vista !== 'reparti') return;

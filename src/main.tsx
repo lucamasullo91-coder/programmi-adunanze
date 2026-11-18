@@ -36,7 +36,9 @@ for (const c of [fogliCss, appCss, CSS_IMMAGINE, CSS_PANNELLO]) {
   document.head.appendChild(st);
 }
 
-type Ruolo = "inf" | "fs" | "tutto";
+type Ruolo = "inf" | "fs" | "tutto" | "legge";
+/** Duties of each week from the portal's rotation: lunedì → INFRA/FINE sections and the week's cleaning. */
+type RepSett = { INFRA?: { titolo: string; righe: [string, string][] }[]; FINE?: { titolo: string; righe: [string, string][] }[]; pulizie?: { gruppo: string; righe: [string, string][] } };
 type Stato = {
   email: string;
   ruolo: Ruolo;
@@ -44,6 +46,11 @@ type Stato = {
   valori: Record<string, string>;
   /** Podium of each meeting ("2026-11-03|INFRA" → name), from the rotation of the departments. */
   podio?: Record<string, string>;
+  /** Portal: "Adunanze e reparti" view allowed, the duties to put beside each meeting, no WhatsApp images here. */
+  conReparti?: boolean;
+  reparti?: Record<string, RepSett>;
+  senzaWA?: boolean;
+  bacheca?: boolean;
 };
 type Bimestre = { id: string; nome: string; mesi: string[] };
 
@@ -91,7 +98,7 @@ function chiama<T>(fn: string, ...args: unknown[]): Promise<T> {
 
 const tipoCarta = (id: string): "INFRA" | "FINE" => (/-inf$/.test(id) ? "INFRA" : "FINE");
 const puo = (ruolo: Ruolo, cartaId: string) =>
-  ruolo === "tutto" || (ruolo === "inf") === (tipoCarta(cartaId) === "INFRA");
+  ruolo !== "legge" && (ruolo === "tutto" || (ruolo === "inf") === (tipoCarta(cartaId) === "INFRA"));
 const cartaDi = (id: string) => id.replace(/-r\d+$/, "");
 
 /** Day and time of a meeting, from a given week on: key "regola-inf:2027-01-04" / "regola-fs:…" = {"g":3,"ora":"19:30"}
@@ -124,7 +131,26 @@ function titoloGiorno(lun: string, g: number) {
 const giornoDiTesto = (t: string) => GIORNI_IT.indexOf((t.trim().split(/\s+/)[0] ?? "").toLowerCase());
 
 /** The base month with the values written by who compiles it. */
-function applica(f: Foglio, valori: Record<string, string>, foto: Record<string, string>, imp: Record<string, string>): Foglio {
+/** The duty cards (REP_INF / REP_FS) of each week, from the portal's rotation, beside each meeting. */
+function conReparti(g: Foglio, rep: Record<string, RepSett>) {
+  let n = 0;
+  const voce = (r: [string, string]) => ({ id: `rep${++n}`, tipo: "voce", titolo: r[0], chi: r[1] }) as unknown as Riga;
+  for (const s of g.settimane) {
+    const x = rep[s.id];
+    if (!x) continue;
+    for (const [tipo, tAd] of [["REP_INF", "INFRA"], ["REP_FS", "FINE"]] as const) {
+      const sez = x[tAd];
+      if (!sez) continue;
+      const ad = s.carte.find((c) => c.tipo === tAd);
+      const sezioni: Carta["sezioni"] = sez.map((z) => ({ id: `rep${++n}`, titolo: z.titolo, colore: "@reparti", righe: z.righe.map(voce) }));
+      if (tipo === "REP_INF" && x.pulizie)
+        sezioni.push({ id: `rep${++n}`, titolo: "Pulizie della settimana", colore: "@reparti", icona: "pulizia", ...(x.pulizie.gruppo ? { valore: x.pulizie.gruppo.toUpperCase() } : {}), righe: x.pulizie.righe.map(voce) } as Carta["sezioni"][number]);
+      s.carte = s.carte.filter((c) => c.tipo !== tipo).concat([{ id: `${s.id}-${tipo.toLowerCase()}`, tipo, kicker: "Turnazione reparti", titolo: ad?.titolo ?? "", sezioni }]);
+    }
+  }
+}
+
+function applica(f: Foglio, valori: Record<string, string>, foto: Record<string, string>, imp: Record<string, string>, rep?: Record<string, RepSett>): Foglio {
   const g = structuredClone(f);
   if (g.id >= "2027-01") g.stile = { ...g.stile, strisciaGrigia: true };
   g.sorv = imp["sorv"] ?? "";
@@ -260,7 +286,11 @@ function App() {
   const fogli = useMemo(
     () =>
       stato
-        ? mesi.filter((m) => base[m]).map((m) => applica(base[m]!, stato.valori, foto, stato.impostazioni))
+        ? mesi.filter((m) => base[m]).map((m) => {
+            const g = applica(base[m]!, stato.valori, foto, stato.impostazioni);
+            if (stato.conReparti && stato.reparti) conReparti(g, stato.reparti);
+            return g;
+          })
         : [],
     [mesi.join(), base, stato, foto], // eslint-disable-line react-hooks/exhaustive-deps
   );
@@ -364,14 +394,15 @@ function App() {
 
   if (errore) return <div className="pa-msg">{errore}</div>;
   if (!stato) return <div className="pa-msg">Carico il programma…</div>;
-  const nomeRuolo = { inf: "adunanza infrasettimanale", fs: "adunanza del fine settimana", tutto: "tutte le adunanze" }[stato.ruolo];
+  const nomeRuolo = { inf: "adunanza infrasettimanale", fs: "adunanza del fine settimana", tutto: "tutte le adunanze", legge: "" }[stato.ruolo];
+  const viste = VISTE.concat(stato.conReparti ? [["rep", "Adunanze e reparti"]] : []);
   return (
     <div className={`pa${stampa ? " stampa" : ""}`}>
       <header className="pa-bar">
         <div className="pa-tit">
           <b>Programmi adunanze</b>
           <span>
-            {stato.email} · compili {nomeRuolo}
+            {stato.ruolo === "legge" ? "Programmi pubblicati" : `${stato.email} · compili ${nomeRuolo}`}
           </span>
         </div>
         <div className="pa-ctl">
@@ -385,15 +416,17 @@ function App() {
             </select>
           )}
           <div className="pa-tabs" role="tablist">
-            {VISTE.map(([k, n]) => (
+            {viste.map(([k, n]) => (
               <button key={k} role="tab" aria-selected={vista === k} onClick={() => setVista(k)}>
                 {n}
               </button>
             ))}
           </div>
-          <button className={`pa-btn${wa ? "" : " sec"}`} onClick={() => setWa((x) => !x)} aria-pressed={wa}>
-            {wa ? "Torna al programma" : "Immagini WhatsApp"}
-          </button>
+          {!stato.senzaWA && !stato.bacheca && (
+            <button className={`pa-btn${wa ? "" : " sec"}`} onClick={() => setWa((x) => !x)} aria-pressed={wa}>
+              {wa ? "Torna al programma" : "Immagini WhatsApp"}
+            </button>
+          )}
           <button className="pa-btn" onClick={() => void pdf()} disabled={!!lavoro || wa}>
             {lavoro || "Scarica PDF"}
           </button>
@@ -401,10 +434,10 @@ function App() {
             Stampa o salva PDF
           </button>
         </div>
-        <p className="pa-aiuto">
+        {stato.ruolo !== "legge" && <p className="pa-aiuto">
           Tocca uno spazio tratteggiato per scrivere un nome. Tocca la data di un’adunanza per cambiare giorno e orario (anche per le settimane seguenti) o per mettere
           al suo posto un’assemblea o un congresso. Si salva da solo.
-        </p>
+        </p>}
       </header>
       {wa ? (
         <PannelloWhatsApp

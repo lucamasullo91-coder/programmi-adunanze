@@ -31,14 +31,14 @@
   function carica(mese) {
     C.carico = true; C.d = null;
     P.srv('comitive', mese || '').then((d) => {
-      C.d = d; C.mese = d.mese; C.st = d.stato; C.pers = new Map(d.conduttori.map((p) => [p.id, p])); C.carico = false; C.motivi = {};
+      C.d = d; C.mese = d.mese; C.st = d.stato; C.pub = null; C.pers = new Map(d.conduttori.map((p) => [p.id, p])); C.carico = false; C.motivi = {};
       if (S.vista === 'comitive') P.disegna();
     }).catch((e) => { C.carico = false; P.toast(e.message, true); });
   }
   function cambiato() { C.salvo = 'Da salvare'; pill(); clearTimeout(C.coda); C.coda = setTimeout(salva, 1200); }
   function salva() {
     C.salvo = 'Salvo…'; pill();
-    P.srv('salvaComitive', C.mese, C.st).then((r) => { C.salvo = 'Salvato ' + r.quando; pill(); }).catch((e) => { C.salvo = 'Non salvato'; pill(); P.toast(e.message, true); });
+    P.srv('salvaComitive', C.mese, C.st).then((r) => { C.salvo = 'Salvato ' + r.quando; pill(); if (C.pub && C.pub.pubblicato && !C.pub.cambiato) { C.pub.cambiato = true; if (S.vista === 'comitive') rd(); } }).catch((e) => { C.salvo = 'Non salvato'; pill(); P.toast(e.message, true); });
   }
   function pill() { const el = document.getElementById('cmSalvo'); if (el) { el.textContent = C.salvo; el.className = 'rp-salvo' + (/Non/.test(C.salvo) ? ' err' : /Salvato/.test(C.salvo) ? ' ok' : ''); } }
   window.addEventListener('beforeunload', (e) => { if (C.salvo === 'Da salvare' || C.salvo === 'Salvo…') { e.preventDefault(); e.returnValue = ''; } });
@@ -145,6 +145,20 @@
   .fa4 .cm-mio div{font-size:10.5px;line-height:1.55}.fa4 .cm-mio div b{color:#7A5200}`;
   document.head.appendChild(css);
 
+  P.fogli = P.fogli || {};
+  P.fogli.comitive = function (dati, versione) {
+    const prima = { d: C.d, st: C.st, pers: C.pers, mese: C.mese, versione: C.versione };
+    C.d = dati; C.st = dati.stato; C.pers = new Map(dati.conduttori.map((p) => [p.id, p])); C.mese = dati.mese; C.versione = versione || 'generale';
+    try { return foglio(); } finally { Object.assign(C, prima); }
+  };
+  function pubblicazione() {
+    if (!C.pub) { C.pub = { carico: true }; P.srv('statoPubblicazione', 'comitive', C.mese).then((x) => { C.pub = x; rd(); }).catch(() => { C.pub = { pubblicato: false }; }); }
+    const x = C.pub;
+    if (x.carico) return '';
+    return '<span class="rp-pub">' + (x.pubblicato ? (x.cambiato ? '<b style="color:#9A6A00">Modificato dopo la pubblicazione del ' + esc(x.quando.slice(8, 10) + '/' + x.quando.slice(5, 7)) + '</b>' : 'Pubblicato il ' + esc(x.quando.slice(8, 10) + '/' + x.quando.slice(5, 7) + ' alle ' + x.quando.slice(11, 16))) : 'Non ancora in bacheca') +
+      ' <button class="btn small" data-cm="pubblica" style="background:#A86F00;border-color:#A86F00">' + (x.pubblicato ? 'Pubblica di nuovo' : 'Pubblica in bacheca') + '</button></span>';
+  }
+
   /* ── vista ── */
   const rd = () => { const y = window.scrollY; P.disegna(); window.scrollTo(0, y); };
   P.viste.comitive = function () {
@@ -152,7 +166,7 @@
     if (!C.d) { if (!C.carico) carica(C.mese); return h0 + '<p class="nota">Carico le offerte del sondaggio…</p>'; }
     const oggi = new Date().toISOString().slice(0, 7);
     const mesi = [-1, 0, 1, 2].map((n) => meseDopo(oggi, n)); if (mesi.indexOf(C.mese) < 0) mesi.push(C.mese);
-    let h = h0 + '<div class="rp-bar"><select data-cm="mese">' + mesi.map((m) => '<option value="' + m + '"' + (m === C.mese ? ' selected' : '') + '>' + P.cap(nomeMese(m)) + '</option>').join('') + '</select><span class="rp-salvo" id="cmSalvo">' + esc(C.salvo) + '</span></div>';
+    let h = h0 + '<div class="rp-bar"><select data-cm="mese">' + mesi.map((m) => '<option value="' + m + '"' + (m === C.mese ? ' selected' : '') + '>' + P.cap(nomeMese(m)) + '</option>').join('') + '</select>' + pubblicazione() + '<span class="rp-salvo" id="cmSalvo">' + esc(C.salvo) + '</span></div>';
     h += '<div class="rp-tabs">' + [['programma', 'Programma'], ['foglio', 'Foglio A4']].map((t) => '<button data-cm="tab" data-v="' + t[0] + '" class="' + (C.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>').join('') + '</div>';
     return h + (C.tab === 'foglio' ? vistaFoglio() : vistaProgramma());
   };
@@ -247,6 +261,13 @@
     if (k === 'svuota') { if (!confirm('Tolgo tutti i conduttori del mese?')) return; C.st.assegnati = {}; C.motivi = {}; cambiato(); return rd(); }
     if (k === 'nascondi') { if (u.checked) C.st.nascoste[u.dataset.k] = true; else delete C.st.nascoste[u.dataset.k]; cambiato(); return rd(); }
     if (k === 'stampa') { adatta(); return window.print(); }
+    if (k === 'pubblica') {
+      if (!confirm('Pubblico in bacheca il programma comitive di ' + nomeMese(C.mese) + ' così com\'è adesso?')) return;
+      u.disabled = true;
+      const vai = () => P.srv('pubblica', 'comitive', C.mese).then((x) => { C.pub = x; P.toast('Pubblicato in bacheca'); rd(); }).catch((err) => { u.disabled = false; P.toast(err.message, true); });
+      if (C.salvo === 'Da salvare' || C.salvo === 'Salvo…') { clearTimeout(C.coda); return P.srv('salvaComitive', C.mese, C.st).then(vai); }
+      return vai();
+    }
   });
   P.app.addEventListener('change', (e) => {
     if (S.vista !== 'comitive') return;

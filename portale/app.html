@@ -204,8 +204,10 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       }).catch(function (e) { delete caricati[n]; throw e; }));
     }));
   }
-  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'comitive.js'], programmi: ['programmi.js'], espositori: ['programmi.js'], telegram: ['programmi.js'] };
-  var TITOLI = { reparti: 'Turnazione reparti', comitive: 'Comitive', programmi: 'Programmi adunanze', espositori: 'Programma espositori', telegram: 'Telegram' };
+  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'comitive.js'], programmi: ['programmi.js'], espositori: ['programmi.js'], telegram: ['programmi.js'],
+    bacheca: ['stampa.css', 'motore-reparti.js', 'reparti.js', 'comitive.js', 'programmi.js', 'bacheca.js'] };
+  MODULI.bachecaProgrammi = MODULI.bacheca; MODULI.bachecaEspositori = MODULI.bacheca;
+  var TITOLI = { reparti: 'Turnazione reparti', comitive: 'Comitive', programmi: 'Programmi adunanze', espositori: 'Programma espositori', telegram: 'Telegram', bacheca: 'Bacheca' };
   function apriModulo(v) {
     S.vista = v; window.scrollTo(0, 0);
     if (PC.viste[v]) return disegna();
@@ -297,11 +299,9 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
   }
   function home() {
     var io = S.dati.io, h = testata('Portale', 'Ciao ' + esc(io.nome.split(' ').slice(1).join(' ') || io.nome));
-    if (!io.ambiti.length) {
-      var ts = tileSondaggi();
-      return h + (ts ? '<div class="tiles">' + ts + '</div>' : '<p class="nota">Per ora non c\'è nessun sondaggio da compilare. Quando ce ne sarà uno, lo trovi qui: salva questo link.</p>');
-    }
-    var t = '<div class="tiles">' + tileSondaggi() +
+    var tb = '<button class="tile" data-mod="bacheca" style="--c:#2E6E7C"><b>Bacheca</b><span>I miei impegni e i programmi del mese</span></button>';
+    if (!io.ambiti.length) return h + '<div class="tiles">' + tileSondaggi() + tb + '</div><p class="nota" style="margin-top:12px">Salva questo link: è il tuo accesso personale.</p>';
+    var t = '<div class="tiles">' + tb + tileSondaggi() +
       '<button class="tile" data-go="anagrafica"><b>Anagrafica</b><span>' + S.dati.fratelli.length + ' proclamatori · abilitazioni</span></button>';
     if (io.tutto) {
       t += '<button class="tile" data-go="sondaggi" style="--c:#A8432B"><b>Sondaggi</b><span>Crea, invia i link, vedi le risposte</span></button>' +
@@ -330,7 +330,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       }).catch(function (e) { toast(e.message, true); });
       return '<p class="nota">Carico il sondaggio…</p>';
     }
-    var indietro = S.perConto ? '<button class="back" data-go="invio">‹ Invio</button>' : (S.dati.io.ambiti.length || (S.dati.sondaggi || []).length > 1 ? '<button class="back" data-go="home">‹ Portale</button>' : '');
+    var indietro = S.perConto ? '<button class="back" data-go="invio">‹ Invio</button>' : '<button class="back" data-go="home">‹ Portale</button>';
     var sc = S.scelte;
     var h = '<div class="sd-head"><div class="head" style="border:0;margin:0;padding:0"><div><div class="cong">Napoli Pianura Trencia</div><div class="goldr"></div></div>' + indietro + '</div>' +
       '<h1>Ciao ' + esc(M.persona.nome) + '</h1>' +
@@ -623,6 +623,14 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       });
       h += '</div>';
     });
+    var ruoli = S.dati.colonne.filter(function (x) { return x.ruolo; });
+    if (ruoli.length && val(f, 'Sesso') === 'Uomo') {
+      h += '<div class="sez" style="--c:#4D5A68"><h3>Ruoli nei reparti' + (io.tutto ? '' : '<small>sola lettura</small>') + '</h3><div class="dati">' + ruoli.map(function (x) {
+        var v = f.v[x.c] || '';
+        if (io.tutto) return '<label>' + esc(x.titolo) + '<select data-id="' + f.id + '" data-c="' + x.c + '">' + x.opzioni.map(function (o) { return '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + (o ? esc(o) : '—') + '</option>'; }).join('') + '</select></label>';
+        return '<label>' + esc(x.titolo) + '<span>' + (v ? esc(v) : '—') + '</span></label>';
+      }).join('') + '</div></div>';
+    }
     var note = S.dati.colonne.filter(function (x) { return x.titolo === 'Note'; })[0];
     if (note && io.tutto) h += '<div class="dati" style="grid-template-columns:1fr"><label>Note<input data-id="' + f.id + '" data-c="' + note.c + '" value="' + esc(f.v[note.c]) + '"></label></div>';
     return h + '</div>';

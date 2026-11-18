@@ -32,6 +32,7 @@ const LISTE = {
   14: ['Attivo', 'Trasferito', 'Non più attivo'],
 };
 const GRIGIO = '#E3E3E3';
+const RUOLI_REPARTO_ = ['', 'Coordinatore', 'Assistente'];
 
 /* ───────────────────────── Pagina ───────────────────────── */
 
@@ -157,14 +158,16 @@ function struttura_(sh) {
     const titolo = String(testa[1][c - 1] || '').trim();
     if (!titolo) continue;
     let ambito = ambitoSezione_(sez), tipo = 'testo', regola = String(testa[2][c - 1] || '').trim();
-    if (c === C.reparti) { ambito = 'reparti'; tipo = 'check'; regola = 'tutti'; }
+    const ruoli = /^RUOLI/i.test(sez);
+    if (ruoli) { ambito = 'tutto'; tipo = 'lista'; regola = regola || 'fratelli'; }
+    else if (c === C.reparti) { ambito = 'reparti'; tipo = 'check'; regola = 'tutti'; }
     else if (c === C.oem) { ambito = 'oem'; tipo = 'check'; regola = 'tutti'; }
     else if (c >= PRIMA_ABIL && sez.toUpperCase() !== 'NOTE') tipo = 'check';
     else if (c === C.sigla) tipo = 'calc';
     else if (LISTE[c]) tipo = 'lista';
     if (c === C.id) tipo = 'calc';
     col.push({ c: c, titolo: titolo, sezione: c < PRIMA_ABIL ? 'ANAGRAFICA' : sez, colore: coloreSezione_(c < PRIMA_ABIL ? '' : sez),
-      regola: tipo === 'check' ? (regola || 'tutti') : '', ambito: ambito, tipo: tipo, opzioni: LISTE[c] || null,
+      regola: tipo === 'check' || ruoli ? (regola || 'tutti') : '', ambito: ambito, tipo: tipo, opzioni: ruoli ? RUOLI_REPARTO_ : LISTE[c] || null, ruolo: ruoli,
       riservata: c === C.tel || sez.toUpperCase() === 'NOTE' });
   }
   return col;
@@ -253,6 +256,7 @@ function salva(k, modifiche) {
       } else if (x.tipo === 'lista') {
         val = String(val || '');
         if (x.opzioni.indexOf(val) < 0) throw new Error('Valore non ammesso per «' + x.titolo + '».');
+        if (x.ruolo && val && !abilitato_(x.regola, r[C.sesso - 1], r[C.nomina - 1], r[C.servizio - 1])) throw new Error('I ruoli nei reparti sono solo per ' + x.regola + '.');
         if (x.c === C.ruolo && val === 'SDG' && r[C.nomina - 1] !== 'Servitore di ministero') throw new Error('SDG è solo per i servitori di ministero.');
         if (x.c === C.ruolo && val === 'ASS' && r[C.nomina - 1] === 'Nessuna') throw new Error('ASS è solo per anziani e servitori.');
       } else {
@@ -1331,7 +1335,10 @@ function pa_stato(k) {
   const ruolo = ruoloProgrammi_(io);
   const ss = foglioProgrammi_();
   const valori = coppie_(ss.getSheetByName('Programma'));
-  return { email: io.nome, ruolo: ruolo, impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: podioPerProgramma_(valori) };
+  const p = persone_().find((x) => x.id === io.id) || {};
+  const conReparti = !!(io.tutto || p.nominato);
+  return { email: io.nome, ruolo: ruolo, impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: podioPerProgramma_(valori),
+    conReparti: conReparti, reparti: conReparti ? repartiPerProgramma_(false) : {}, senzaWA: true };
 }
 function pa_salva(k, chiave, valore) {
   const io = richiedi_(k);
@@ -1553,4 +1560,215 @@ function oem_jwImmagine(k, url) {
   if (r.getResponseCode() >= 400) throw new Error('Immagine non disponibile');
   const b = r.getBlob();
   return 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes());
+}
+
+
+/* ═════════════════════════ Pubblicazione e bacheca ═════════════════════════
+ * In bacheca va solo ciò che chi compila ha pubblicato: «Pubblica» fa una copia del mese così com'è in quel momento.
+ * Copie in Impostazioni (pub:reparti:AAAA-MM, pub:comitive:…, pub:programmi-inf:…, pub:programmi-fs:…);
+ * gli espositori, più grandi, nella scheda «Pubblicati» del loro Foglio. */
+
+const PUB_TIPI_ = { reparti: 'reparti', comitive: 'comitive', 'programmi-inf': 'inf', 'programmi-fs': 'fs', espositori: 'oem' };
+function lunediMese_(mese) { return lunediDel_(mese); }
+function snapshotProgrammi_(mese, quale) {
+  const val = coppie_(foglioProgrammi_().getSheetByName('Programma'));
+  const lun = lunediMese_(mese), suf = quale === 'inf' ? '-inf' : '-fs';
+  const out = {};
+  Object.keys(val).forEach((k) => {
+    if (/:wa$/.test(k) || /^diag/.test(k)) return;
+    if (k.indexOf('regola-' + (quale === 'inf' ? 'inf' : 'fs') + ':') === 0) { out[k] = val[k]; return; }
+    if (lun.some((l) => k.indexOf(l + suf) === 0)) out[k] = val[k];
+  });
+  return out;
+}
+function pubblica(k, tipo, mese) {
+  const io = richiedi_(k);
+  if (!PUB_TIPI_[tipo] || !/^\d{4}-\d{2}$/.test(mese || '')) throw new Error('Pubblicazione non valida.');
+  if (!haAmbito_(io, PUB_TIPI_[tipo])) throw new Error('Non hai il permesso di pubblicare questo programma.');
+  const quando = iso_(new Date());
+  let dati;
+  if (tipo === 'reparti' || tipo === 'comitive') {
+    dati = leggiImpostazione_(tipo + ':' + mese, null);
+    if (!dati) throw new Error('Non c\'è ancora niente da pubblicare per ' + nomeMese_(mese) + '.');
+  } else if (tipo === 'espositori') {
+    const ss = foglioEspositori_(), sh = oemScheda_(ss, 'Mesi'), r = oemRiga_(ss, sh, mese);
+    if (!r) throw new Error('Il programma espositori di ' + nomeMese_(mese) + ' non c\'è ancora.');
+    const pub = ss.getSheetByName('Pubblicati') || ss.insertSheet('Pubblicati');
+    if (pub.getLastRow() === 0) pub.appendRow(['Mese', 'Dati pubblicati (non modificare a mano)', 'Pubblicato', 'Da']);
+    oemScrivi_(pub, oemRiga_(ss, pub, mese), [mese, String(sh.getRange(r, 2).getValue()), new Date(), io.nome]);
+    dati = { foglio: true };
+  } else dati = snapshotProgrammi_(mese, PUB_TIPI_[tipo]);
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try { scriviImpostazione_('pub:' + tipo + ':' + mese, { quando: quando, chi: io.nome, dati: dati }); } finally { lock.releaseLock(); }
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'pubblicato', tipo + ' · ' + nomeMese_(mese)]);
+  return statoPubblicazione(k, tipo, mese);
+}
+/** Pubblicato quando e da chi, e se dopo è cambiato qualcosa. */
+function statoPubblicazione(k, tipo, mese) {
+  const io = richiedi_(k);
+  if (!PUB_TIPI_[tipo] || !haAmbito_(io, PUB_TIPI_[tipo])) throw new Error('Non hai il permesso.');
+  const p = leggiImpostazione_('pub:' + tipo + ':' + mese, null);
+  if (!p) return { pubblicato: false };
+  let cambiato = false;
+  try {
+    if (tipo === 'reparti' || tipo === 'comitive') cambiato = JSON.stringify(leggiImpostazione_(tipo + ':' + mese, null)) !== JSON.stringify(p.dati);
+    else if (tipo !== 'espositori') cambiato = JSON.stringify(snapshotProgrammi_(mese, PUB_TIPI_[tipo])) !== JSON.stringify(p.dati);
+  } catch (e) { /* Foglio non raggiungibile */ }
+  return { pubblicato: true, quando: p.quando, chi: p.chi, cambiato: cambiato };
+}
+
+/** Le righe della guida con un nome da scrivere, con un'etichetta leggibile (per «I miei impegni»). */
+function righeGuida_(mese) {
+  const c = CacheService.getScriptCache(), key = 'righe:' + mese, t = c.get(key);
+  if (t) return JSON.parse(t);
+  let g;
+  try { const r = UrlFetchApp.fetch(REPO + 'dati/' + mese + '.json', { muteHttpExceptions: true }); if (r.getResponseCode() !== 200) return []; g = JSON.parse(r.getContentText()); } catch (e) { return []; }
+  const out = [];
+  (g.settimane || []).forEach((w) => (w.carte || []).forEach((ca) => (ca.sezioni || []).forEach((z) => (z.righe || []).forEach((r) => {
+    (r.campi || []).forEach((campo) => {
+      if (campo !== 'chi' && campo !== 'chi2') return;
+      const ruolo = campo === 'chi2' ? ({ 'Ass.': 'assistente', 'Lett.': 'lettore' }[r.ruolo2] || '') : ({ 'Stud.': 'studente', 'Cond.': 'conduttore' }[r.ruolo] || '');
+      const base = r.ruolo === 'Presidente' ? 'Presidente' : r.tipo === 'cantico' ? 'Preghiera' : String(r.titolo || r.ruolo || z.titolo);
+      out.push({ k: r.id + ':' + campo, carta: ca.id, tipo: ca.tipo, testo: base + (ruolo ? ' (' + ruolo + ')' : ''), sezione: String(z.titolo || '') });
+    });
+  }))));
+  try { c.put(key, JSON.stringify(out), 21600); } catch (e) {}
+  return out;
+}
+
+/** Il foglio dei reparti pubblicato, con quello che serve per disegnarlo. */
+function repartiPubblicati_(mese) {
+  const p = leggiImpostazione_('pub:reparti:' + mese, null);
+  if (!p) return null;
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const sett = settimane_(cal, mese);
+  const st = p.dati;
+  st.turni = scompatta_(st.turni);
+  ['gruppi', 'generali', 'nessuna', 'eventi'].forEach((x) => { st[x] = st[x] || {}; });
+  sett.forEach((w) => { if (w.speciale && w.speciale.adunanze === false) { st.nessuna[w.lunedi + '-INFRA'] = true; st.nessuna[w.lunedi + '-FINE'] = true; } });
+  const servono = {}; st.turni.forEach((t) => { servono[t.persona_id] = true; });
+  Object.keys(st.generali).forEach((s) => { const g = st.generali[s]; if (g.coord) servono[g.coord] = true; if (g.ref) servono[g.ref] = true; });
+  const lista = persone_().filter((x) => servono[x.id]), sg = sigle_(lista);
+  return { mese: mese, quando: p.quando, settimane: sett.map((w) => ({ id: w.lunedi, lunedi: w.lunedi })), adunanze: adunanzeReparti_(cal, sett, st.nessuna),
+    orari: { infra: orarioTesto_(cal, sett, 'infra'), fs: orarioTesto_(cal, sett, 'fs') },
+    persone: lista.map((x) => ({ id: x.id, sigla: sg[x.id], nome: x.n, cognome: x.cognome, gruppo: x.gruppo })), stato: st };
+}
+function comitivePubblicate_(mese) {
+  const p = leggiImpostazione_('pub:comitive:' + mese, null);
+  if (!p) return null;
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const sett = settimane_(cal, mese), st = p.dati;
+  ['assegnati', 'nascoste', 'note', 'domeniche'].forEach((x) => { st[x] = st[x] || {}; });
+  const servono = {}; Object.keys(st.assegnati).forEach((c) => { servono[st.assegnati[c]] = true; });
+  const lista = persone_().filter((x) => servono[x.id]), sg = sigle_(lista);
+  return { mese: mese, nomeMese: nomeMese_(mese), quando: p.quando,
+    settimane: sett.map((w) => ({ lunedi: w.lunedi, dal: w.dal, al: w.al, speciale: w.speciale, comitive: w.comitive, domenica: w.al })),
+    conduttori: lista.map((x) => ({ id: x.id, sigla: sg[x.id], nome: x.n, cognome: x.cognome, abilitato: true })), offerte: {}, risposto: {}, previsti: [], storico: {}, stato: st };
+}
+
+/** La bacheca di una persona per un mese: solo programmi pubblicati, ognuno secondo le sue abilitazioni. */
+function bacheca(k, mese) {
+  const io = richiedi_(k);
+  segnaAccesso_(io);
+  mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : oggi_().slice(0, 7);
+  const p = persone_().find((x) => x.id === io.id) || { nominato: false, reparti: false, oem: false, n: '', cognome: '' };
+  const tutto = io.tutto;
+  const out = { mese: mese, nomeMese: nomeMese_(mese), oggi: oggi_(), io: { id: io.id, nominato: p.nominato || tutto, reparti: p.reparti || tutto, oem: p.oem || tutto }, impegni: [] };
+  const pin = leggiImpostazione_('pub:programmi-inf:' + mese, null), pfs = leggiImpostazione_('pub:programmi-fs:' + mese, null);
+  out.programmi = { inf: pin ? pin.quando : '', fs: pfs ? pfs.quando : '' };
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const ads = adunanzeReparti_(cal, settimane_(cal, mese), {});
+  const dataDi = (carta) => { const id = String(carta).replace(/-inf$/, '-INFRA').replace(/-fs$/, '-FINE'); const a = ads.find((x) => x.id === id); return a ? a.data : String(carta).slice(0, 10); };
+  // le mie parti, dai programmi pubblicati
+  const idx = indiceNomi_();
+  const mie = (nome) => { const ids = idx[chiaveNome_(nome)]; return ids && ids.length === 1 && ids[0] === io.id; };
+  const val = Object.assign({}, pin ? pin.dati : {}, pfs ? pfs.dati : {});
+  righeGuida_(mese).forEach((r) => { if (val[r.k] && mie(val[r.k])) out.impegni.push({ data: dataDi(r.carta), tipo: r.tipo === 'INFRA' ? 'inf' : 'fs', testo: r.testo }); });
+  // reparti
+  const rp = repartiPubblicati_(mese);
+  if (rp) {
+    const nomeInc = { USC_COORD: 'Coordinatore uscieri', USC_ING: 'Usciere all\'ingresso', USC_AUD: 'Usciere in auditorium', USC_PAR: 'Usciere al parcheggio', AV_POD: 'Podio', AV_MIC: 'Microfonista', AV_MIX: 'Mixer', AV_PC: 'PC', LET: 'Letteratura', TER: 'Territori', PUL_COORD: 'Coordinatore pulizie', PUL_REF: 'Referente pulizie' };
+    rp.stato.turni.filter((t) => t.persona_id === io.id).forEach((t) => {
+      const a = rp.adunanze.find((x) => x.id === t.adunanza_id);
+      out.impegni.push({ data: a ? a.data : t.settimana_id, tipo: 'rep', testo: nomeInc[t.incarico_id] + (a ? '' : ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7)) });
+    });
+    Object.keys(rp.stato.generali).forEach((s) => { const g = rp.stato.generali[s]; if (g.attiva && (g.coord === io.id || g.ref === io.id)) out.impegni.push({ data: g.data, tipo: 'rep', testo: 'Pulizia generale · ' + (g.coord === io.id ? 'coordinatore' : 'referente') }); });
+    if (out.io.reparti || rp.stato.turni.some((t) => t.persona_id === io.id)) out.reparti = rp;
+  }
+  // comitive
+  const cm = comitivePubblicate_(mese);
+  if (cm) {
+    cm.settimane.forEach((w) => w.comitive.forEach((c) => { if (!c.annullata && !cm.stato.nascoste[c.k] && cm.stato.assegnati[c.k] === io.id) out.impegni.push({ data: c.data, tipo: 'com', testo: 'Comitiva ' + c.ora + ' · ' + c.luogo }); }));
+    out.comitive = cm;
+    out.versioniComitive = out.io.nominato ? ['generale', 'personale', 'tabella'] : ['tabella'];
+  }
+  // espositori
+  if (out.io.oem) {
+    try {
+      const ss = foglioEspositori_(), pub = ss.getSheetByName('Pubblicati');
+      const r = pub ? oemRiga_(ss, pub, mese) : 0;
+      if (r) {
+        out.espositori = { quando: iso_(pub.getRange(r, 3).getValue()) };
+        const X = JSON.parse(String(pub.getRange(r, 2).getValue()));
+        const posti = {}; (X.postazioni || []).forEach((x) => { posti[x.id] = x.nome; });
+        Object.keys(X.turni || {}).forEach((kk) => { if ((X.turni[kk] || []).some(mie)) { const [d, pid, ora] = kk.split('|'); out.impegni.push({ data: d, tipo: 'oem', testo: 'Espositori · ' + (posti[pid] || pid) + ' · ' + ora }); } });
+      }
+    } catch (e) { /* Foglio espositori non raggiungibile */ }
+  }
+  out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+  out.mieiPub = { reparti: !!rp, comitive: !!cm };
+  return out;
+}
+
+/** Programmi pubblicati per la bacheca (la pagina dei programmi in sola lettura). */
+function pa_bacheca(k) {
+  const io = richiedi_(k);
+  const p = persone_().find((x) => x.id === io.id) || {};
+  const ss = foglioProgrammi_();
+  const valori = {};
+  valori_('Impostazioni').slice(1).forEach((r) => { if (/^pub:programmi-(inf|fs):/.test(String(r[0])) && r[1]) Object.assign(valori, JSON.parse(String(r[1])).dati || {}); });
+  return { email: io.nome, ruolo: 'legge', impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: {}, bacheca: true, conReparti: !!(p.nominato || io.tutto), reparti: (p.nominato || io.tutto) ? repartiPerProgramma_(true) : {} };
+}
+/** Espositori pubblicati per la bacheca. */
+function oem_bacheca(k) {
+  const io = richiedi_(k);
+  const p = persone_().find((x) => x.id === io.id) || {};
+  if (!p.oem && !io.tutto) throw new Error('Il programma espositori lo vedono gli abilitati all\'opera pubblica.');
+  const ss = foglioEspositori_(), pub = ss.getSheetByName('Pubblicati'), mesi = {};
+  if (pub && pub.getLastRow() > 1) pub.getRange(2, 1, pub.getLastRow() - 1, 2).getValues().forEach((r) => { if (r[0]) mesi[oemChiave_(ss, r[0])] = { dati: String(r[1]), rev: 0 }; });
+  return { email: io.nome, ruolo: 'legge', mesi: mesi, carrelli: {}, catalogo: [] };
+}
+
+/** I reparti di ogni adunanza nella forma delle schede «Reparti» del programma (vista «Adunanze e reparti»).
+ *  pubblicati = true: solo le turnazioni pubblicate (bacheca); altrimenti quelle in lavorazione (chi compila). */
+function repartiPerProgramma_(pubblicati) {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const out = {};
+  const ET = { USC_COORD: 'Coordinatore', USC_ING: 'Ingresso', USC_AUD: 'Auditorium', USC_PAR: 'Parcheggio', AV_POD: 'Podio', AV_MIC: 'Mic.', AV_MIX: 'Mixer', AV_PC: 'PC', LET: 'Letteratura', TER: 'Territori' };
+  const SEZ = [['Uscieri', ['USC_COORD', 'USC_ING', 'USC_AUD', 'USC_PAR']], ['Letteratura e territori', ['LET', 'TER']], ['Audio/Video', ['AV_POD', 'AV_MIC', 'AV_MIX', 'AV_PC']]];
+  const POSTI = { USC_AUD: 2, USC_PAR: 2, AV_MIC: 2 };
+  const tutti = persone_(), sg = sigle_(tutti);
+  [-1, 0, 1, 2, 3].forEach((n) => {
+    const m = meseDopo_(oggi_().slice(0, 7), n);
+    const x = pubblicati ? (leggiImpostazione_('pub:reparti:' + m, null) || {}).dati : leggiImpostazione_('reparti:' + m, null);
+    if (!x) return;
+    const turni = scompatta_(x.turni);
+    settimane_(cal, m).forEach((w) => {
+      const chi = (inc, pos, ad) => { const t = turni.find((y) => y.settimana_id === w.lunedi && y.incarico_id === inc && y.posizione === pos && y.adunanza_id === ad); return t ? sg[t.persona_id] || '' : ''; };
+      const sett = {};
+      ['INFRA', 'FINE'].forEach((tipo) => {
+        const ad = w.lunedi + '-' + tipo;
+        if (!turni.some((y) => y.adunanza_id === ad)) return;
+        sett[tipo] = SEZ.map(([titolo, incs]) => ({ titolo: titolo, righe: [].concat.apply([], incs.map((inc) => {
+          const np = POSTI[inc] || 1, r = [];
+          for (let p = 1; p <= np; p++) r.push([ET[inc] + (inc === 'AV_MIC' ? ' ' + p + (p === 1 ? ' (sx)' : ' (dx)') : ''), chi(inc, p, ad)]);
+          return r;
+        })) }));
+      });
+      if (!Object.keys(sett).length) return;
+      sett.pulizie = { gruppo: (x.gruppi || {})[w.lunedi] || '', righe: [['Coordinatore', chi('PUL_COORD', 1, null)], ['Referente', chi('PUL_REF', 1, null)]] };
+      out[w.lunedi] = sett;
+    });
+  });
+  return out;
 }
