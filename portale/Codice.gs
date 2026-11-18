@@ -198,6 +198,7 @@ function portale(k) {
   const io = richiedi_(k);
   segnaAccesso_(io);
   const out = { io: { id: io.id, nome: io.nome, ambiti: io.ambiti, tutto: io.tutto }, nomiAmbiti: NOMI_AMBITI };
+  try { out.io.wa = waQualcosa_(waVede_(io)); } catch (e) { out.io.wa = false; }
   out.sondaggi = sondaggiPer_(io.id);
   if (!io.ambiti.length) return out; // solo sondaggio
   const sh = SpreadsheetApp.getActive().getSheetByName(FOGLIO);
@@ -1442,17 +1443,18 @@ function inviiWhatsApp(e) {
     let conf = null; try { conf = JSON.parse(val[carta + ':wa'] || 'null'); } catch (e) { /* valore rovinato */ }
     const stato = p.getProperty(statoK) || '';
     if (!conf) {
-      if (stato !== 'avviso') { telegram_('sendMessage', { chat_id: chat, text: '⚠️ ' + nomeAd + ': le immagini per il presidente e per l’Audio/Video non sono ancora confermate da chi compila il programma.' }); p.setProperty(statoK, 'avviso'); }
+      if (stato !== 'avviso') { telegram_('sendMessage', { chat_id: chat, text: '⚠️ ' + nomeAd + ': le immagini per il presidente e per le prove dell’Audio/Video non sono ancora confermate da chi compila il programma.' }); p.setProperty(statoK, 'avviso'); }
       return;
     }
     const firma = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, conf.firma || ''));
     if (stato === firma) return;
     const agg = stato && stato !== 'avviso' ? '🔄 Aggiornamento · ' : '';
-    [[conf.png && conf.png.pres, 'Presidente'], [conf.png && conf.png.av, 'Reparto Audio/Video']].forEach(([id, chi]) => {
+    [[conf.png && conf.png.pres, 'Presidente'], [conf.png && conf.png.av, 'Audio/Video · prove']].forEach(([id, chi]) => {
       if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + chi + ' · ' + nomeAd, photo: DriveApp.getFileById(id).getBlob() });
     });
     p.setProperty(statoK, firma);
   });
+  inviiReparti_(p, chat, giorni, ora, adesso);
 }
 
 
@@ -1771,4 +1773,107 @@ function repartiPerProgramma_(pubblicati) {
     });
   });
   return out;
+}
+
+/* ═════════════════════════ Pronto per WhatsApp ═════════════════════════
+ * Settimana per settimana, le immagini da mandare nei gruppi:
+ * - Presidente e «Audio/Video · prove» di ogni adunanza: le conferma chi compila quel programma (inf / fs);
+ * - Reparti (Audio/Video, Uscieri, Letteratura e territori, Pulizie): confermate da sole quando Luca pubblica la turnazione.
+ * Chi vede cosa: il presidente tutti i nominati; le prove chi compila e chi coordina l'Audio/Video;
+ * ogni reparto chi lo coordina o lo assiste (colonne «RUOLI NEI REPARTI»). Luca vede tutto. */
+const WA_REPARTI_ = { av: 'Audio/Video', usc: 'Uscieri', let: 'Letteratura e territori', pul: 'Pulizie' };
+function ruoliReparto_(p) {
+  const out = {};
+  if (!p || !p.riga) return out;
+  struttura_(SpreadsheetApp.getActive().getSheetByName(FOGLIO)).filter((x) => x.ruolo).forEach((x) => { const v = String(p.riga[x.c - 1] || ''); if (v) out[x.titolo] = v; });
+  return out;
+}
+function waVede_(io) {
+  const p = persone_().find((x) => x.id === io.id) || {};
+  let comp = null; try { comp = ruoloProgrammi_(io); } catch (e) { /* non compila */ }
+  const r = ruoliReparto_(p), tutto = !!io.tutto;
+  const coordAv = !!r['Audio/Video'];
+  const rep = {}; Object.keys(WA_REPARTI_).forEach((k) => { rep[k] = tutto || !!r[WA_REPARTI_[k]]; });
+  return { comp: comp, pres: tutto || !!p.nominato || !!comp,
+    prove: { INFRA: tutto || comp === 'inf' || comp === 'tutto' || coordAv, FINE: tutto || comp === 'fs' || comp === 'tutto' || coordAv },
+    rep: rep, luca: tutto };
+}
+function waQualcosa_(v) { return v.pres || v.prove.INFRA || v.prove.FINE || Object.keys(v.rep).some((k) => v.rep[k]); }
+/** Le turnazioni pubblicate, settimana per settimana, con i nomi interi (per le immagini). */
+function repartiWA_(vede) {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+  const nomi = {}; persone_().forEach((p) => { nomi[p.id] = { v: (p.n + ' ' + p.cognome).trim(), nome: p.n, cognome: p.cognome }; });
+  const out = {};
+  const SEZ = { usc: [['USC_COORD', 'Coordinatore', 1], ['USC_ING', 'Ingresso', 1], ['USC_AUD', 'Auditorium', 2], ['USC_PAR', 'Parcheggio', 2]],
+    av: [['AV_POD', 'Podio', 1], ['AV_MIC', 'Microfono', 2], ['AV_MIX', 'Mixer', 1], ['AV_PC', 'PC', 1]], let: [['LET', 'Letteratura', 1], ['TER', 'Territori', 1]] };
+  [-1, 0, 1, 2].forEach((n) => {
+    const m = meseDopo_(oggi_().slice(0, 7), n);
+    const pub = leggiImpostazione_('pub:reparti:' + m, null);
+    if (!pub || !pub.dati) return;
+    const x = pub.dati, turni = scompatta_(x.turni), sett = settimane_(cal, m);
+    const ads = adunanzeReparti_(cal, sett, x.nessuna || {});
+    sett.forEach((w) => {
+      if (out[w.lunedi] || w.lunedi < piu_(oggi_(), -6)) return;
+      const chi = (inc, pos, ad) => { const t = turni.find((y) => y.settimana_id === w.lunedi && y.incarico_id === inc && y.posizione === pos && y.adunanza_id === ad); return t && nomi[t.persona_id] ? nomi[t.persona_id] : null; };
+      const s = { lunedi: w.lunedi, al: piu_(w.lunedi, 6), adunanze: [], pubblicato: pub.quando };
+      ads.filter((a) => a.settimana_id === w.lunedi && !a.nessuna).forEach((a) => {
+        const ad = { tipo: a.tipo, data: a.data, ora: a.ora };
+        Object.keys(SEZ).forEach((k) => {
+          if (!vede.rep[k]) return;
+          ad[k] = [];
+          SEZ[k].forEach(([inc, et, np]) => { for (let p = 1; p <= np; p++) ad[k].push([np > 1 ? et + ' ' + p + (inc === 'AV_MIC' ? (p === 1 ? ' (sx)' : ' (dx)') : '') : et, chi(inc, p, a.id)]); });
+        });
+        s.adunanze.push(ad);
+      });
+      if (vede.rep.pul) {
+        const g = (x.generali || {})[w.lunedi];
+        s.pul = { gruppo: (x.gruppi || {})[w.lunedi] || '', coord: chi('PUL_COORD', 1, null), ref: chi('PUL_REF', 1, null),
+          generale: g && g.attiva ? { gruppo: g.gruppo || '', coord: g.coord && nomi[g.coord] || null, ref: g.ref && nomi[g.ref] || null } : null };
+      }
+      out[w.lunedi] = s;
+    });
+  });
+  return out;
+}
+function confermeRepartiWA_() {
+  const out = {};
+  valori_('Impostazioni').slice(1).forEach((r) => { const m = /^wa:reparti:(\d{4}-\d{2}-\d{2})$/.exec(String(r[0])); if (m && r[1]) try { out[m[1]] = JSON.parse(String(r[1])); } catch (e) { /* rovinato */ } });
+  return out;
+}
+/** Tutto quello che serve a «Pronto per WhatsApp», filtrato per chi lo apre. */
+function wa_stato(k) {
+  const io = richiedi_(k);
+  const v = waVede_(io);
+  if (!waQualcosa_(v)) throw new Error('Non ci sono immagini WhatsApp per te.');
+  const ss = foglioProgrammi_();
+  const vuole = v.pres || v.prove.INFRA || v.prove.FINE;
+  const valori = vuole ? coppie_(ss.getSheetByName('Programma')) : {};
+  return { email: io.nome, ruolo: v.comp || 'legge', impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: vuole ? podioPerProgramma_(valori) : {},
+    senzaWA: true, wa: { vede: v, reparti: repartiWA_(v), conferme: v.luca ? confermeRepartiWA_() : {}, cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia') } };
+}
+/** Solo Luca: le immagini dei reparti di una settimana, appena generate (confermate in automatico). */
+function wa_confermaReparti(k, lunedi, rec) {
+  const io = richiedi_(k, true);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(lunedi))) throw new Error('Settimana non valida');
+  scriviImpostazione_('wa:reparti:' + lunedi, { firma: String(rec.firma || ''), quando: String(rec.quando || ''), il: new Date().toISOString(), da: io.nome, png: rec.png || {} });
+  registroUnaVolta_(io, 'whatsapp', 'immagini dei reparti generate');
+  return true;
+}
+/** Telegram: le immagini dei reparti di ogni settimana, con lo stesso anticipo, prima della prima adunanza della settimana. */
+function inviiReparti_(p, chat, giorni, ora, adesso) {
+  const conf = confermeRepartiWA_();
+  Object.keys(conf).forEach((lun) => {
+    const c = conf[lun], inizio = dataRoma_(c.quando), statoK = 'inviato:rep:' + lun;
+    if (!inizio) return;
+    if (inizio <= adesso) { p.deleteProperty(statoK); return; }
+    const giorno = Utilities.formatDate(new Date(inizio.getTime() - giorni * 86400000), 'Europe/Rome', 'yyyy-MM-dd');
+    if (adesso < dataRoma_(giorno + ' ' + ora[0] + ':' + (ora[1] || '00'))) return;
+    const firma = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, c.firma || ''));
+    const stato = p.getProperty(statoK) || '';
+    if (stato === firma) return;
+    const agg = stato ? '🔄 Aggiornamento · ' : '';
+    const sett = 'settimana dal ' + Utilities.formatDate(dataRoma_(lun + ' 12:00'), 'Europe/Rome', 'dd/MM');
+    Object.keys(WA_REPARTI_).forEach((x) => { const id = (c.png || {})[x]; if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + 'Reparto ' + WA_REPARTI_[x] + ' · ' + sett, photo: DriveApp.getFileById(id).getBlob() }); });
+    p.setProperty(statoK, firma);
+  });
 }

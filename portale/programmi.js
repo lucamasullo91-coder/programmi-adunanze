@@ -8,6 +8,7 @@
   const FN = { stato: 'pa_stato', salva: 'pa_salva', caricaFoto: 'pa_caricaFoto', caricaImmagine: 'pa_caricaImmagine', foto: 'pa_foto' };
   const FN_OEM = { stato: 'oem_stato', salvaMese: 'oem_salvaMese', eliminaMese: 'oem_eliminaMese', salvaCarrelli: 'oem_salvaCarrelli',
     salvaCatalogo: 'oem_salvaCatalogo', eliminaCatalogo: 'oem_eliminaCatalogo', jwPagina: 'oem_jwPagina', jwImmagine: 'oem_jwImmagine' };
+  const FN_WA = { stato: 'wa_stato', salva: 'pa_salva', caricaImmagine: 'pa_caricaImmagine', confermaReparti: 'wa_confermaReparti' };
   const codice = {};
 
   const css = document.createElement('style');
@@ -42,25 +43,26 @@
   }
   /** La pagina degli espositori è già un HTML completo: le aggiungo solo il ponte in testa. */
   function paginaOem(html) { return html.replace(/<head>/i, '<head><script>' + ponte() + '<\/script>'); }
-  function pagina(js) {
-    const ponteP = 'window.__CONF={base:' + JSON.stringify(REPO) + '};' + ponte();
+  function pagina(js, genera) {
+    const ponteP = 'window.__CONF={base:' + JSON.stringify(REPO) + (genera ? ',genera:true' : '') + '};' + ponte();
     return '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fira+Sans+Extra+Condensed:wght@400;500;600;700;800&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap">' +
       '</head><body><div id="root"></div><script>' + ponteP + '<\/script><script>' + js.replace(/<\/script/gi, '<\\/script') + '<\/script></body></html>';
   }
   function monta(quale) {
-    const fr = document.getElementById('paFrame'), st = document.getElementById('paSt');
+    const fr = document.getElementById(quale === 'genera' ? 'waGen' : 'paFrame'), st = document.getElementById('paSt');
     if (!fr) return;
     const oem = /spositori/.test(quale);
     const file = oem ? 'espositori/app.html' : 'dist/app.js';
-    scarica(file).then((t) => { fr.srcdoc = oem ? paginaOem(t) : pagina(t); fr.dataset.q = quale; if (st) st.textContent = ''; }).catch((e) => { if (st) st.textContent = 'Errore: ' + e.message; });
+    scarica(file).then((t) => { fr.srcdoc = oem ? paginaOem(t) : pagina(t, quale === 'genera'); fr.dataset.q = quale; if (st) st.textContent = ''; }).catch((e) => { if (st) st.textContent = 'Errore: ' + e.message; });
   }
   window.addEventListener('message', (e) => {
-    const fr = document.getElementById('paFrame');
+    const fr = [document.getElementById('paFrame'), document.getElementById('waGen')].find((x) => x && e.source === x.contentWindow);
     const d = e.data;
-    if (!fr || e.source !== fr.contentWindow || !d || !d.paQ) return;
+    if (fr && d && d.waFatto && fr.id === 'waGen') { fr.remove(); if (d.n) P.toast('Immagini dei reparti pronte per Telegram (' + d.n + (d.n === 1 ? ' settimana)' : ' settimane)')); return; }
+    if (!fr || !d || !d.paQ) return;
     const q = fr.dataset.q;
-    const fn = q === 'bachecaProgrammi' ? (d.fn === 'stato' ? 'pa_bacheca' : d.fn === 'foto' ? 'pa_foto' : null)
+    const fn = q === 'whatsapp' || q === 'genera' ? FN_WA[d.fn] : q === 'bachecaProgrammi' ? (d.fn === 'stato' ? 'pa_bacheca' : d.fn === 'foto' ? 'pa_foto' : null)
       : q === 'bachecaEspositori' ? (d.fn === 'stato' ? 'oem_bacheca' : null)
       : (q === 'espositori' ? FN_OEM : FN)[d.fn];
     const rispondi = (ok, v) => fr.contentWindow.postMessage(ok ? { paR: 1, id: d.id, ok: true, v: v } : { paR: 1, id: d.id, ok: false, e: v }, '*');
@@ -98,6 +100,20 @@
     setTimeout(() => monta('espositori'), 0);
     return '<div class="pa-full"><div class="pa-top" style="border-color:#2F7F8C"><button class="back" data-go="home">‹ Portale</button><b style="color:#2F7F8C">Programma espositori</b>' + barraPub([['espositori', 'Pubblica in bacheca', 'espositori']]) + '<span id="paSt">Carico…</span></div><iframe id="paFrame" title="Programma espositori"></iframe></div>';
   };
+  P.viste.whatsapp = function () {
+    setTimeout(() => monta('whatsapp'), 0);
+    return '<div class="pa-full"><div class="pa-top" style="border-color:#25804B"><button class="back" data-go="home">‹ Portale</button><b style="color:#25804B">Pronto per WhatsApp</b><span id="paSt">Carico…</span></div><iframe id="paFrame" title="Pronto per WhatsApp"></iframe></div>';
+  };
+  /** Dopo «Pubblica» della turnazione: in un riquadro nascosto preparo le immagini dei reparti (PNG) per Telegram. */
+  P.generaWA = function () {
+    if (document.getElementById('waGen')) return;
+    const f = document.createElement('iframe');
+    f.id = 'waGen'; f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = 'position:fixed;left:-30000px;top:0;width:1200px;height:1500px;border:0';
+    document.body.appendChild(f);
+    monta('genera');
+    setTimeout(() => { const x = document.getElementById('waGen'); if (x) x.remove(); }, 180000);
+  };
   P.viste.bachecaProgrammi = function () {
     setTimeout(() => monta('bachecaProgrammi'), 0);
     return '<div class="pa-full"><div class="pa-top"><button class="back" data-go="bacheca">‹ Bacheca</button><b>Programma delle adunanze</b><span id="paSt">Carico…</span></div><iframe id="paFrame" title="Programma delle adunanze"></iframe></div>';
@@ -128,7 +144,7 @@
   P.viste.telegram = function () {
     const h = P.testata('Telegram', 'Invii automatici', 'home');
     if (!T) { P.srv('riservate').then((r) => { T = r; P.disegna(); }).catch((e) => P.toast(e.message, true)); return h + '<p class="nota">Carico…</p>'; }
-    return h + '<p class="nota">Qualche giorno prima di ogni adunanza il portale manda nel tuo gruppo Telegram le immagini del presidente e dell\'Audio/Video confermate da chi compila; se non sono confermate, un avviso. Le chiavi le legge solo lo script: non compaiono né nel Foglio né nella pagina.</p>' +
+    return h + '<p class="nota">Qualche giorno prima di ogni adunanza il portale manda nel tuo gruppo Telegram le immagini del presidente e delle prove dell\'Audio/Video confermate da chi compila (se non sono confermate, un avviso) e, prima della prima adunanza di ogni settimana, quelle dei reparti (Audio/Video, Uscieri, Letteratura e territori, Pulizie), pronte appena pubblichi la turnazione. Le chiavi le legge solo lo script: non compaiono né nel Foglio né nella pagina.</p>' +
       '<div class="tg"><label>Token del bot<input id="tgTok" placeholder="' + esc(T.TELEGRAM_TOKEN || 'non impostato') + '" autocomplete="off"><small>Lo stesso bot del brief (BotFather). Lascia vuoto per non cambiarlo.</small></label>' +
       '<label>Chat<input id="tgChat" placeholder="' + esc(T.TELEGRAM_CHAT || 'non impostata') + '" autocomplete="off"><small>L\'id del gruppo delle notifiche (es. -100…).</small></label>' +
       '<label>Giorni prima dell\'adunanza<input id="tgG" value="' + esc(T.ANTICIPO_GIORNI) + '"></label>' +

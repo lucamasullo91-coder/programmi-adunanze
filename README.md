@@ -98,3 +98,23 @@ il Foglio non si condivide con nessuno e lo script manda a ciascuno solo i dati 
   Il podio arriva dalla Turnazione reparti del portale; gli invii Telegram partono dallo script del portale (pagina Telegram).
 - Velocità: dentro ogni chiamata ogni scheda si legge una volta sola; i codici di accesso stanno nella cache dello
   script (si svuota a ogni modifica degli Accessi).
+
+### Bacheca e pubblicazione
+
+In bacheca va solo quello che è pubblicato: ogni programma ha il suo pulsante **Pubblica** (un mese alla volta), che salva una copia
+nelle Impostazioni (`pub:<tipo>:AAAA-MM`). Chi compila può continuare a lavorare: la bacheca cambia solo alla pubblicazione successiva.
+I nominati vedono anche la vista **Adunanze e reparti** (ogni adunanza con la sua turnazione accanto, impaginazione di CM).
+
+### Pronto per WhatsApp
+
+Settimana per settimana, le immagini da mandare nei gruppi:
+
+| Immagine | Chi la conferma | Chi la vede |
+|---|---|---|
+| Presidente (per adunanza) | chi compila quel programma (inf / fs) | tutti i nominati |
+| Audio/Video · prove (podio + parti con assistente) | chi compila quel programma | chi compila, coordinatore e assistente Audio/Video |
+| Reparto Audio/Video, Uscieri, Letteratura e territori, Pulizie (per settimana) | in automatico, quando si pubblica la turnazione | coordinatore e assistente di quel reparto (colonne «RUOLI NEI REPARTI») |
+
+Luca vede tutto. Alla pubblicazione della turnazione il portale prepara in un riquadro nascosto i PNG dei reparti e li salva nella
+cartella Drive delle immagini (`wa:reparti:<lunedì>`); l'attivatore Telegram li manda con lo stesso anticipo, prima della prima
+adunanza della settimana, e li rimanda con «Aggiornamento» se la turnazione cambia ed è ripubblicata.

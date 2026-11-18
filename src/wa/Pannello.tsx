@@ -30,6 +30,9 @@ type Props = {
   tipi: ("INFRA" | "FINE")[];
   salva: (coppie: [string, string][]) => Promise<void>;
   carica: (base64: string, nome: string) => Promise<string>;
+  /** Pronto per WhatsApp: only this week (lunedì) and only the images this person may see. */
+  settimana?: string;
+  vede?: { pres: boolean; prove: { INFRA: boolean; FINE: boolean } };
 };
 
 type Voce = {
@@ -55,14 +58,16 @@ const quandoIt = (iso: string) => {
   return d.toLocaleString("it-IT", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 };
 
-export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva, carica }: Props) {
+export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva, carica, settimana, vede }: Props) {
   const oggi = new Date().toISOString().slice(0, 10);
   const voci = useMemo<Voce[]>(() => {
     const out: Voce[] = [];
     for (const f of fogli)
       for (const s of f.settimane)
         for (const c of s.carte) {
-          if (!tipi.includes(c.tipo as "INFRA" | "FINE") || !puo(c)) continue;
+          if (!tipi.includes(c.tipo as "INFRA" | "FINE")) continue;
+          if (settimana && c.id.slice(0, 10) !== settimana) continue;
+          if (vede ? !vede.pres && !vede.prove[c.tipo as "INFRA" | "FINE"] && !puo(c) : !puo(c)) continue;
           const d = dataCarta(c, f);
           if (d && d < oggi) continue; // past meetings
           const p = valori[chiavePodio(c)] || (d ? podio[`${d}|${c.tipo}`] : "") || "";
@@ -71,13 +76,14 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
           out.push({ c, f, imm, firma: JSON.stringify(imm), conf: leggi(valori[chiaveConferma(c)]), podio: p, quando: quandoCarta(c, f) });
         }
     return out;
-  }, [fogli, valori, podio, tipi.join(), oggi]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fogli, valori, podio, tipi.join(), oggi, settimana]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The time of each meeting, for the automatic messages (also of meetings not confirmed yet).
   const scritti = useRef(new Set<string>());
   useEffect(() => {
     const coppie: [string, string][] = [];
     for (const v of voci) {
+      if (!puo(v.c)) continue;
       const k = chiaveQuando(v.c);
       if (v.quando && valori[k] !== v.quando && !scritti.current.has(k + v.quando)) {
         scritti.current.add(k + v.quando);
@@ -107,7 +113,7 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
       const giorno = (dataCarta(v.c, v.f) ?? v.c.id).replace(/-/g, "");
       const tipo = v.c.tipo === "INFRA" ? "infrasettimanale" : "fine-settimana";
       const pres = await carica((await png(`${v.c.id}:pres`)).split(",")[1]!, `${giorno} presidente ${tipo}.png`);
-      const av = await carica((await png(`${v.c.id}:av`)).split(",")[1]!, `${giorno} audio-video ${tipo}.png`);
+      const av = await carica((await png(`${v.c.id}:av`)).split(",")[1]!, `${giorno} audio-video prove ${tipo}.png`);
       const rec: Conferma = { firma: v.firma, il: new Date().toISOString(), da: email, png: { pres, av }, quando: v.quando ?? "" };
       await salva([[chiaveConferma(v.c), JSON.stringify(rec)]]);
     } catch (e) {
@@ -136,7 +142,8 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
         return new File([b], nome, { type: "image/png" });
       };
       const tipo = v.c.tipo === "INFRA" ? "infrasettimanale" : "fine settimana";
-      const files = [await file(`${v.c.id}:pres`, `Presidente ${tipo} ${giorno}.png`), await file(`${v.c.id}:av`, `Audio-Video ${tipo} ${giorno}.png`)];
+      const files: File[] = [];
+      for (const k of tipiDi(v)) files.push(await file(`${v.c.id}:${k}`, k === "pres" ? `Presidente ${tipo} ${giorno}.png` : `Audio-Video prove ${tipo} ${giorno}.png`));
       const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
       if (nav.canShare?.({ files })) {
         try {
@@ -160,15 +167,30 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
     }
   }
 
-  if (!voci.length) return <p className="pa-msg">Nessuna adunanza in programma in questo bimestre.</p>;
+  if (!voci.length) return settimana ? null : <p className="pa-msg">Nessuna adunanza in programma in questo bimestre.</p>;
+  const tipiDi = (v: Voce) =>
+    (["pres", "av"] as const).filter((k) => !vede || puo(v.c) || (k === "pres" ? vede.pres : vede.prove[v.c.tipo as "INFRA" | "FINE"]));
   return (
-    <div className="wa-pan">
-      <p className="pa-aiuto wa-intro">
-        Per ogni adunanza: l’immagine per il presidente e quella per il reparto Audio/Video, prese dal programma. Controllale e premi
+    <div className={settimana ? "wa-pan dentro" : "wa-pan"}>
+      {!settimana && <p className="pa-aiuto wa-intro">
+        Per ogni adunanza: l’immagine per il presidente e quella per le prove dell’Audio/Video (podio e parti con assistente), prese dal programma. Controllale e premi
         <b> Conferma</b>; se qualcosa è cambiato premi <b>Modifica</b>: il nome sostituito resta barrato, anche sul programma.
-      </p>
+      </p>}
       {voci.map((v) => {
         const stato = !v.conf ? "da" : v.conf.firma === v.firma ? "ok" : "cambiata";
+        const mio = puo(v.c);
+        if (!mio && stato !== "ok")
+          return (
+            <article key={v.c.id} className="wa-voce da">
+              <header>
+                <div>
+                  <b>{v.c.titolo}</b>
+                  <span>{v.c.tipo === "INFRA" ? "Adunanza infrasettimanale" : "Adunanza del fine settimana"}</span>
+                </div>
+                <span className="wa-stato da">In attesa della conferma di chi compila</span>
+              </header>
+            </article>
+          );
         return (
           <article key={v.c.id} className={`wa-voce ${stato}`}>
             <header>
@@ -181,7 +203,7 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
               </span>
             </header>
             <div className="wa-mini">
-              {(["pres", "av"] as const).map((k) => (
+              {tipiDi(v).map((k) => (
                 <button key={k} type="button" className="wa-th" onClick={() => setGrande(v.imm[k])} aria-label="Ingrandisci">
                   <Scalata className="wa-th-in">
                     <Immagine
@@ -191,17 +213,17 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
                       }}
                     />
                   </Scalata>
-                  <span>{k === "pres" ? "Presidente" : "Audio/Video"}</span>
+                  <span>{k === "pres" ? "Presidente" : "Audio/Video · prove"}</span>
                 </button>
               ))}
             </div>
             <div className="pa-azioni">
-              <button className="pa-btn" disabled={!!lavoro || stato === "ok"} onClick={() => void conferma(v)}>
+              {mio && <button className="pa-btn" disabled={!!lavoro || stato === "ok"} onClick={() => void conferma(v)}>
                 {lavoro === v.c.id ? "Un momento…" : stato === "ok" ? "Confermata" : "Conferma"}
-              </button>
-              <button className="pa-btn sec" disabled={!!lavoro} onClick={() => setModifica(v)}>
+              </button>}
+              {mio && <button className="pa-btn sec" disabled={!!lavoro} onClick={() => setModifica(v)}>
                 Modifica
-              </button>
+              </button>}
               <span />
               <button className="pa-btn sec" disabled={!!lavoro} onClick={() => void condividi(v)}>
                 Scarica
@@ -316,6 +338,7 @@ function FinestraModifica({
 }
 
 export const CSS_PANNELLO = `
+.wa-pan.dentro { padding: 0; max-width: none; margin: 0; width: 100%; }
 .wa-pan { max-width: 760px; margin: 0 auto; padding: 14px 12px 60px; display: grid; gap: 14px; }
 .wa-intro { padding: 0 4px; }
 .wa-voce { background: #fff; border: 1px solid var(--pa-line); border-radius: 14px; padding: 12px; display: grid; gap: 12px; }

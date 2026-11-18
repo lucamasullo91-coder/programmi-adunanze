@@ -20,6 +20,7 @@ import { normalizza, GIORNI_IT, MESI_IT, cap, type Carta, type Evento, type Fogl
 import { jpegDaDataUrl, pdfDaJpeg, scarica } from "./pdfzip";
 import { CSS_IMMAGINE } from "./wa/immagine";
 import { CSS_PANNELLO, PannelloWhatsApp } from "./wa/Pannello";
+import { CSS_PRONTO, GeneraReparti, ProntoWhatsApp, type StatoWA } from "./wa/Pronto";
 
 // Any error is shown on the page (otherwise a failure inside the Google page is just a blank screen).
 const mostraErrore = (m: string) => {
@@ -30,7 +31,7 @@ const mostraErrore = (m: string) => {
 };
 window.addEventListener("error", (e) => mostraErrore(`${e.message} (${e.filename}:${e.lineno})`));
 window.addEventListener("unhandledrejection", (e) => mostraErrore(String((e.reason as Error)?.message ?? e.reason)));
-for (const c of [fogliCss, appCss, CSS_IMMAGINE, CSS_PANNELLO]) {
+for (const c of [fogliCss, appCss, CSS_IMMAGINE, CSS_PANNELLO, CSS_PRONTO]) {
   const st = document.createElement("style");
   st.textContent = c;
   document.head.appendChild(st);
@@ -51,10 +52,12 @@ type Stato = {
   reparti?: Record<string, RepSett>;
   senzaWA?: boolean;
   bacheca?: boolean;
+  /** Portal, "Pronto per WhatsApp": what this person may see, the published rotation, the saved department images. */
+  wa?: StatoWA;
 };
 type Bimestre = { id: string; nome: string; mesi: string[] };
 
-const conf = (window as unknown as { __CONF?: { base?: string } }).__CONF ?? {};
+const conf = (window as unknown as { __CONF?: { base?: string; genera?: boolean } }).__CONF ?? {};
 const BASE = (conf.base ?? "./").replace(/\/?$/, "/");
 const gs = (window as unknown as { google?: { script?: { run: Record<string, unknown> } } }).google
   ?.script?.run;
@@ -394,6 +397,62 @@ function App() {
 
   if (errore) return <div className="pa-msg">{errore}</div>;
   if (!stato) return <div className="pa-msg">Carico il programma…</div>;
+  if (stato.wa) {
+    const wa = stato.wa;
+    const confermaReparti = (lun: string, rec: unknown) => chiama<void>("confermaReparti", lun, rec);
+    const carica = (b64: string, nome: string) => chiama<string>("caricaImmagine", b64, nome);
+    // after "Pubblica" in the rotation: only make the images and say when it is done
+    if (conf.genera)
+      return (
+        <GeneraReparti
+          wa={wa}
+          carica={carica}
+          conferma={confermaReparti}
+          fine={(n) => parent.postMessage({ waFatto: 1, n }, "*")}
+        />
+      );
+    return (
+      <div className="pa">
+        <header className="pa-bar">
+          <div className="pa-tit">
+            <b>Pronto per WhatsApp</b>
+            <span>Le immagini della settimana da mandare nei gruppi</span>
+          </div>
+          <div className="pa-ctl">
+            {bimestri.length > 1 && (
+              <select value={bim} onChange={(e) => setBim(e.target.value)} aria-label="Bimestre del programma">
+                {bimestri.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    Programma {b.nome}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <p className="pa-aiuto">
+            {wa.vede.comp
+              ? "Le immagini delle adunanze le conferma chi compila il programma: controllale e premi Conferma, o Modifica se qualcosa è cambiato. "
+              : ""}
+            Quelle dei reparti escono già confermate quando la turnazione è pubblicata. «Scarica» le prepara per WhatsApp.
+          </p>
+        </header>
+        <ProntoWhatsApp
+          fogli={fogli}
+          valori={stato.valori}
+          podio={stato.podio ?? {}}
+          email={stato.email}
+          wa={wa}
+          puo={(c) => puo(stato.ruolo, c.id)}
+          salva={salva}
+          carica={carica}
+          confermaReparti={async (l, r) => {
+            await confermaReparti(l, r);
+            setStato((s) => (s && s.wa ? { ...s, wa: { ...s.wa, conferme: { ...s.wa.conferme, [l]: { ...r, il: new Date().toISOString(), da: s.email } } } } : s));
+          }}
+        />
+      </div>
+    );
+  }
   const nomeRuolo = { inf: "adunanza infrasettimanale", fs: "adunanza del fine settimana", tutto: "tutte le adunanze", legge: "" }[stato.ruolo];
   const viste = VISTE.concat(stato.conReparti ? [["rep", "Adunanze e reparti"]] : []);
   return (

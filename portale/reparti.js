@@ -3,6 +3,11 @@
  * Schede: Turni · Assenze e parti · Pulizie · Foglio A4. Nessun nome sta in questo file: arrivano dal Foglio, solo a chi ha l'ambito. */
 (function () {
   'use strict';
+  /** Le immagini WhatsApp dei reparti (per Telegram): le prepara programmi.js in un riquadro nascosto. */
+  function generaWA() {
+    if (window.PC.generaWA) return window.PC.generaWA();
+    window.PC.carica('programmi.js').then(() => window.PC.generaWA && window.PC.generaWA()).catch(() => {});
+  }
   const P = window.PC, M = window.MotoreReparti, S = P.S, esc = P.esc;
   const G = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
   const GB = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
@@ -458,7 +463,7 @@
     if (k === 'pubblica') {
       if (!confirm('Pubblico in bacheca la turnazione di ' + nomeMese(R.mese) + ' così com\'è adesso? I fratelli la vedranno con i loro turni.')) return;
       u.disabled = true;
-      const vai = () => P.srv('pubblica', 'reparti', R.mese).then((x) => { R.pub = x; P.toast('Pubblicata in bacheca'); rd(); }).catch((err) => { u.disabled = false; P.toast(err.message, true); });
+      const vai = () => P.srv('pubblica', 'reparti', R.mese).then((x) => { R.pub = x; P.toast('Pubblicata in bacheca'); rd(); generaWA(); }).catch((err) => { u.disabled = false; P.toast(err.message, true); });
       if (R.salvo === 'Da salvare' || R.salvo === 'Salvo…') { clearTimeout(R.coda); return P.srv('salvaReparti', R.mese, R.st).then(vai); }
       return vai();
     }

@@ -81,7 +81,7 @@ export function immaginiCarta(
   const col = (x: string | undefined) => colore(x, f.stile.colori);
   const piede = f.cong;
   const sezDp = c.sezioni.find((z) => /discorso pubblico/i.test(z.titolo));
-  const striscia = { testo: "Reparto Audio/Video", colore: COLORE_AV };
+  const striscia = { testo: "Audio/Video · prove", colore: COLORE_AV };
   const podioBlocco: Blocco = { colore: COLORE_AV, voci: [{ etichetta: "Podio", nomi: [{ v: podio }] }] };
   if (c.tipo === "FINE") {
     const dp = discorsoPubblico(c, valori);
