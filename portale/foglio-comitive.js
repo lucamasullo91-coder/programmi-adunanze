@@ -69,16 +69,24 @@
     return { celle, extra };
   }
   /* ── domeniche (lib/domeniche.ts) ── */
+  /* Un riquadro per formazione (gli stessi gruppi insieme). Ora e luogo del riquadro sono quelli più frequenti;
+   * una domenica con ora o luogo diversi lo dice sulla sua riga; un luogo mancante non crea un riquadro nuovo. */
   function formazioni(slots, tutti) {
     const pos = (g) => { const i = tutti.indexOf(g); return i < 0 ? 999 : i; };
     const per = new Map();
     slots.forEach((s) => {
       const g = s.gruppi.slice().sort((a, b) => pos(a) - pos(b));
-      const k = g.join(',') + '|' + s.ora + '|' + (s.luogo || '');
-      if (!per.has(k)) per.set(k, { chiave: k, gruppi: g, ora: s.ora, luogo: s.luogo, righe: [] });
-      per.get(k).righe.push({ data: s.data, conduttore: s.conduttore || '', esterno: s.esterno || '', visita: !!s.visita });
+      const k = g.join(',');
+      if (!per.has(k)) per.set(k, { chiave: k, gruppi: g, ora: '', luogo: '', righe: [] });
+      per.get(k).righe.push({ data: s.data, ora: s.ora || '', luogo: s.luogo || '', conduttore: s.conduttore || '', esterno: s.esterno || '', visita: !!s.visita });
     });
-    per.forEach((f) => f.righe.sort((a, b) => a.data.localeCompare(b.data)));
+    const piuFrequente = (xs) => { const n = new Map(); xs.filter(Boolean).forEach((x) => n.set(x, (n.get(x) || 0) + 1)); let best = '', c = 0; n.forEach((v, x) => { if (v > c) { best = x; c = v; } }); return best; };
+    per.forEach((f) => {
+      f.righe.sort((a, b) => a.data.localeCompare(b.data));
+      f.ora = piuFrequente(f.righe.map((r) => r.ora));
+      f.luogo = piuFrequente(f.righe.map((r) => r.luogo));
+      f.righe.forEach((r) => { r.diversa = [r.ora && r.ora !== f.ora ? 'ore ' + r.ora : '', r.luogo && r.luogo !== f.luogo ? r.luogo : ''].filter(Boolean).join(' · '); });
+    });
     return [...per.values()].sort((a, b) => b.gruppi.length - a.gruppi.length || pos(a.gruppi[0]) - pos(b.gruppi[0]) || a.ora.localeCompare(b.ora));
   }
   const titoloFormazione = (gruppi, tutti) => (tutti.length > 1 && gruppi.length === tutti.length ? 'Tutti i gruppi' : gruppi.join(' - '));
@@ -200,7 +208,7 @@
           f.righe.map((r) => {
             const id = sala && !r.visita ? null : r.conduttore, est = sala && !r.visita ? '' : r.esterno;
             const [fn, ln] = nomeDiviso(id, est), d = day(r.data);
-            return '<div class="r ' + (r.visita ? 'vis' : '') + ' ' + (io && r.conduttore === io ? 'me' : '') + '"><span class="d"><small>DOM</small><b>' + d.d + '</b><small>' + MESI3[d.m - 1] + '</small></span><span class="n">' + (id || est ? nomeIntero(fn, ln) : sala ? '' : '—') + '</span></div>';
+            return '<div class="r ' + (r.visita ? 'vis' : '') + ' ' + (io && r.conduttore === io ? 'me' : '') + '"><span class="d"><small>DOM</small><b>' + d.d + '</b><small>' + MESI3[d.m - 1] + '</small></span><span class="n">' + (id || est ? nomeIntero(fn, ln) : sala ? '' : '—') + (r.diversa ? '<small class="dv">' + esc(r.diversa) + '</small>' : '') + '</span></div>';
           }).join('') + '</div></div>').join('') + '</div></section>';
     } else if (domVisita.length) {
       h += '<section class="mwk dom"><h2><b>Domenica</b><i>|</i><span>Gruppi di servizio · ' + esc((imp.domeniche || 'tutte le domeniche').toLowerCase()) + '</span>' + visH + '</h2></section>';
