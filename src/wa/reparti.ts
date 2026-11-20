@@ -9,7 +9,7 @@ import { COLORE_AV } from "./programma";
 export type NomeWA = { v: string; nome?: string; cognome?: string } | null;
 export type AdWA = { tipo: "INFRA" | "FINE"; data: string; ora: string; av?: [string, NomeWA][]; usc?: [string, NomeWA][]; let?: [string, NomeWA][] };
 export type PulWA = { gruppo: string; coord: NomeWA; ref: NomeWA; generale: { gruppo: string; data?: string; coord: NomeWA; ref: NomeWA } | null };
-export type SettWA = { lunedi: string; al: string; adunanze: AdWA[]; pul?: PulWA; pubblicato?: string; quando?: string };
+export type SettWA = { lunedi: string; al: string; adunanze: AdWA[]; pul?: PulWA; pubblicato?: string; quando?: string; colori?: { infra?: string; fine?: string } };
 export type Vede = { comp: string | null; pres: boolean; prove: { INFRA: boolean; FINE: boolean }; rep: Record<Rep, boolean>; luca: boolean };
 export type Rep = "av" | "usc" | "let" | "pul";
 export type ConfRep = { firma: string; quando: string; il: string; da: string; png: Record<string, string> };
@@ -17,7 +17,7 @@ export type ConfRep = { firma: string; quando: string; il: string; da: string; p
 export const REPARTI: [Rep, string, string][] = [
   ["av", "Audio/Video", COLORE_AV],
   ["usc", "Uscieri", "#4D5A68"],
-  ["let", "Letteratura e territori", "#2E6E7C"],
+  ["let", "Letteratura e territori", "#A86F00"],
   ["pul", "Pulizie", "#A86F00"],
 ];
 const GIORNI = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
@@ -27,7 +27,7 @@ const dt = (s: string) => {
 };
 export const giornoIt = (s: string) => {
   const x = dt(s);
-  return `${GIORNI[x.getUTCDay()]} ${x.getUTCDate()} ${MESI_IT[x.getUTCMonth()]}`;
+  return `${GIORNI[x.getUTCDay()]} ${x.getUTCDate()} ${MESI_IT[x.getUTCMonth()]}`.normalize("NFC");
 };
 /** "8 – 13 dicembre", "29 dicembre – 3 gennaio". */
 export function intervallo(dal: string, al: string) {
@@ -48,8 +48,10 @@ export type ChiaveImg = string;
 export const chiaveAd = (a: AdWA, k: Rep) => `${a.data}|${a.tipo}|${k}`;
 /** The images of one week (only the departments in the data: the server sends only what this person may see).
  *  First the week's cleaning, then each meeting with Audio/Video, Uscieri, Letteratura e territori. */
-export function modelliReparti(s: SettWA, cong: string): Record<ChiaveImg, Modello> {
-  const colori = COLORI;
+export function modelliReparti(s: SettWA, cong: string, mese?: { infra?: string; fine?: string }): Record<ChiaveImg, Modello> {
+  // the band takes the colours of the meetings of that month (guide for midweek, Watchtower for the weekend), as on the programs
+  const col = mese ?? s.colori;
+  const colori = { ...COLORI, ...(col?.infra ? { infra: col.infra } : {}), ...(col?.fine ? { fine: col.fine } : {}) };
   const out: Record<ChiaveImg, Modello> = {};
   if (s.pul) {
     const p = s.pul;
@@ -92,13 +94,24 @@ export function modelliReparti(s: SettWA, cong: string): Record<ChiaveImg, Model
       if (k === "pul") continue;
       const righe = a[k];
       if (!righe) continue;
+      // no "Reparto …" strip: the block title already says it. Letteratura e territori: two big cards with their icon.
+      const blocchi: Blocco[] =
+        k === "let"
+          ? righe.map(([et, x]) => ({
+              titolo: et,
+              colore,
+              scheda: true,
+              icona: srcIcona(/territ/i.test(et) ? "territorio" : "libro", "#FFFFFF") || undefined,
+              voci: [{ etichetta: et, nomi: [nm(x)] }],
+            }))
+          : [{ titolo: nome, colore, voci: righe.map(([et, x]) => ({ etichetta: et, nomi: [nm(x)] })) }];
       out[chiaveAd(a, k)] = {
         titolo: a.tipo === "INFRA" ? "Adunanza infrasettimanale" : "Adunanza del fine settimana",
         sotto: `${giornoIt(a.data)} · ${a.ora}`,
         colore: a.tipo === "INFRA" ? colori.infra : colori.fine,
-        striscia: { testo: `Reparto ${nome}`, colore },
         piede: cong,
-        blocchi: [{ titolo: nome, colore, voci: righe.map(([et, x]) => ({ etichetta: et, nomi: [nm(x)] })) }],
+        inLinea: true,
+        blocchi,
       };
     }
   return out;

@@ -679,14 +679,25 @@ function settimane_(cal, mese) {
       const data = piu_(lun, off(c.g));
       comitive.push({ k: data + '|' + c.ora, data: data, ora: c.ora, luogo: c.luogo });
     });
+    // Comitive cambiate (giorno, ora o luogo): prima quelle «da questa settimana in poi», poi quelle di una sola settimana.
+    // La chiave (k) resta quella originale, così conduttori e offerte del sondaggio restano legati alla stessa comitiva.
+    const cambia = (c, v, data) => { c.data = data; if (v.ora) c.ora = v.ora; if (v.luogo) c.luogo = v.luogo; c.cambiata = true; c.motivo = v.motivo || ''; c.creata = v.creata || ''; };
+    (cal.variazioni || []).filter((v) => v.tipo === 'cambiata' && v.seguenti && v.base && lun >= v.dal).forEach((v) => {
+      const c = comitive.find((x) => d_(x.data).getUTCDay() === v.base.g && x.ora === v.base.ora);
+      if (c) cambia(c, v, piu_(lun, off(v.g)));
+    });
+    (cal.variazioni || []).filter((v) => v.tipo === 'cambiata' && !v.seguenti && v.da && lunediDi_(String(v.da).split('|')[0]) === lun).forEach((v) => {
+      const c = comitive.find((x) => x.k === v.da);
+      if (c) cambia(c, v, v.data || c.data);
+    });
     // Variazioni: adunanze spostate, comitive annullate (restano grigie con il motivo) o aggiunte
     (cal.variazioni || []).forEach((v) => {
-      if (!v.data || lunediDi_(v.data) !== lun) return;
+      if (v.tipo === 'cambiata' || !v.data || lunediDi_(v.data) !== lun) return;
       if (v.tipo === 'spostata') {
         const a = adunanze.find((x) => x.tipo === v.adunanza);
         if (a) { a.data = v.data; if (v.ora) a.ora = v.ora; a.spostata = true; a.motivo = v.motivo || ''; a.creata = v.creata || ''; }
       } else if (v.tipo === 'annullata') {
-        comitive.forEach((c) => { if (c.data === v.data && (!v.ora || c.ora === v.ora)) { c.annullata = true; c.motivo = v.motivo || ''; c.creata = v.creata || ''; } });
+        comitive.forEach((c) => { if ((v.k ? c.k === v.k : c.data === v.data && (!v.ora || c.ora === v.ora))) { c.annullata = true; c.motivo = v.motivo || ''; c.creata = v.creata || ''; } });
       } else if (v.tipo === 'aggiunta' && v.ora) {
         const k = v.data + '|' + v.ora;
         const gia = comitive.find((c) => c.k === k);
@@ -1368,6 +1379,50 @@ function aggiungiAlias(k, id, testo) {
 function colonnaComitive_() {
   return struttura_(SpreadsheetApp.getActive().getSheetByName(FOGLIO)).find((x) => x.tipo === 'check' && /comitive/i.test(x.sezione) && /congregazione/i.test(x.titolo));
 }
+/** Dal programma delle comitive: cambiare giorno/ora/luogo di una comitiva (solo quella settimana o da lì in poi),
+ * annullarla, ripristinarla, aggiungerne una. Tutto finisce nelle variazioni del Calendario (la fonte unica):
+ * sondaggio, programma, bacheca e avvisi lo vedono da soli.
+ * d = { azione: 'cambia'|'annulla'|'ripristina'|'aggiungi'|'togli', data, ora, luogo, motivo, seguenti } */
+function cambiaComitiva(k, mese, chiave, d) {
+  const io = richiediAmbito_(k, 'comitive');
+  d = d || {};
+  const ora = String(d.ora || '').trim(), luogo = String(d.luogo || '').trim().slice(0, 60), motivo = String(d.motivo || '').trim().slice(0, 80);
+  if (ora && !/^\d{1,2}:\d{2}$/.test(ora)) throw new Error('Orario non valido (es. 17:45).');
+  if (d.data && !/^\d{4}-\d{2}-\d{2}$/.test(String(d.data))) throw new Error('Giorno non valido.');
+  const adesso = new Date().toISOString();
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
+    cal.variazioni = cal.variazioni || [];
+    const giorno0 = String(chiave || '').split('|')[0], ora0 = String(chiave || '').split('|')[1] || '';
+    if (d.azione === 'cambia') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(giorno0)) throw new Error('Comitiva non valida.');
+      const lun = lunediDi_(giorno0);
+      if (d.data && lunediDi_(d.data) !== lun) throw new Error('Il giorno deve essere nella stessa settimana.');
+      if (d.seguenti) {
+        const base = { g: d_(giorno0).getUTCDay(), ora: ora0 };
+        cal.variazioni = cal.variazioni.filter((v) => !(v.tipo === 'cambiata' && v.seguenti && v.base && v.base.g === base.g && v.base.ora === base.ora && v.dal >= lun));
+        cal.variazioni.push({ tipo: 'cambiata', seguenti: true, dal: lun, base: base, g: d_(d.data || giorno0).getUTCDay(), data: d.data || giorno0, ora: ora, luogo: luogo, motivo: motivo, creata: adesso });
+      } else {
+        cal.variazioni = cal.variazioni.filter((v) => !(v.tipo === 'cambiata' && !v.seguenti && v.da === chiave));
+        cal.variazioni.push({ tipo: 'cambiata', da: chiave, data: d.data || giorno0, ora: ora, luogo: luogo, motivo: motivo, creata: adesso });
+      }
+    } else if (d.azione === 'annulla') {
+      cal.variazioni.push({ tipo: 'annullata', k: chiave, data: d.data || giorno0, ora: ora || ora0, motivo: motivo, creata: adesso });
+    } else if (d.azione === 'ripristina') {
+      cal.variazioni = cal.variazioni.filter((v) => !(v.tipo === 'annullata' && (v.k === chiave || (!v.k && v.data === (d.data || giorno0) && (!v.ora || v.ora === (ora || ora0))))));
+      cal.variazioni = cal.variazioni.filter((v) => !(v.tipo === 'cambiata' && !v.seguenti && v.da === chiave));
+    } else if (d.azione === 'aggiungi') {
+      if (!d.data || !ora) throw new Error('Per una comitiva in più servono giorno e orario.');
+      cal.variazioni.push({ tipo: 'aggiunta', data: d.data, ora: ora, luogo: luogo, motivo: motivo, creata: adesso });
+    } else if (d.azione === 'togli') {
+      cal.variazioni = cal.variazioni.filter((v) => !(v.tipo === 'aggiunta' && v.data + '|' + v.ora === chiave));
+    } else throw new Error('Azione non valida.');
+    scriviImpostazione_('calendario', cal);
+  } finally { lock.releaseLock(); }
+  registroUnaVolta_(io, 'comitive', 'comitive di ' + nomeMese_(mese) + ': cambiato il calendario');
+  return comitive(k, mese);
+}
 function comitive(k, mese) {
   richiediAmbito_(k, 'comitive');
   mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : prossimoMese_();
@@ -1655,20 +1710,34 @@ function riservate(k) {
   richiedi_(k, true);
   const p = PropertiesService.getUserProperties().getProperties();
   const m = (x) => (p[x] ? '••••' + String(p[x]).slice(-4) : '');
-  return { TELEGRAM_TOKEN: m('TELEGRAM_TOKEN'), TELEGRAM_CHAT: m('TELEGRAM_CHAT'), ANTICIPO_GIORNI: p.ANTICIPO_GIORNI || '3', ORA_INVIO: p.ORA_INVIO || '19:00',
+  return { TELEGRAM_TOKEN: m('TELEGRAM_TOKEN'), TELEGRAM_CHAT: m('TELEGRAM_CHAT'), avvisi: avvisiImpostati_(),
     attivo: ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === 'inviiWhatsApp') };
 }
 function salvaRiservate(k, d) {
   const io = richiedi_(k, true);
   const p = PropertiesService.getUserProperties();
-  ['TELEGRAM_TOKEN', 'TELEGRAM_CHAT', 'ANTICIPO_GIORNI', 'ORA_INVIO'].forEach((x) => { if (d[x]) p.setProperty(x, String(d[x]).trim()); });
+  ['TELEGRAM_TOKEN', 'TELEGRAM_CHAT'].forEach((x) => { if (d[x]) p.setProperty(x, String(d[x]).trim()); });
+  if (d.avvisi) {
+    const a = avvisiImpostati_();
+    Object.keys(a).forEach((x) => {
+      const n = d.avvisi[x] || {};
+      if (typeof n.on === 'boolean') a[x].on = n.on;
+      if (n.ora && /^\d{1,2}:\d{2}$/.test(n.ora)) a[x].ora = n.ora;
+      if (n.giorni && Number(n.giorni) > 0 && Number(n.giorni) < 60) a[x].giorni = Number(n.giorni);
+    });
+    p.setProperty('AVVISI', JSON.stringify(a));
+  }
   scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'riservate', 'impostazioni Telegram aggiornate']);
   return riservate(k);
 }
 function attivaInvii(k, acceso) {
   const io = richiedi_(k, true);
   ScriptApp.getProjectTriggers().forEach((t) => { if (t.getHandlerFunction() === 'inviiWhatsApp') ScriptApp.deleteTrigger(t); });
-  if (acceso !== false) ScriptApp.newTrigger('inviiWhatsApp').timeBased().everyMinutes(15).create();
+  if (acceso !== false) {
+    ScriptApp.newTrigger('inviiWhatsApp').timeBased().everyMinutes(15).create();
+    // chi riceve gli avvisi (i suoi impegni) e il link al portale nei messaggi
+    PropertiesService.getUserProperties().setProperties({ IO_ID: io.id, LINK: ScriptApp.getService().getUrl() + '?k=' + encodeURIComponent(k) });
+  }
   scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'riservate', acceso !== false ? 'invii Telegram attivati' : 'invii Telegram spenti']);
   return riservate(k);
 }
@@ -1689,39 +1758,163 @@ function dataRoma_(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{1,2}):(\d{2})/.exec(s || '');
   return m ? Utilities.parseDate(m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5], 'Europe/Rome', 'yyyy-MM-dd HH:mm') : null;
 }
-/** Ogni 15 minuti (attivatore): per ogni adunanza, dal momento dell'invio fino all'inizio, manda le immagini confermate;
- *  se vengono confermate di nuovo dopo l'invio le rimanda con «Aggiornamento»; se non sono confermate, un avviso. */
+/* ── Avvisi Telegram (solo a Luca), controllati ogni 15 minuti dall'attivatore ──
+ * adunanza: il giorno dell'adunanza all'ora scelta, «Promemoria turni reparti» con le immagini di tutti i reparti,
+ *           poi presidente e Audio/Video · prove (confermate da chi compila i programmi);
+ * pulizie:  il lunedì, gruppo, coordinatore e referente della settimana (e la pulizia generale, se c'è);
+ * riepilogo: la domenica, i miei impegni della settimana dopo;
+ * parti / comitive: X giorni prima, il promemoria per prepararsi;
+ * sostituzioni: una volta all'ora, chi è in turno ma risulta assente o ha una parte che lo esclude dal reparto.
+ * Ogni invio si segna nelle proprietà (avv:…) per non ripeterlo. */
+const AVVISI_BASE_ = {
+  adunanza: { on: true, ora: '09:00' }, pulizie: { on: true, ora: '09:00' }, riepilogo: { on: true, ora: '19:30' },
+  parti: { on: true, giorni: 10, ora: '09:00' }, comitive: { on: true, giorni: 3, ora: '09:00' }, sostituzioni: { on: true },
+};
+function avvisiImpostati_() {
+  let a = {};
+  try { a = JSON.parse(PropertiesService.getUserProperties().getProperty('AVVISI') || '{}'); } catch (e) { a = {}; }
+  const o = JSON.parse(JSON.stringify(AVVISI_BASE_));
+  Object.keys(o).forEach((x) => Object.assign(o[x], a[x] || {}));
+  return o;
+}
+const GIORNI_IT_ = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+const MESI_IT_ = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+const giornoIt_ = (s) => { const d = d_(s); return GIORNI_IT_[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MESI_IT_[d.getUTCMonth()]; };
+const breveIt_ = (s) => { const d = d_(s); return GIORNI_IT_[d.getUTCDay()].slice(0, 3).toUpperCase() + ' ' + d.getUTCDate(); };
+const NOMI_INC_ = { USC_COORD: 'Uscieri · coordinatore', USC_ING: 'Uscieri · ingresso', USC_AUD: 'Uscieri · auditorium', USC_PAR: 'Uscieri · parcheggio',
+  AV_POD: 'Audio/Video · podio', AV_MIC: 'Audio/Video · microfono', AV_MIX: 'Audio/Video · mixer', AV_PC: 'Audio/Video · PC', LET: 'Letteratura', TER: 'Territori',
+  PUL_COORD: 'Pulizie · coordinatore', PUL_REF: 'Pulizie · referente' };
+function nomeIntero_(id) { const p = persone_().find((x) => x.id === id); return p ? (p.n + ' ' + p.cognome).trim() : ''; }
+function nomePul_(v) { if (!v) return '—'; if (String(v).indexOf('txt:') === 0) return String(v).slice(4); return nomeIntero_(v) || '—'; }
+
 function inviiWhatsApp(e) {
   if (!e || typeof e !== 'object' || !e.triggerUid) return; // parte solo dall'attivatore, non dalla pagina
   const p = PropertiesService.getUserProperties();
   if (!p.getProperty('TELEGRAM_TOKEN') || !p.getProperty('TELEGRAM_CHAT')) return;
-  const chat = p.getProperty('TELEGRAM_CHAT'), giorni = Number(p.getProperty('ANTICIPO_GIORNI') || 3), ora = (p.getProperty('ORA_INVIO') || '19:00').split(':');
-  const val = coppie_(foglioProgrammi_().getSheetByName('Programma'));
-  const adesso = new Date();
-  Object.keys(val).forEach((k) => {
-    if (!/:quando$/.test(k)) return;
-    const carta = k.slice(0, -':quando'.length), inizio = dataRoma_(val[k]);
-    if (!inizio) return;
-    const statoK = 'inviato:' + carta;
-    if (inizio <= adesso) { p.deleteProperty(statoK); return; }
-    const giorno = Utilities.formatDate(new Date(inizio.getTime() - giorni * 86400000), 'Europe/Rome', 'yyyy-MM-dd');
-    if (adesso < dataRoma_(giorno + ' ' + ora[0] + ':' + (ora[1] || '00'))) return;
-    const nomeAd = (/-inf$/.test(carta) ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana') + ' · ' + Utilities.formatDate(inizio, 'Europe/Rome', 'dd/MM HH:mm');
-    let conf = null; try { conf = JSON.parse(val[carta + ':wa'] || 'null'); } catch (e) { /* valore rovinato */ }
-    const stato = p.getProperty(statoK) || '';
-    if (!conf) {
-      if (stato !== 'avviso') { telegram_('sendMessage', { chat_id: chat, text: '⚠️ ' + nomeAd + ': le immagini per il presidente e per le prove dell’Audio/Video non sono ancora confermate da chi compila il programma.' }); p.setProperty(statoK, 'avviso'); }
-      return;
-    }
-    const firma = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, conf.firma || ''));
-    if (stato === firma) return;
-    const agg = stato && stato !== 'avviso' ? '🔄 Aggiornamento · ' : '';
-    [[conf.png && conf.png.pres, 'Presidente'], [conf.png && conf.png.av, 'Audio/Video · prove']].forEach(([id, chi]) => {
-      if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + chi + ' · ' + nomeAd, photo: DriveApp.getFileById(id).getBlob() });
+  const A = avvisiImpostati_(), chat = p.getProperty('TELEGRAM_CHAT'), adesso = new Date();
+  const oggi = Utilities.formatDate(adesso, 'Europe/Rome', 'yyyy-MM-dd');
+  const ok = (ora) => adesso >= dataRoma_(oggi + ' ' + ora);
+  const invia = (testo) => telegram_('sendMessage', { chat_id: chat, text: testo, disable_web_page_preview: 'true' });
+  const foto = (id, testo) => { try { telegram_('sendPhoto', { chat_id: chat, caption: testo, photo: DriveApp.getFileById(id).getBlob() }); } catch (err) { invia('⚠️ Immagine non trovata: ' + testo); } };
+  const link = p.getProperty('LINK') || '';
+  const passo = (nome, f) => { try { f(); } catch (err) { console.error('avviso ' + nome + ': ' + err.message); } };
+  if (A.adunanza.on && ok(A.adunanza.ora)) passo('adunanza', () => avvisoAdunanze_(p, oggi, invia, foto));
+  if (A.pulizie.on && d_(oggi).getUTCDay() === 1 && ok(A.pulizie.ora)) passo('pulizie', () => avvisoPulizie_(p, oggi, invia, foto));
+  const io = p.getProperty('IO_ID');
+  if (io && (A.riepilogo.on || A.parti.on || A.comitive.on)) passo('impegni', () => avvisoImpegni_(p, A, io, oggi, ok, invia));
+  if (A.sostituzioni.on && Number(Utilities.formatDate(adesso, 'Europe/Rome', 'm')) < 15) passo('sostituzioni', () => avvisoSostituzioni_(p, oggi, invia, link));
+  if (d_(oggi).getUTCDay() === 1 && !p.getProperty('avv:pulito:' + oggi)) passo('pulizia', () => pulisciAvvisi_(p, oggi));
+}
+/** Il giorno dell'adunanza: le immagini di tutti i reparti, poi presidente e prove dell'Audio/Video. */
+function avvisoAdunanze_(p, oggi, invia, foto) {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), m = oggi.slice(0, 7);
+  const sett = [-1, 0, 1].reduce((acc, n) => acc.concat(settimane_(cal, meseDopo_(m, n))), []);
+  sett.forEach((w) => w.adunanze.forEach((a) => {
+    if (a.data !== oggi) return;
+    const tipo = a.tipo === 'inf' ? 'INFRA' : 'FINE', key = 'avv:ad:' + a.data + ':' + tipo;
+    if (p.getProperty(key)) return;
+    const nome = (tipo === 'INFRA' ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana') + ' · ' + giornoIt_(a.data) + (a.ora ? ' · ' + a.ora : '');
+    const png = ((confermeRepartiWA_()[w.lunedi] || {}).png) || {};
+    const chiavi = ['usc', 'av', 'let'].map((r) => a.data + '|' + tipo + '|' + r).filter((x) => png[x]);
+    invia('📋 Promemoria turni reparti\n' + nome + (chiavi.length ? '' : '\n⚠️ Le immagini dei reparti non sono pronte: aprile in «Pronto per WhatsApp» del portale.'));
+    chiavi.forEach((x) => foto(png[x], WA_REPARTI_[x.split('|')[2]] + ' · ' + nome));
+    let pc = null;
+    try { pc = JSON.parse(coppie_(foglioProgrammi_().getSheetByName('Programma'))[w.lunedi + '-' + a.tipo + ':wa'] || 'null'); } catch (err) { pc = null; }
+    if (pc && pc.png) [[pc.png.pres, 'Presidente'], [pc.png.av, 'Audio/Video · prove']].forEach(([id, chi]) => { if (id) foto(id, chi + ' · ' + nome); });
+    else invia('ℹ️ ' + nome + ': le immagini del presidente e delle prove dell’Audio/Video non sono state confermate da chi compila il programma.');
+    p.setProperty(key, '1');
+  }));
+}
+/** Il lunedì: le pulizie della settimana (con i cambi per una sola adunanza) e la pulizia generale, se c'è. */
+function avvisoPulizie_(p, oggi, invia, foto) {
+  const key = 'avv:pul:' + oggi;
+  if (p.getProperty(key)) return;
+  const e = puliziaSettimana_(oggi, true) || puliziaSettimana_(oggi, false);
+  if (e && (e.g || e.c || e.r || e.gg || e.gd)) {
+    let t = '🧹 Pulizie della settimana ' + giornoIt_(oggi).replace(/^lunedì /, '') + ' – ' + giornoIt_(piu_(oggi, 6)).replace(/^domenica /, '') +
+      '\nGruppo: ' + String(e.g || '—').toUpperCase() + '\nCoordinatore: ' + nomePul_(e.c) + '\nReferente: ' + nomePul_(e.r);
+    [['I', 'infrasettimanale'], ['F', 'fine settimana']].forEach(([x, nome]) => {
+      if (e['c' + x] || e['r' + x]) t += '\nSolo ' + nome + ': ' + [e['c' + x] ? 'coord. ' + nomePul_(e['c' + x]) : '', e['r' + x] ? 'ref. ' + nomePul_(e['r' + x]) : ''].filter(Boolean).join(', ');
     });
-    p.setProperty(statoK, firma);
+    if (e.gg || e.gd) t += '\n\n🧽 Pulizia generale' + (e.gd ? ' · ' + giornoIt_(e.gd) : '') + '\nGruppo: ' + String(e.gg || '—').toUpperCase() + '\nCoordinatore: ' + nomePul_(e.gc) + '\nReferente: ' + nomePul_(e.gr);
+    invia(t);
+    const png = ((confermeRepartiWA_()[oggi] || {}).png) || {};
+    if (png.pul) foto(png.pul, 'Pulizie · settimana dal ' + giornoIt_(oggi).replace(/^lunedì /, ''));
+  }
+  p.setProperty(key, '1');
+}
+/** I miei impegni (dalla bacheca): riepilogo della domenica per la settimana dopo, parti e comitive qualche giorno prima. */
+function avvisoImpegni_(p, A, io, oggi, ok, invia) {
+  const persona = { id: io, tutto: true };
+  const lista = () => {
+    const m = oggi.slice(0, 7), out = [], visti = {};
+    [0, 1].forEach((n) => (bachecaPer_(persona, meseDopo_(m, n)).impegni || []).forEach((x) => { const k = x.data + '|' + x.testo; if (!visti[k]) { visti[k] = 1; out.push(x); } }));
+    return out;
+  };
+  let tutti = null;
+  const imp = () => (tutti = tutti || lista());
+  if (A.riepilogo.on && d_(oggi).getUTCDay() === 0 && ok(A.riepilogo.ora) && !p.getProperty('avv:riep:' + oggi)) {
+    const dal = piu_(oggi, 1), al = piu_(oggi, 7);
+    const sett = imp().filter((x) => x.data >= dal && x.data <= al);
+    invia('🗓️ I tuoi impegni · settimana ' + giornoIt_(dal).replace(/^lunedì /, '') + ' – ' + giornoIt_(al).replace(/^domenica /, '') + '\n\n' +
+      (sett.length ? sett.map((x) => breveIt_(x.data) + ' · ' + x.testo).join('\n') : 'Nessun impegno in programma.'));
+    p.setProperty('avv:riep:' + oggi, '1');
+  }
+  [['parti', (x) => x.tipo === 'inf' || x.tipo === 'fs', '📖 Preparati'], ['comitive', (x) => x.tipo === 'com', '🚶 Comitiva']].forEach(([nome, filtro, titolo]) => {
+    const a = A[nome];
+    if (!a.on || !ok(a.ora)) return;
+    const giorno = piu_(oggi, a.giorni);
+    imp().filter((x) => filtro(x) && x.data === giorno).forEach((x) => {
+      const key = 'avv:' + nome + ':' + x.data + ':' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, x.testo)).slice(0, 10);
+      if (p.getProperty(key)) return;
+      invia(titolo + ' · ' + giornoIt_(x.data) + '\n' + x.testo);
+      p.setProperty(key, '1');
+    });
   });
-  inviiReparti_(p, chat, giorni, ora, adesso);
+}
+/** Una volta all'ora: turni pubblicati da oggi in poi con la persona assente o con una parte che la esclude dal reparto.
+ * Avvisa solo dei casi nuovi (quelli già segnalati sono in avv:sost). */
+function avvisoSostituzioni_(p, oggi, invia, link) {
+  const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), m = oggi.slice(0, 7);
+  const anni = {}; [oggi, piu_(oggi, 45)].forEach((x) => { anni[annoTeocratico_(lunediDi_(x))] = 1; });
+  const assenti = {};
+  Object.keys(anni).forEach((a) => { const x = assentiSettimane_(cal, Number(a)); Object.keys(x).forEach((l) => { assenti[l] = Object.assign(assenti[l] || {}, x[l]); }); });
+  const problemi = {};
+  [0, 1].forEach((n) => {
+    const mese = meseDopo_(m, n), rp = repartiPubblicati_(mese);
+    if (!rp) return;
+    const pr = partiProgrammi_(mese);
+    const ads = rp.adunanze.filter((a) => !a.nessuna);
+    const segna = (pid, inc, data, motivo) => { problemi[pid + '|' + inc + '|' + data + '|' + motivo] = '• ' + (nomeIntero_(pid) || pid) + ' — ' + (NOMI_INC_[inc] || inc) + ' — ' + breveIt_(data) + ': ' + motivo; };
+    rp.stato.turni.forEach((t) => {
+      const qui = t.adunanza_id ? ads.filter((a) => a.id === t.adunanza_id) : ads.filter((a) => a.settimana_id === t.settimana_id);
+      const ruolo = t.incarico_id === 'PUL_COORD' ? 'c' : t.incarico_id === 'PUL_REF' ? 'r' : '';
+      qui.filter((a) => a.data >= oggi && !(ruolo && ((rp.stato.pulizieCambi || {})[a.id] || {})[ruolo])).forEach((a) => {
+        if (((assenti[t.settimana_id] || {})[t.persona_id] || []).indexOf(a.data) >= 0) segna(t.persona_id, t.incarico_id, a.data, 'risulta assente');
+        if (t.adunanza_id && /^(USC|AV)_/.test(t.incarico_id) && pr.parti.some((x) => x.adunanza_id === a.id && x.assegnata_id === t.persona_id)) segna(t.persona_id, t.incarico_id, a.data, 'ha una parte che lo esclude');
+      });
+    });
+    Object.keys(rp.stato.pulizieCambi || {}).forEach((adId) => {
+      const a = ads.find((x) => x.id === adId), cb = rp.stato.pulizieCambi[adId];
+      if (!a || a.data < oggi) return;
+      [['c', 'PUL_COORD'], ['r', 'PUL_REF']].forEach(([r, inc]) => { if (cb[r] && ((assenti[a.settimana_id] || {})[cb[r]] || []).indexOf(a.data) >= 0) segna(cb[r], inc, a.data, 'risulta assente'); });
+    });
+  });
+  let gia = {};
+  try { gia = JSON.parse(p.getProperty('avv:sost') || '{}'); } catch (e) { gia = {}; }
+  const nuovi = Object.keys(problemi).filter((k) => !gia[k]);
+  if (nuovi.length) invia('⚠️ Da sostituire\n' + nuovi.map((k) => problemi[k]).join('\n') + (link ? '\n\nApri la turnazione: ' + link : ''));
+  const ora = {}; Object.keys(problemi).forEach((k) => { ora[k] = 1; });
+  p.setProperty('avv:sost', JSON.stringify(ora));
+}
+/** Il lunedì: via i segni degli invii più vecchi di tre settimane. */
+function pulisciAvvisi_(p, oggi) {
+  const limite = piu_(oggi, -21);
+  Object.keys(p.getProperties()).forEach((k) => {
+    const m = /^(?:avv:[a-z]+|inviato(?::rep)?):(\d{4}-\d{2}-\d{2})/.exec(k) || /^inviato:(?:rep:)?(\d{4}-\d{2}-\d{2})/.exec(k);
+    if (m && m[1] < limite) p.deleteProperty(k);
+  });
+  p.setProperty('avv:pulito:' + oggi, '1');
 }
 
 
@@ -1956,6 +2149,10 @@ function comitivePubblicate_(mese) {
 function bacheca(k, mese) {
   const io = richiedi_(k);
   segnaAccesso_(io);
+  return bachecaPer_(io, mese);
+}
+/** La bacheca di una persona (io = { id, tutto }): la usano la pagina e gli avvisi Telegram. */
+function bachecaPer_(io, mese) {
   mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : oggi_().slice(0, 7);
   const p = persone_().find((x) => x.id === io.id) || { nominato: false, reparti: false, oem: false, n: '', cognome: '' };
   const tutto = io.tutto;
@@ -2122,7 +2319,7 @@ function repartiWA_(vede) {
   const nome = (v) => { if (!v) return null; if (String(v).indexOf('txt:') === 0) return { v: String(v).slice(4) }; return nomi[v] || null; };
   const out = {};
   const SEZ = { usc: [['USC_COORD', 'Coordinatore', 1], ['USC_ING', 'Ingresso', 1], ['USC_AUD', 'Auditorium', 2], ['USC_PAR', 'Parcheggio', 2]],
-    av: [['AV_POD', 'Podio', 1], ['AV_MIC', 'Microfono', 2], ['AV_MIX', 'Mixer', 1], ['AV_PC', 'PC', 1]], let: [['LET', 'Letteratura', 1], ['TER', 'Territori', 1]] };
+    av: [['AV_POD', 'Podio', 1], ['AV_MIC', 'Mic.', 2], ['AV_MIX', 'Mixer', 1], ['AV_PC', 'PC', 1]], let: [['LET', 'Letteratura', 1], ['TER', 'Territori', 1]] };
   const vedeAd = vede.rep.av || vede.rep.usc || vede.rep.let;
   [-1, 0, 1, 2].forEach((n) => {
     const m = meseDopo_(oggi_().slice(0, 7), n), sett = settimane_(cal, m);
@@ -2133,7 +2330,7 @@ function repartiWA_(vede) {
     sett.forEach((w) => {
       if (out[w.lunedi] || w.lunedi < piu_(oggi_(), -6)) return;
       const chi = (inc, pos, ad) => { const t = turni.find((y) => y.settimana_id === w.lunedi && y.incarico_id === inc && y.posizione === pos && y.adunanza_id === ad); return t ? nome(t.persona_id) : null; };
-      const s = { lunedi: w.lunedi, al: piu_(w.lunedi, 6), adunanze: [], pubblicato: pub ? pub.quando : '' };
+      const s = { lunedi: w.lunedi, al: piu_(w.lunedi, 6), adunanze: [], pubblicato: pub ? pub.quando : '', colori: coloriMese_(m) };
       if (x) ads.filter((a) => a.settimana_id === w.lunedi && !a.nessuna).forEach((a) => {
         const ad = { tipo: a.tipo, data: a.data, ora: a.ora };
         Object.keys(SEZ).forEach((k) => {
@@ -2180,28 +2377,6 @@ function wa_confermaReparti(k, lunedi, rec) {
   return true;
 }
 /** Telegram: le immagini dei reparti di ogni settimana, con lo stesso anticipo, prima della prima adunanza della settimana. */
-function inviiReparti_(p, chat, giorni, ora, adesso) {
-  const conf = confermeRepartiWA_();
-  Object.keys(conf).forEach((lun) => {
-    const c = conf[lun], inizio = dataRoma_(c.quando), statoK = 'inviato:rep:' + lun;
-    if (!inizio) return;
-    if (inizio <= adesso) { p.deleteProperty(statoK); return; }
-    const giorno = Utilities.formatDate(new Date(inizio.getTime() - giorni * 86400000), 'Europe/Rome', 'yyyy-MM-dd');
-    if (adesso < dataRoma_(giorno + ' ' + ora[0] + ':' + (ora[1] || '00'))) return;
-    const firma = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, c.firma || ''));
-    const stato = p.getProperty(statoK) || '';
-    if (stato === firma) return;
-    const agg = stato ? '🔄 Aggiornamento · ' : '';
-    const sett = 'settimana dal ' + Utilities.formatDate(dataRoma_(lun + ' 12:00'), 'Europe/Rome', 'dd/MM');
-    // prima le pulizie della settimana, poi ogni adunanza con Audio/Video, Uscieri, Letteratura e territori
-    Object.keys(c.png || {}).sort((a, b) => (a === 'pul' ? -1 : b === 'pul' ? 1 : a < b ? -1 : 1)).forEach((x) => {
-      const id = c.png[x], m = /^(\d{4}-\d{2}-\d{2})\|(INFRA|FINE)\|(\w+)$/.exec(x);
-      const testo = x === 'pul' ? 'Reparto Pulizie · ' + sett : m ? 'Reparto ' + (WA_REPARTI_[m[3]] || m[3]) + ' · ' + (m[2] === 'INFRA' ? 'infrasettimanale ' : 'fine settimana ') + m[1].slice(8) + '/' + m[1].slice(5, 7) : 'Reparto ' + (WA_REPARTI_[x] || x) + ' · ' + sett;
-      if (id) telegram_('sendPhoto', { chat_id: chat, caption: agg + testo, photo: DriveApp.getFileById(id).getBlob() });
-    });
-    p.setProperty(statoK, firma);
-  });
-}
 
 
 /* ═════════════════════════ Programma pulizie (anno teocratico) ═════════════════════════

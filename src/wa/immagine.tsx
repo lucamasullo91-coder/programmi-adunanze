@@ -40,6 +40,8 @@ export type Blocco = {
   colore: string;
   icona?: string | undefined;
   voci: Voce[];
+  /** A big card: large icon on the left, title and the names beside it (Letteratura, Territori). */
+  scheda?: boolean | undefined;
 };
 export type Modello = {
   /** Small caps line in the band: who it is for. */
@@ -54,6 +56,8 @@ export type Modello = {
   piede?: string | undefined;
   /** Small boxed tag in the band (Aggiornamento, Bozza). */
   flag?: string | undefined;
+  /** Every row label → name on one line, as on the printed program: the text shrinks instead of stacking. */
+  inLinea?: boolean | undefined;
 };
 
 const PARTICELLE = new Set([
@@ -185,6 +189,17 @@ export function Immagine({
     const entra = (k: number) => {
       el.style.setProperty("--k", String(k));
       for (const r of righe) r.classList.remove("pila");
+      if (m.inLinea) {
+        if (corpo.scrollHeight > corpo.clientHeight + 1) return false;
+        for (const r of righe) {
+          if (r.scrollWidth > r.clientWidth + 1) return false;
+          // label and names side by side, with some air between them
+          const l = r.querySelector<HTMLElement>(".wa-l"), v = r.querySelector<HTMLElement>(".wa-v"), t = r.querySelector<HTMLElement>(".wa-et");
+          if (t && t.scrollWidth > t.clientWidth + 1) return false;
+          if (l && v && l.getBoundingClientRect().right + 24 > v.getBoundingClientRect().left) return false;
+        }
+        return true;
+      }
       const larga = (r: HTMLElement) => {
         const t = r.querySelector<HTMLElement>(".wa-et");
         return r.scrollWidth > r.clientWidth + 1 || (!!t && t.scrollWidth > t.clientWidth + 1);
@@ -210,7 +225,7 @@ export function Immagine({
         box.current = el;
         rif?.(el);
       }}
-      className="wa"
+      className={`wa${m.inLinea ? " inlinea" : ""}`}
       style={{ ...style, "--c": m.colore } as CSSProperties}
     >
       <div className="wa-band">
@@ -228,8 +243,23 @@ export function Immagine({
           {m.striscia.testo}
         </div>
       )}
-      <div className="wa-corpo">
+      <div className={`wa-corpo${m.blocchi.some((b) => b.scheda) ? " schede" : ""}`}>
         {m.blocchi.map((b, i) => (
+          b.scheda ? (
+            <section key={i} className="wa-sc" style={{ "--s": b.colore } as CSSProperties}>
+              {b.icona && <span className="wa-sc-i">{icone?.[b.icona] ?? <img src={b.icona} alt="" />}</span>}
+              <span className="wa-sc-t">
+                <span className="wa-sc-h">{b.titolo}</span>
+                {b.voci.map((v, j) => (
+                  <span key={j} className="wa-sc-n">
+                    {(v.nomi ?? []).map((x, k) => (
+                      <span key={k} className={`wa-nome${x.v.trim() ? "" : " vuoto"}`}>{x.v.trim() || "da definire"}</span>
+                    ))}
+                  </span>
+                ))}
+              </span>
+            </section>
+          ) : (
           <section key={i} className="wa-b" style={{ "--s": b.colore } as CSSProperties}>
             {b.titolo && (
               <h3>
@@ -241,6 +271,7 @@ export function Immagine({
               <RigaVoce key={j} v={v} colore={b.colore} />
             ))}
           </section>
+          )
         ))}
       </div>
       {m.piede && <div className="wa-piede">{m.piede}</div>}
@@ -276,8 +307,8 @@ export const CSS_IMMAGINE = `
 .wa * { box-sizing: border-box; }
 .wa-band { background: var(--c); color: #fff; padding: 38px 56px 34px; flex: none; position: relative; }
 .wa-band::after { content: ""; position: absolute; left: 56px; bottom: 0; width: 120px; height: 8px; background: #F2C66D; }
-.wa-t { font-size: 40px; font-weight: 500; line-height: 1.1; letter-spacing: .01em; opacity: .95; }
-.wa-s { font-size: 72px; font-weight: 700; line-height: 1.05; margin-top: 8px; letter-spacing: -.01em; white-space: nowrap; }
+.wa-t { font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: .14em; opacity: .95; text-transform: uppercase; }
+.wa-s { font-size: 70px; font-weight: 800; line-height: 1.05; margin-top: 10px; letter-spacing: 0; white-space: nowrap; text-transform: uppercase; }
 .wa-ora { font-size: .62em; font-weight: 500; margin-left: .45em; opacity: .9; }
 .wa-s.lunga { font-size: 46px; white-space: normal; }
 .wa-k { display: flex; align-items: center; gap: 18px; margin-top: 18px; font-size: 34px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
@@ -310,5 +341,20 @@ export const CSS_IMMAGINE = `
 .wa-txt { font-size: 4.6em; font-weight: 700; text-align: right; text-transform: uppercase; white-space: nowrap; }
 .wa-r.grande { display: flex; flex-direction: column; align-items: flex-start; gap: .4em; }
 .wa-tema { font-size: 5.2em; font-weight: 700; line-height: 1.12; }
+.wa.inlinea .wa-b { flex: 1; display: flex; flex-direction: column; }
+.wa.inlinea .wa-r { grid-template-columns: auto auto; justify-content: space-between; margin-top: auto; padding: .7em 0; }
+.wa.inlinea .wa-r:last-child { margin-bottom: auto; }
+.wa.inlinea .wa-et { white-space: nowrap; display: block; }
+.wa.inlinea .wa-l { min-width: max-content; }
+.wa.inlinea .wa-corpo { padding-bottom: 40px; }
+.wa-corpo.schede { gap: 28px; padding-top: 40px; padding-bottom: 28px; }
+.wa-sc { flex: 1; min-height: 0; display: flex; align-items: center; gap: 44px; padding: 0 8px; border-bottom: 3px solid var(--s); }
+.wa-sc:last-child { border-bottom: 0; }
+.wa-sc-i { flex: none; width: 230px; height: 230px; border-radius: 50%; background: var(--s); display: grid; place-items: center; }
+.wa-sc-i img, .wa-sc-i svg { width: 128px; height: 128px; object-fit: contain; }
+.wa-sc-t { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.wa-sc-h { font-size: 40px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--s); }
+.wa-sc-n { display: flex; flex-direction: column; gap: 6px; }
+.wa-sc-n .wa-nome { font-size: 66px; line-height: 1.05; }
 .wa-piede { flex: none; padding: 10px 56px 30px; font-size: 24px; color: #5F6B77; letter-spacing: .08em; text-transform: uppercase; display: flex; justify-content: space-between; }
 `;

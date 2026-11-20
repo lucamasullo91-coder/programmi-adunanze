@@ -354,7 +354,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     t += tg;
     if (io.pulizie) t += '<button class="tile" data-mod="pulizie" style="--c:#A86F00"><b>Programma pulizie</b><span>Anno teocratico: gruppi, coordinatori, referenti, pulizia generale</span></button>';
     if (io.wa) t += '<button class="tile" data-mod="whatsapp" style="--c:#25804B"><b>Pronto per WhatsApp</b><span>Le immagini della settimana per i gruppi</span></button>';
-    if (io.tutto) t += '<button class="tile" data-mod="telegram" style="--c:#2E75B5"><b>Telegram</b><span>Invii automatici delle immagini</span></button>';
+    if (io.tutto) t += '<button class="tile" data-mod="telegram" style="--c:#2E75B5"><b>Telegram</b><span>Avvisi e promemoria per te</span></button>';
     if (io.tutto || io.ambiti.indexOf('oem') >= 0) t += '<button class="tile" data-mod="espositori" style="--c:#2F7F8C"><b>Espositori</b><span>Programma dell\'opera pubblica e carrelli</span></button>';
     var futuri = [];
     futuri.forEach(function (m) { if (io.tutto || io.ambiti.indexOf(m[2]) >= 0) t += '<div class="tile off" style="--c:' + m[1] + '"><b>' + m[0] + '</b><span>Nel portale tra poco</span></div>'; });
@@ -603,13 +603,14 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       (C.comitive || []).map(function (p, i) {
         return '<div class="r">' + selG('c' + i + '.g', p.g) + ' ore <input size="5" data-cf="c' + i + '.ora" value="' + esc(p.ora) + '"> · <input data-cf="c' + i + '.luogo" value="' + esc(p.luogo) + '"> <button class="btn small soft" data-crm="comitive.' + i + '">Togli</button></div>';
       }).join('') + '</div><button class="btn small soft" data-cadd="comitive">+ Comitiva</button>';
-    var TV = { annullata: 'Comitiva annullata', aggiunta: 'Comitiva aggiunta', spostata: 'Adunanza spostata' };
+    var TV = { annullata: 'Comitiva annullata', aggiunta: 'Comitiva aggiunta', spostata: 'Adunanza spostata', cambiata: 'Comitiva cambiata' };
     h += '<h3 class="t">Variazioni</h3><p class="nota">Valgono per il sondaggio, il programma delle comitive e la turnazione reparti. Una comitiva annullata resta nel sondaggio e nel programma, grigia e con il motivo. Se cambi qualcosa a sondaggio già inviato, in «Invio dei link» trovi chi avvisare.</p><div class="cal">' +
       (C.variazioni || []).map(function (v, i) {
         var r = '<div class="r"><b style="min-width:150px;display:inline-block;color:' + (v.tipo === 'spostata' ? '#A8432B' : '#A86F00') + '">' + TV[v.tipo] + '</b> il <input type="date" data-cf="v' + i + '.data" value="' + esc(v.data) + '">';
         if (v.tipo === 'spostata') r += ' · <select data-cf="v' + i + '.adunanza"><option value="inf"' + (v.adunanza !== 'fs' ? ' selected' : '') + '>infrasettimanale</option><option value="fs"' + (v.adunanza === 'fs' ? ' selected' : '') + '>fine settimana</option></select> ore <input size="5" data-cf="v' + i + '.ora" value="' + esc(v.ora || '') + '" placeholder="19:30">';
         else r += ' ore <input size="5" data-cf="v' + i + '.ora" value="' + esc(v.ora || '') + '" placeholder="' + (v.tipo === 'annullata' ? 'tutte' : '17:00') + '">';
-        if (v.tipo === 'aggiunta') r += ' · <input data-cf="v' + i + '.luogo" value="' + esc(v.luogo || '') + '" placeholder="Luogo">';
+        if (v.tipo === 'aggiunta' || v.tipo === 'cambiata') r += ' · <input data-cf="v' + i + '.luogo" value="' + esc(v.luogo || '') + '" placeholder="Luogo">';
+        if (v.tipo === 'cambiata') r += ' <span class="nota">' + (v.seguenti ? 'da questa settimana in poi' : 'solo questa settimana') + '</span>';
         r += ' · <input data-cf="v' + i + '.motivo" value="' + esc(v.motivo || '') + '" placeholder="' + (v.tipo === 'annullata' ? 'Motivo (es. Adunanza infrasettimanale)' : 'Nota (facoltativa)') + '" style="min-width:220px">';
         return r + ' <button class="btn small soft" data-crm="variazioni.' + i + '">Togli</button></div>';
       }).join('') + '</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small soft" data-cadd="var-annullata">+ Comitiva annullata</button><button class="btn small soft" data-cadd="var-aggiunta">+ Comitiva aggiunta</button><button class="btn small soft" data-cadd="var-spostata">+ Adunanza spostata</button></div>';

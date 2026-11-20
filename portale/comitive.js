@@ -17,6 +17,7 @@
     return t.m === fm ? t.d + '–' + f.getUTCDate() + ' ' + MESI[t.m - 1] : t.d + ' ' + MESI[t.m - 1] + ' – ' + f.getUTCDate() + ' ' + MESI[fm - 1];
   };
   const lungo = (s) => { const t = zn(s); return G[t.dow] + ' ' + t.d + ' ' + MESI[t.m - 1]; };
+  const corto = (s) => { const t = zn(s); return GB[t.dow] + ' ' + t.d; };
   const meseDopo = (m, n) => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + n, 1)).toISOString().slice(0, 7);
   const nomeMese = (m) => MESI[+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4);
   const persona = (id) => C.pers && C.pers.get(id);
@@ -118,6 +119,12 @@
   .cm-r{display:grid;grid-template-columns:150px 1fr;gap:6px 10px;padding:8px 12px;border-top:1px solid #EFEDE8;align-items:center}
   @media(min-width:860px){.cm-r{grid-template-columns:200px 1fr 260px}}
   .cm-r .q b{display:block;color:#A86F00;font-size:14px}.cm-r .q span{font-size:12px;color:var(--slate)}
+  .cm-az{display:flex;gap:6px;margin-top:4px}.cm-az .cm-ic{font-size:11.5px;padding:2px 8px}
+  .cm-mod{display:grid;gap:8px;padding:10px 12px;margin:0 12px 8px;background:#FBF6EA;border:1px solid #E9D9B0;border-radius:10px}
+  .cm-mod .rr{display:flex;gap:6px;flex-wrap:wrap}.cm-mod select,.cm-mod input[type=time],.cm-mod input[list],.cm-mod #cmMotivo{font:inherit;font-size:14px;padding:6px 8px;border:1px solid #D9D6D0;border-radius:8px;background:#fff}
+  .cm-schema{margin:8px 0 14px;border:1px solid #E1DDD3;border-radius:12px;padding:8px 12px;background:#fff}.cm-schema summary{font-weight:700;color:#235C90;cursor:pointer}
+  .cm-sch-w{overflow-x:auto}.cm-sch{border-collapse:collapse;margin-top:8px;font-size:13px}.cm-sch th,.cm-sch td{padding:4px 6px;text-align:center;border-bottom:1px solid #EFEDE8;white-space:nowrap}
+  .cm-sch th.l,.cm-sch td.l{text-align:left;white-space:normal;min-width:160px;font-size:12px}.cm-sch select{font:inherit;font-weight:700;padding:3px 4px;border-radius:6px;border:1px solid #D9D6D0;min-width:62px}
   .cm-r select,.cm-r input{width:100%;border:1px solid var(--rule);border-radius:6px;padding:6px 8px;background:#fff;font-weight:600}
   .cm-r small{display:block;font-size:11px;color:var(--muted);margin-top:2px}.cm-r small.w{color:#B3261E;font-weight:600}
   .cm-r.off{background:#F4F3EF}.cm-r.off .q b{color:#9AA3AD}.cm-r.nasc{opacity:.55}
@@ -195,19 +202,23 @@
     if (av.length) h += '<details class="rp-rev" open><summary>Da rivedere (' + av.length + ')</summary><ul>' + av.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></details>';
     const abil = C.d.conduttori.filter((p) => p.abilitato).sort((x, y) => x.cognome.localeCompare(y.cognome, 'it'));
     h += sediDatalist();
+    h += schemaDomeniche();
     C.d.settimane.forEach((w, i) => {
       h += '<section class="cm-wk"><h3><b>' + (i + 1) + 'ª settimana</b><span>' + intervallo(w.lunedi) + '</span>' + (w.speciale ? '<span style="color:#521F46">' + esc(w.speciale.nome) + '</span>' : '') + '</h3>';
       w.comitive.forEach((c) => {
-        if (c.annullata) { h += '<div class="cm-r off"><div class="q"><b>' + esc(lungo(c.data)) + '</b><span>' + esc(c.ora + ' · ' + c.luogo) + '</span></div><div><i>Non si tiene' + (c.motivo ? ': ' + esc(c.motivo) : '') + '</i></div></div>'; return; }
+        if (c.annullata) { h += '<div class="cm-r off"><div class="q"><b>' + esc(lungo(c.data)) + '</b><span>' + esc(c.ora + ' · ' + c.luogo) + '</span></div><div><i>Non si tiene' + (c.motivo ? ': ' + esc(c.motivo) : '') + '</i></div><div class="az"><button class="btn small soft" data-cm="cRipristina" data-k="' + esc(c.k) + '">Ripristina</button></div></div>'; return; }
         const off = offerte(c.k), chi = C.st.assegnati[c.k] || '', nasc = !!C.st.nascoste[c.k];
         const opz = '<option value="">—</option><optgroup label="Si sono offerti">' + off.map((id) => '<option value="' + id + '"' + (chi === id ? ' selected' : '') + '>' + esc(sigla(id)) + '  (' + (n.get(id) || 0) + ((n.get(id) || 0) === 1 ? ' offerta · ' : ' offerte · ') + (a.get(id) || 0) + ((a.get(id) || 0) === 1 ? ' assegnata)' : ' assegnate)') + '</option>').join('') + '</optgroup>' +
           '<optgroup label="Non si sono offerti">' + abil.filter((p) => off.indexOf(p.id) < 0).map((p) => '<option value="' + p.id + '"' + (chi === p.id ? ' selected' : '') + '>' + esc(p.sigla) + '</option>').join('') + '</optgroup>';
         const mot = C.motivi[c.k];
         const info = chi ? (off.indexOf(chi) < 0 ? '<small class="w">⚠ non si è offerto per questa comitiva</small>' : '<small>' + (mot ? esc(mot) + ' · ' : '') + 'quota ' + (q.get(chi) || 0).toFixed(1) + ', assegnate ' + (a.get(chi) || 0) + '</small>') : '<small' + (off.length ? '' : ' class="w"') + '>' + (off.length ? off.length + ' disponibili' : 'nessuna offerta') + '</small>';
-        h += '<div class="cm-r' + (nasc ? ' nasc' : '') + '"><div class="q"><b>' + esc(lungo(c.data)) + (c.aggiunta ? ' · in più' : '') + '</b><span>' + esc(c.ora + ' · ' + c.luogo) + '</span></div>' +
+        h += '<div class="cm-r' + (nasc ? ' nasc' : '') + '"><div class="q"><b>' + esc(lungo(c.data)) + (c.aggiunta ? ' · in più' : '') + (c.cambiata ? ' · cambiata' : '') + '</b><span>' + esc(c.ora + ' · ' + c.luogo) + (c.cambiata && c.motivo ? ' · ' + esc(c.motivo) : '') + '</span>' +
+          '<span class="cm-az"><button class="cm-ic" data-cm="cMod" data-k="' + esc(c.k) + '">Modifica</button>' + (c.aggiunta ? '<button class="cm-ic" data-cm="cTogli" data-k="' + esc(c.k) + '">Togli</button>' : '<button class="cm-ic" data-cm="cAnnulla" data-k="' + esc(c.k) + '">Non si tiene</button>') + '</span></div>' +
           '<div><select data-cm="chi" data-k="' + esc(c.k) + '"' + (nasc ? ' disabled' : '') + '>' + opz + '</select>' + info + '</div>' +
           '<div class="az"><input data-cm="nota" data-k="' + esc(c.k) + '" value="' + esc(C.st.note[c.k] || '') + '" placeholder="Nota (facoltativa)" style="flex:1"><label style="font-size:12px;white-space:nowrap"><input type="checkbox" data-cm="nascondi" data-k="' + esc(c.k) + '"' + (nasc ? ' checked' : '') + ' style="width:auto"> nascondi</label></div></div>';
+        if (C.mod === c.k) h += moduloComitiva(w, c);
       });
+      h += '<div class="cm-add" style="padding:6px 12px">' + (C.mod === 'nuova:' + w.lunedi ? moduloComitiva(w, null) : '<button class="btn small soft" data-cm="cNuova" data-v="' + w.lunedi + '">+ Comitiva in più questa settimana</button>') + '</div>';
       h += domenica(w, i, '');
       h += '</section>';
     });
@@ -217,6 +228,45 @@
       righe.map((id) => { const as = a.get(id) || 0, qq = q.get(id) || 0, cl = as >= qq + 1.5 ? 'su' : as <= qq - 1.5 ? 'giu' : '';
         return '<tr><td>' + esc(sigla(id)) + '</td><td>' + (n.get(id) || 0) + '</td><td>' + qq.toFixed(1) + '</td><td class="' + cl + '">' + as + '</td><td>' + ((C.d.storico || {})[id] || 0) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     return h;
+  }
+
+  /* ── cambiare una comitiva di congregazione: giorno (nella stessa settimana), ora, luogo; si salva nel Calendario ── */
+  function moduloComitiva(w, c) {
+    const giorni = Array.from({ length: 7 }, (_, i) => { const d = new Date(Date.UTC(+w.lunedi.slice(0, 4), +w.lunedi.slice(5, 7) - 1, +w.lunedi.slice(8, 10) + i)); return d.toISOString().slice(0, 10); });
+    const data = c ? c.data : giorni[2], ora = c ? c.ora : '', luogo = c ? c.luogo : '';
+    return '<div class="cm-mod" data-k="' + esc(c ? c.k : '') + '" data-w="' + w.lunedi + '">' +
+      '<b style="color:#A86F00">' + (c ? 'Cambia la comitiva di ' + esc(lungo(c.data)) + ' ' + esc(c.ora) : 'Comitiva in più') + '</b>' +
+      '<div class="rr"><select id="cmGiorno">' + giorni.map((g) => '<option value="' + g + '"' + (g === data ? ' selected' : '') + '>' + esc(lungo(g)) + '</option>').join('') + '</select>' +
+      '<input type="time" id="cmOra" value="' + esc(String(ora).padStart(5, '0')) + '"><input list="cmSedi" id="cmLuogo" value="' + esc(luogo) + '" placeholder="Luogo"></div>' +
+      '<input id="cmMotivo" placeholder="Motivo (facoltativo, es. visita del sorvegliante)">' +
+      (c && !c.aggiunta ? '<label style="font-size:13px"><input type="checkbox" id="cmSeguenti"> Anche le settimane seguenti (cambio stabile)</label>' : '') +
+      '<div class="rr"><button class="btn small" data-cm="cSalva" style="background:#A86F00;border-color:#A86F00">Salva</button><button class="btn small soft" data-cm="cChiudi">Annulla</button></div></div>';
+  }
+  function cambioCalendario(chiave, d) {
+    P.toast('Salvo nel calendario…');
+    return P.srv('cambiaComitiva', C.mese, chiave, d).then((r) => {
+      const st = C.st; C.d = r; C.st = st; C.pers = new Map(r.conduttori.map((p) => [p.id, p])); C.mod = null; P.toast('Fatto'); rd();
+    }).catch((e) => P.toast(e.message, true));
+  }
+
+  /* ── schema delle domeniche del mese: chi sta con chi, a colpo d'occhio ── */
+  const COL_DOM = ['#2E75B5', '#A86F00', '#25804B', '#7A4E9C', '#A8432B'];
+  function schemaDomeniche() {
+    const d = ctxDom();
+    if (!d || !d.foglio || !d.foglio.gruppi || !d.foglio.gruppi.length) return '';
+    const ids = d.foglio.gruppi, dom = d.settimane.map((w) => w.domenica).filter(Boolean);
+    if (!dom.length) return '';
+    let h = '<details class="cm-schema" open><summary>Domeniche del mese · chi sta con chi</summary><div class="cm-sch-w"><table class="cm-sch"><thead><tr><th></th>' + ids.map((g) => '<th>' + esc(g) + '</th>').join('') + '<th class="l">Comitive</th></tr></thead><tbody>';
+    dom.forEach((data) => {
+      const righe = righeDom().filter((r) => r.data === data);
+      const lettera = (r) => String.fromCharCode(65 + righe.indexOf(r));
+      h += '<tr><th>' + esc(corto(data)) + '</th>' + ids.map((g) => {
+        const r = righe.find((x) => x.gruppi.indexOf(g) >= 0), col = r ? COL_DOM[righe.indexOf(r) % COL_DOM.length] : '';
+        return '<td><select data-cmd="schema" data-d="' + data + '" data-g="' + esc(g) + '"' + (r ? ' style="background:' + col + ';color:#fff;border-color:' + col + '"' : '') + '><option value="">—</option>' +
+          righe.map((x) => '<option value="' + esc(x.id) + '"' + (x === r ? ' selected' : '') + '>' + lettera(x) + '</option>').join('') + '<option value="@nuova">' + (righe.length ? 'da solo' : 'A') + '</option></select></td>';
+      }).join('') + '<td class="l">' + (righe.length ? righe.map((x) => '<span style="color:' + COL_DOM[righe.indexOf(x) % COL_DOM.length] + '"><b>' + lettera(x) + '</b> ' + esc([x.ora, x.luogo].filter(Boolean).join(' · ') || 'ora e luogo da scegliere') + '</span>').join('<br>') : '<i>nessuna</i>') + '</td></tr>';
+    });
+    return h + '</tbody></table></div><p class="nota" style="margin:6px 0 0">Scegli per ogni gruppo la comitiva (A, B…) o «da solo». Gruppi con la stessa lettera stanno insieme. Ora, luogo e conduttore li scegli sotto, domenica per domenica.</p></details>';
   }
 
   /* ── domeniche dei gruppi (come in Congregation Manager): una riga per comitiva, salvata da sola ── */
@@ -300,6 +350,17 @@
   function cambiaDom(u) {
     const c = u.dataset.cmd, r = u.dataset.id ? trova(u.dataset.id) : null;
     if (c === 'uno') { if (!u.value) return; return salvaDom(nuovaRiga(u.dataset.d, [u.value])); }
+    if (c === 'schema') {
+      const data = u.dataset.d, g = u.dataset.g, ids = ctxDom().foglio.gruppi, righe = righeDom().filter((y) => y.data === data);
+      const ora = righe.find((y) => y.gruppi.indexOf(g) >= 0), dove = u.value === '@nuova' ? null : righe.find((y) => String(y.id) === u.value);
+      if (ora && dove && ora.id === dove.id) return;
+      const via = ora ? (ora.gruppi.length > 1 ? salvaDom(Object.assign({}, ora, { gruppi: ora.gruppi.filter((y) => y !== g) })) : salvaDom(ora, true)) : Promise.resolve();
+      if (!u.value) return via;
+      const ordina = (a) => a.sort((x, y) => ids.indexOf(x) - ids.indexOf(y));
+      if (dove) return via.then(() => salvaDom(Object.assign({}, dove, { gruppi: ordina(dove.gruppi.concat(g)) })));
+      const modello = righe[0];
+      return via.then(() => salvaDom(Object.assign(nuovaRiga(data, [g]), modello ? { ora: modello.ora, luogo: '' } : {})));
+    }
     if (!r) return;
     if (c === 'ora' && u.value) return salvaDom(Object.assign({}, r, { ora: u.value }));
     if (c === 'luogo') return salvaDom(Object.assign({}, r, { luogo: u.value.trim() }));
@@ -393,6 +454,19 @@
     if (k === 'proponi') { if (v === 'tutto' && Object.keys(C.st.assegnati).length && !confirm('Rifaccio tutto il programma del mese?')) return; return proponi(v); }
     if (k === 'svuota') { if (!confirm('Tolgo tutti i conduttori del mese?')) return; C.st.assegnati = {}; C.motivi = {}; cambiato(); return rd(); }
     if (k === 'nascondi') { if (u.checked) C.st.nascoste[u.dataset.k] = true; else delete C.st.nascoste[u.dataset.k]; cambiato(); return rd(); }
+    if (k === 'cMod') { C.mod = u.dataset.k; return rd(); }
+    if (k === 'cNuova') { C.mod = 'nuova:' + v; return rd(); }
+    if (k === 'cChiudi') { C.mod = null; return rd(); }
+    if (k === 'cAnnulla') { const mot = prompt('Perché non si tiene? (comparirà in grigio sul programma)', ''); if (mot === null) return; return cambioCalendario(u.dataset.k, { azione: 'annulla', motivo: mot }); }
+    if (k === 'cRipristina') return cambioCalendario(u.dataset.k, { azione: 'ripristina' });
+    if (k === 'cTogli') { if (!confirm('Tolgo questa comitiva in più?')) return; return cambioCalendario(u.dataset.k, { azione: 'togli' }); }
+    if (k === 'cSalva') {
+      const f = u.closest('.cm-mod'), val = (id) => (document.getElementById(id) || {}).value || '';
+      const seg = document.getElementById('cmSeguenti');
+      const d = { data: val('cmGiorno'), ora: val('cmOra').replace(/^0(\d):/, '$1:'), luogo: val('cmLuogo').trim(), motivo: val('cmMotivo').trim(), seguenti: !!(seg && seg.checked) };
+      if (f.dataset.k) return cambioCalendario(f.dataset.k, Object.assign({ azione: 'cambia' }, d));
+      return cambioCalendario('', Object.assign({ azione: 'aggiungi' }, d));
+    }
     if (k === 'stampa') { adatta(); return window.print(); }
     if (k === 'variante') { salvaPref('cm-comitive-variante', v); return rd(); }
     if (k === 'meta') {

@@ -68,6 +68,20 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
 ### Comitive
 - Equità rispetto alle disponibilità date sul totale del mese. Chi dà una sola disponibilità ha la priorità ed entra comunque.
 - Una comitiva annullata o spostata resta in grigio con il motivo.
+- Giorno, ora e luogo di una comitiva si cambiano dal programma (solo quella settimana o da lì in poi): il cambio va nelle
+  variazioni del Calendario (`tipo: 'cambiata'`), la chiave della comitiva resta quella originale (conduttore e offerte restano).
+- Domeniche dei gruppi: lo «schema del mese» mostra chi sta con chi (lettere A, B… con colori); i gruppi possono stare insieme o da soli.
+
+### Avvisi Telegram (solo a Luca)
+- Giorno dell'adunanza alle 9:00: «Promemoria turni reparti» con le immagini di tutti i reparti, poi presidente e Audio/Video · prove.
+- Lunedì 9:00 pulizie della settimana (e pulizia generale); domenica 19:30 i suoi impegni della settimana dopo;
+  parti 10 giorni prima e comitive 3 giorni prima alle 9:00; allarme sostituzione una volta all'ora (solo casi nuovi).
+- Orari e giorni si cambiano nella pagina Telegram del portale (proprietà utente `AVVISI`).
+
+### Immagini WhatsApp dei reparti
+- Intestazione come sul programma (tutto maiuscolo), colore dell'adunanza del mese; niente striscia «Reparto …».
+- Uscieri e Audio/Video nell'ordine del programma, ruolo a sinistra e nome per esteso a destra sulla stessa riga.
+- Letteratura e territori nel colore di Efficaci nel ministero, due riquadri grandi con icona (libro, cartina).
 
 ### Espositori (OEM)
 - Regolamento completo: documento «Turnazione espositori OEM — regolamento». Al centro c'è l'equità; la priorità ai pionieri regolari è subordinata all'equità.

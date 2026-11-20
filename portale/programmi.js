@@ -148,14 +148,29 @@
   P.viste.telegram = function () {
     const h = P.testata('Telegram', 'Invii automatici', 'home');
     if (!T) { P.srv('riservate').then((r) => { T = r; P.disegna(); }).catch((e) => P.toast(e.message, true)); return h + '<p class="nota">Carico…</p>'; }
-    return h + '<p class="nota">Qualche giorno prima di ogni adunanza il portale manda nel tuo gruppo Telegram le immagini del presidente e delle prove dell\'Audio/Video confermate da chi compila (se non sono confermate, un avviso) e, prima della prima adunanza di ogni settimana, quelle dei reparti (Audio/Video, Uscieri, Letteratura e territori, Pulizie), pronte appena pubblichi la turnazione. Le chiavi le legge solo lo script: non compaiono né nel Foglio né nella pagina.</p>' +
+    const A = T.avvisi || {};
+    const RIGHE = [
+      ['adunanza', 'Promemoria turni reparti', 'Il giorno dell\'adunanza: le immagini di tutti i reparti, poi presidente e Audio/Video · prove.', 'ora'],
+      ['pulizie', 'Pulizie della settimana', 'Il lunedì: gruppo, coordinatore e referente (e la pulizia generale, se c\'è).', 'ora'],
+      ['riepilogo', 'I miei impegni', 'La domenica: i tuoi impegni della settimana dopo.', 'ora'],
+      ['parti', 'Preparati per la parte', 'Giorni prima della parte che ti è stata assegnata.', 'giorni'],
+      ['comitive', 'Comitiva da condurre', 'Giorni prima della comitiva che conduci.', 'giorni'],
+      ['sostituzioni', 'Allarme sostituzione', 'Una volta all\'ora: chi è in turno ma risulta assente o ha una parte che lo esclude dal reparto.', ''],
+    ];
+    const riga = ([k, tit, desc, tipo]) => {
+      const a = A[k] || {};
+      return '<div class="tg-r"><label class="tg-on"><input type="checkbox" data-tga="' + k + '.on"' + (a.on ? ' checked' : '') + '><b>' + tit + '</b></label><small>' + desc + '</small>' +
+        '<div class="tg-q">' + (tipo === 'giorni' ? '<input type="number" min="1" max="30" data-tga="' + k + '.giorni" value="' + esc(a.giorni || '') + '"> giorni prima, alle ' : '') +
+        (tipo ? '<input type="time" data-tga="' + k + '.ora" value="' + esc(String(a.ora || '').padStart(5, '0')) + '">' : '') + '</div></div>';
+    };
+    return h + '<style>.tg-r{display:grid;gap:3px;padding:10px 0;border-bottom:1px solid var(--pa-line,#E1DDD3)}.tg-on{display:flex;gap:8px;align-items:center}.tg-r small{color:var(--slate,#4D5A68);font-size:12.5px}.tg-q{display:flex;gap:6px;align-items:center;font-size:13px}.tg-q input{font:inherit;padding:5px 8px;border:1px solid #D9D6D0;border-radius:8px;width:auto}</style>' +
+      '<p class="nota">Gli avvisi arrivano solo a te, nella chat Telegram indicata qui sotto. Si scelgono uno per uno, con il loro orario.</p>' +
       '<div class="tg"><label>Token del bot<input id="tgTok" placeholder="' + esc(T.TELEGRAM_TOKEN || 'non impostato') + '" autocomplete="off"><small>Lo stesso bot del brief (BotFather). Lascia vuoto per non cambiarlo.</small></label>' +
-      '<label>Chat<input id="tgChat" placeholder="' + esc(T.TELEGRAM_CHAT || 'non impostata') + '" autocomplete="off"><small>L\'id del gruppo delle notifiche (es. -100…).</small></label>' +
-      '<label>Giorni prima dell\'adunanza<input id="tgG" value="' + esc(T.ANTICIPO_GIORNI) + '"></label>' +
-      '<label>Ora dell\'invio<input id="tgO" value="' + esc(T.ORA_INVIO) + '"></label>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-tg="salva">Salva</button><button class="btn soft" data-tg="prova">Manda un messaggio di prova</button>' +
-      '<button class="btn soft" data-tg="' + (T.attivo ? 'spegni' : 'accendi') + '">' + (T.attivo ? 'Spegni gli invii automatici' : 'Attiva gli invii automatici') + '</button></div>' +
-      '<p class="nota">Stato: <b>' + (T.attivo ? 'invii automatici attivi (controllo ogni 15 minuti)' : 'invii automatici spenti') + '</b>. Quando li attivi qui, spegni gli attivatori del vecchio script di Programmi adunanze, altrimenti le immagini arrivano due volte.</p></div>';
+      '<label>Chat<input id="tgChat" placeholder="' + esc(T.TELEGRAM_CHAT || 'non impostata') + '" autocomplete="off"><small>L\'id del gruppo delle notifiche (es. -100…). Qui vedi le ultime 4 cifre di quella salvata.</small></label>' +
+      '<h3 class="t" style="margin-top:14px">Avvisi</h3>' + RIGHE.map(riga).join('') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" data-tg="salva">Salva</button><button class="btn soft" data-tg="prova">Manda un messaggio di prova</button>' +
+      '<button class="btn soft" data-tg="' + (T.attivo ? 'spegni' : 'accendi') + '">' + (T.attivo ? 'Spegni gli avvisi' : 'Attiva gli avvisi') + '</button></div>' +
+      '<p class="nota">Stato: <b>' + (T.attivo ? 'avvisi attivi (controllo ogni 15 minuti)' : 'avvisi spenti') + '</b>. Dopo aver aggiornato il codice premi una volta «Spegni» e poi «Attiva», così gli avvisi sanno di chi sono gli impegni e il link al portale.</p></div>';
   };
   P.app.addEventListener('click', (e) => {
     if (S.vista !== 'telegram') return;
@@ -164,7 +179,11 @@
     const a = u.dataset.tg, v = (id) => document.getElementById(id).value.trim();
     const fatto = (r) => { T = r; P.disegna(); P.toast('Fatto'); };
     const ko = (err) => P.toast(err.message, true);
-    if (a === 'salva') return P.srv('salvaRiservate', { TELEGRAM_TOKEN: v('tgTok'), TELEGRAM_CHAT: v('tgChat'), ANTICIPO_GIORNI: v('tgG'), ORA_INVIO: v('tgO') }).then(fatto).catch(ko);
+    if (a === 'salva') {
+      const avvisi = {};
+      document.querySelectorAll('[data-tga]').forEach((el) => { const [x, f] = el.dataset.tga.split('.'); avvisi[x] = avvisi[x] || {}; avvisi[x][f] = el.type === 'checkbox' ? el.checked : el.value.replace(/^0(\d):/, '$1:'); });
+      return P.srv('salvaRiservate', { TELEGRAM_TOKEN: v('tgTok'), TELEGRAM_CHAT: v('tgChat'), avvisi: avvisi }).then(fatto).catch(ko);
+    }
     if (a === 'prova') return P.srv('provaTelegram').then((m) => P.toast(m)).catch(ko);
     if (a === 'accendi' || a === 'spegni') return P.srv('attivaInvii', a === 'accendi').then(fatto).catch(ko);
   });
