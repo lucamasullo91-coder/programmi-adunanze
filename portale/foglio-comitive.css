@@ -476,3 +476,6 @@
 .cm4 .pgm.com.a4 .mioh .mr.dom .dq{background:var(--plum)}
 .cm4 .pgm.com.a4 .mioh .mr.dom>div:last-child b{color:var(--plum)}
 .cm4 .pgm.com.a4 .dform .r .n .dv{display: block; font-size: 8.5px; font-weight: 600; letter-spacing: .02em; color: #A8432B; text-transform: none; line-height: 1.2;}
+.cm4 .pgm.com.a4 .dform .r .d{position: relative;}
+.cm4 .pgm.com.a4 .dform .r .d .ast{position: absolute; top: -2px; right: 2px; font-style: normal; font-weight: 800; font-size: 10px; color: #F2C66D;}
+.cm4 .pgm.com.a4 .dform .dvn{padding: 0 8px 6px; font-size: 8.5px; font-weight: 600; color: #A8432B;}

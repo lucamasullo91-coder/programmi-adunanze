@@ -87,7 +87,8 @@
       f.luogo = piuFrequente(f.righe.map((r) => r.luogo));
       f.righe.forEach((r) => { r.diversa = [r.ora && r.ora !== f.ora ? 'ore ' + r.ora : '', r.luogo && r.luogo !== f.luogo ? r.luogo : ''].filter(Boolean).join(' · '); });
     });
-    return [...per.values()].sort((a, b) => b.gruppi.length - a.gruppi.length || pos(a.gruppi[0]) - pos(b.gruppi[0]) || a.ora.localeCompare(b.ora));
+    // in ordine alfabetico del primo gruppo (Agnello-Ciotola, Colasante, Guerrazzi-Sodano, Muto…)
+    return [...per.values()].sort((a, b) => String(a.gruppi[0]).localeCompare(String(b.gruppi[0]), 'it') || a.ora.localeCompare(b.ora));
   }
   const titoloFormazione = (gruppi, tutti) => (tutti.length > 1 && gruppi.length === tutti.length ? 'Tutti i gruppi' : gruppi.join(' - '));
   const etichettaGruppi = (ids, tutti) => {
@@ -208,8 +209,8 @@
           f.righe.map((r) => {
             const id = sala && !r.visita ? null : r.conduttore, est = sala && !r.visita ? '' : r.esterno;
             const [fn, ln] = nomeDiviso(id, est), d = day(r.data);
-            return '<div class="r ' + (r.visita ? 'vis' : '') + ' ' + (io && r.conduttore === io ? 'me' : '') + '"><span class="d"><small>DOM</small><b>' + d.d + '</b><small>' + MESI3[d.m - 1] + '</small></span><span class="n">' + (id || est ? nomeIntero(fn, ln) : sala ? '' : '—') + (r.diversa ? '<small class="dv">' + esc(r.diversa) + '</small>' : '') + '</span></div>';
-          }).join('') + '</div></div>').join('') + '</div></section>';
+            return '<div class="r ' + (r.visita ? 'vis' : '') + ' ' + (io && r.conduttore === io ? 'me' : '') + '"><span class="d">' + (sala && r.diversa ? '<i class="ast">*</i>' : '') + '<small>DOM</small><b>' + d.d + '</b><small>' + MESI3[d.m - 1] + '</small></span><span class="n">' + (id || est ? nomeIntero(fn, ln) : sala ? '' : '—') + (!sala && r.diversa ? '<small class="dv">' + esc(r.diversa) + '</small>' : '') + '</span></div>';
+          }).join('') + '</div>' + (sala && f.righe.some((r) => r.diversa) ? '<div class="dvn">' + f.righe.filter((r) => r.diversa).map((r) => { const d = day(r.data); return '* ' + d.d + ' ' + MESI3[d.m - 1] + ': ' + esc(r.diversa); }).join(' · ') + '</div>' : '') + '</div>').join('') + '</div></section>';
     } else if (domVisita.length) {
       h += '<section class="mwk dom"><h2><b>Domenica</b><i>|</i><span>Gruppi di servizio · ' + esc((imp.domeniche || 'tutte le domeniche').toLowerCase()) + '</span>' + visH + '</h2></section>';
     }
