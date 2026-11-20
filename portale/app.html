@@ -1008,6 +1008,9 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       var px = S.acc.persone.filter(function (x) { return x.id === t.dataset.att; })[0];
       return srv('impostaAccesso', { id: px.id, attivo: !px.attivo }).then(function (r) { S.acc = r; disegna(); }).catch(function (err) { toast(err.message, true); });
     }
+    // data-id apre la scheda della persona solo nelle pagine del portale (anagrafica, accessi…), mai dentro le sezioni
+    // (comitive, reparti, pulizie…) che usano data-id per le proprie righe: lì il tocco lo gestisce la sezione.
+    if (t.dataset.id && PC.viste[S.vista]) return;
     if (t.dataset.id && t.dataset.c) {
       if (t.tagName === 'SELECT' || t.tagName === 'INPUT') return;
       var cc = Number(t.dataset.c), x = col(cc), f = S.dati.fratelli.filter(function (y) { return y.id === t.dataset.id; })[0];
