@@ -20,6 +20,8 @@ Struttura del repository:
 - `src/` → `dist/app.js` — la pagina dei Programmi adunanze (`npm run build`).
 - `dati/AAAA-MM.json` — struttura di ogni mese dalla guida (parti, durate, colori, carattere). Nessun nome di persona.
 - `strumenti/` — script che leggono guida e Torre di Guardia e generano `dati/`.
+- `portale/pdf.js` — PDF dei fogli del portale (ogni foglio A4 → immagine → pagina), costruito da `strumenti/portale-pdf/pdf.ts` con
+  `npx esbuild strumenti/portale-pdf/pdf.ts --bundle --minify --format=iife --target=es2019,safari14 --outfile=portale/pdf.js`.
 
 I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il repository è pubblico).
 
@@ -59,6 +61,8 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
 ### Pulizie
 - Si compilano solo nel Programma pulizie (Luca e il coordinatore del reparto Pulizie). La turnazione le mostra e la proposta le rispetta.
 - Il referente deve essere del gruppo di turno, altrimenti il campo resta vuoto. Per il coordinatore è preferibile, ma non obbligatorio.
+- Coordinatore e referente si possono cambiare per una sola adunanza (campi `cI`/`rI`/`cF`/`rF` della settimana nel Programma pulizie, anche dalla scheda Pulizie della turnazione). Il referente resta sempre del gruppo di turno: se non c'è nessuno, resta vuoto.
+- Se chi è in servizio alle pulizie risulta assente a quell'adunanza, compare sempre un avviso.
 - Gruppi: Agnello, Ciotola, Colasante, Guerrazzi, Muto, Sodano.
 
 ### Comitive
@@ -85,6 +89,11 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
   e nella bacheca (principio della sezione 3).
 - Date: per esteso in maiuscolo nel colore della sezione (es. MER 7 GEN). Nomi per esteso, nome e cognome sulla stessa riga.
 - Studio Torre di Guardia "(60 min)", non "un'ora".
+- Intestazione della turnazione reparti: due colonne allineate ai riquadri delle settimane (titolo e orari finiscono con il riquadro
+  dell'infrasettimanale; l'orario dell'infrasettimanale finisce dove finiscono i nomi della prima colonna). A destra la pulizia generale
+  (titolo con scopa, «Quando» e «Gruppo» grandi alla pari, sotto coordinatore e referente) e, nel personale, «I miei turni»;
+  nel personale a sinistra il riquadro «Programma personale di NOME». Nei mesi senza pulizia generale la colonna destra resta vuota.
+- Gruppi sempre in maiuscolo.
 
 ## 7. Contenuti di jw.org
 

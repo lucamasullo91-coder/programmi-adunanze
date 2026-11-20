@@ -1296,6 +1296,11 @@ function reparti(k, mese) {
   const servono = {}; Object.keys(inTurno).forEach((id) => { servono[id] = true; });
   stato.turni.forEach((t) => { servono[t.persona_id] = true; });
   Object.keys(stato.generali).forEach((s) => { const g = stato.generali[s]; if (g.coord) servono[g.coord] = true; if (g.ref) servono[g.ref] = true; });
+  Object.keys(stato.pulizieCambi || {}).forEach((a) => { const x = stato.pulizieCambi[a]; if (x.c) servono[x.c] = true; if (x.r) servono[x.r] = true; });
+  const abPul = {}; pInc.forEach((x) => { if (/^PUL_/.test(x.incarico_id)) (abPul[x.persona_id] = abPul[x.persona_id] || {})[x.incarico_id] = true; });
+  const fratelliPulizie = persone_().filter((p) => p.sesso === 'Uomo').map((p) => ({ id: p.id, nome: p.n, cognome: p.cognome, gruppo: p.gruppo || '',
+    coord: !!(abPul[p.id] && abPul[p.id].PUL_COORD), ref: !!(abPul[p.id] && abPul[p.id].PUL_REF) }));
+  fratelliPulizie.forEach((p) => { servono[p.id] = true; });
   const lista = persone_().filter((p) => servono[p.id]);
   const sg = sigle_(lista);
   return {
@@ -1307,7 +1312,7 @@ function reparti(k, mese) {
     pInc: pInc, sondaggio: sondaggio, risposto: risposto, mancano: mancano,
     parti: pr.parti, partiIgnote: pr.ignote, partiErrore: pr.errore,
     storico: storico, settimanaPrima: settimanaPrima, adunanzePrima: settimanaPrima ? adPrima.filter((a) => a.settimana_id === prima) : [],
-    gruppiPulizie: LISTE[8], stato: stato, eventi: ev.eventi, colori: coloriMese_(mese),
+    gruppiPulizie: LISTE[8], stato: stato, eventi: ev.eventi, colori: coloriMese_(mese), fratelliPulizie: fratelliPulizie, puoPulizie: puoPulizie_(richiedi_(k)),
   };
 }
 function orarioTesto_(cal, sett, q) {
@@ -1921,6 +1926,7 @@ function repartiPubblicati_(mese) {
   sett.forEach((w) => { if (w.speciale && w.speciale.adunanze === false) { st.nessuna[w.lunedi + '-INFRA'] = true; st.nessuna[w.lunedi + '-FINE'] = true; } });
   const servono = {}; st.turni.forEach((t) => { servono[t.persona_id] = true; });
   Object.keys(st.generali).forEach((s) => { const g = st.generali[s]; if (g.coord) servono[g.coord] = true; if (g.ref) servono[g.ref] = true; });
+  Object.keys(st.pulizieCambi || {}).forEach((a) => { const x = st.pulizieCambi[a]; if (x.c) servono[x.c] = true; if (x.r) servono[x.r] = true; });
   const lista = persone_().filter((x) => servono[x.id]), sg = sigle_(lista);
   return { mese: mese, quando: p.quando, settimane: sett.map((w) => ({ id: w.lunedi, lunedi: w.lunedi })), adunanze: adunanzeReparti_(cal, sett, st.nessuna),
     orari: { infra: orarioTesto_(cal, sett, 'infra'), fs: orarioTesto_(cal, sett, 'fs') },
@@ -1983,6 +1989,10 @@ function bacheca(k, mese) {
     const e = puliziaSettimana_(w.lunedi, true);
     if (!e) return;
     const sett = ' · settimana del ' + w.lunedi.slice(8) + '/' + w.lunedi.slice(5, 7);
+    [['I', 'infrasettimanale'], ['F', 'fine settimana']].forEach(([t, nome]) => {
+      if (e['c' + t] === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Coordinatore pulizie (solo ' + nome + ')' + sett });
+      if (e['r' + t] === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Referente pulizie (solo ' + nome + ')' + sett });
+    });
     if (e.c === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Coordinatore pulizie' + sett });
     if (e.r === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Referente pulizie' + sett });
     if (e.gc === io.id || e.gr === io.id) out.impegni.push({ data: e.gd || w.lunedi, tipo: 'pul', testo: 'Pulizia generale · ' + (e.gc === io.id ? 'coordinatore' : 'referente') });
@@ -2228,6 +2238,11 @@ function applicaPulizie_(st, lunedis, pubblicato) {
     st.turni = st.turni.filter((t) => !(t.settimana_id === lun && /^PUL_/.test(t.incarico_id)));
     if (idPersona_(e.c)) st.turni.push({ settimana_id: lun, adunanza_id: null, incarico_id: 'PUL_COORD', posizione: 1, persona_id: idPersona_(e.c) });
     if (idPersona_(e.r)) st.turni.push({ settimana_id: lun, adunanza_id: null, incarico_id: 'PUL_REF', posizione: 1, persona_id: idPersona_(e.r) });
+    st.pulizieCambi = st.pulizieCambi || {};
+    [['I', '-INFRA'], ['F', '-FINE']].forEach(([t, suf]) => {
+      const c = idPersona_(e['c' + t]), r = idPersona_(e['r' + t]);
+      if (c || r) st.pulizieCambi[lun + suf] = { c: c, r: r }; else delete st.pulizieCambi[lun + suf];
+    });
     ['c', 'r'].forEach((x) => { if (e[x] && String(e[x]).indexOf('txt:') === 0) (st.pulizieAMano = st.pulizieAMano || []).push({ settimana_id: lun, ruolo: x === 'c' ? 'coordinatore' : 'referente', nome: String(e[x]).slice(4) }); });
     if (e.g) st.gruppi[lun] = e.g; else delete st.gruppi[lun];
     if (e.gg || e.gd || e.gc || e.gr) st.generali[lun] = { attiva: true, gruppo: e.gg || '', data: e.gd || '', coord: idPersona_(e.gc), ref: idPersona_(e.gr) };
@@ -2299,7 +2314,7 @@ function salvaPulizia(k, anno, lunedi, riga) {
   if (!anno || lunediAnno_(anno).indexOf(String(lunedi)) < 0) throw new Error('Settimana non valida.');
   const pulita = {};
   ['g', 'gg'].forEach((x) => { if (riga && String(riga[x] || '').trim()) pulita[x] = String(riga[x]).trim().slice(0, 40); });
-  ['c', 'r', 'gc', 'gr'].forEach((x) => { const v = String((riga && riga[x]) || '').trim(); if (v) pulita[x] = v.indexOf('txt:') === 0 ? 'txt:' + v.slice(4).trim().slice(0, 60) : v; });
+  ['c', 'r', 'gc', 'gr', 'cI', 'rI', 'cF', 'rF'].forEach((x) => { const v = String((riga && riga[x]) || '').trim(); if (v) pulita[x] = v.indexOf('txt:') === 0 ? 'txt:' + v.slice(4).trim().slice(0, 60) : v; });
   if (riga && /^\d{4}-\d{2}-\d{2}$/.test(riga.gd || '')) pulita.gd = riga.gd;
   if (riga && String(riga.n || '').trim()) pulita.n = String(riga.n).trim().slice(0, 120);
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
@@ -2311,6 +2326,31 @@ function salvaPulizia(k, anno, lunedi, riga) {
   } finally { lock.releaseLock(); }
   registroUnaVolta_(io, 'pulizie', 'programma pulizie ' + anno + '/' + (anno + 1) + ' modificato');
   return pulita;
+}
+/** Coordinatore o referente delle pulizie diverso per una sola adunanza (campo cI, rI, cF, rF; valore '' = come la settimana).
+ * Si scrive nel Programma pulizie, così la fonte resta una. Il referente deve essere del gruppo di turno. */
+function cambioPulizia(k, lunedi, campo, valore) {
+  const io = richiedi_(k);
+  if (!puoPulizie_(io)) richiediAmbito_(k, 'reparti');
+  if (!/^[cr][IF]$/.test(String(campo))) throw new Error('Campo non valido.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(lunedi))) throw new Error('Settimana non valida.');
+  valore = String(valore || '');
+  const anno = annoTeocratico_(lunedi);
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const x = leggiImpostazione_('pulizie:' + anno, null) || { righe: {} };
+    const e = x.righe[lunedi] = x.righe[lunedi] || {};
+    if (valore) {
+      const p = persone_().find((y) => y.id === valore);
+      if (!p) throw new Error('Persona non trovata in anagrafica.');
+      if (campo.charAt(0) === 'r' && e.g && String(p.gruppo || '').toLowerCase() !== String(e.g).toLowerCase()) throw new Error('Il referente deve essere del gruppo di turno (' + e.g + ').');
+      e[campo] = valore;
+    } else delete e[campo];
+    scriviImpostazione_('pulizie:' + anno, x);
+    if (MEMO_.pulizie) { delete MEMO_.pulizie[anno]; delete MEMO_.pulizie[anno + 'p']; }
+  } finally { lock.releaseLock(); }
+  registroUnaVolta_(io, 'pulizie', 'programma pulizie ' + anno + '/' + (anno + 1) + ' modificato');
+  return true;
 }
 /** Il programma pulizie pubblicato (bacheca): settimane del mese con gruppo, incaricati e pulizia generale. */
 function puliziePubblicate_(mese) {

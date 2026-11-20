@@ -145,6 +145,13 @@
    * lo riportiamo sempre a null, così tutte le schede li trovano. */
   const ugualeAd = (x, y) => (x || null) === (y || null);
   const sistemaTurni = (st) => { st.turni = (st.turni || []).map((t) => Object.assign({}, t, { adunanza_id: t.adunanza_id || null, posizione: Number(t.posizione) || 1 })); return st; };
+  /* Pulizie a una certa adunanza: il cambio deciso per quell'adunanza (Programma pulizie), altrimenti quello della settimana. */
+  function pulizieA(w, a, ruolo) {
+    const cb = ((R.st.pulizieCambi || {})[a.id] || {})[ruolo];
+    if (cb) return { id: cb, cambio: true };
+    const t = turno(w.id, ruolo === 'c' ? 'PUL_COORD' : 'PUL_REF', 1, null);
+    return { id: t ? t.persona_id : '', cambio: false };
+  }
   function turno(sid, inc, pos, ad) { return R.st.turni.find((t) => t.settimana_id === sid && t.incarico_id === inc && t.posizione === pos && ugualeAd(t.adunanza_id, ad)); }
   function revisione() {
     if (R.rev) return R.rev;
@@ -154,11 +161,13 @@
     const testi = M.revisione({ ctx: c, settimane: R.d.settimane, pInc: R.d.pInc, posti: M.postiProposta, incarichi: M.incarichi, nome: (id) => nomeIntero(id),
       etichetta: (inc) => { const p = M.posti.find((x) => x.incarico.id === inc); return p ? M.etichetta(p).replace(/ \d.*$/, '') : inc; },
       settimanaPrima: R.d.settimanaPrima, precedenti: R.d.storico.filter((t) => R.d.settimanaPrima && t.settimana_id === R.d.settimanaPrima.id) });
-    R.d.settimane.forEach((w) => [['PUL_COORD', 'coordinatore'], ['PUL_REF', 'referente']].forEach(([inc, ruolo]) => {
-      const t = turno(w.id, inc, 1, null);
-      if (!t) return;
-      const via = c.adunanze.filter((a) => a.settimana_id === w.id && !a.nessuna && ['A', 'S'].indexOf(statoCella(t.persona_id, a)) >= 0);
-      if (via.length) testi.push({ testo: nomeIntero(t.persona_id) + ', ' + ruolo + ' delle pulizie, è assente ' + via.map((a) => corto(a.data)).join(' e ') + ': cambialo nel Programma pulizie', settimana_id: w.id });
+    R.d.settimane.forEach((w) => [['c', 'coordinatore'], ['r', 'referente']].forEach(([r, ruolo]) => {
+      const via = {};
+      c.adunanze.filter((a) => a.settimana_id === w.id && !a.nessuna).forEach((a) => {
+        const x = pulizieA(w, a, r);
+        if (x.id && ['A', 'S'].indexOf(statoCella(x.id, a)) >= 0) (via[x.id] = via[x.id] || []).push(corto(a.data));
+      });
+      Object.keys(via).forEach((id) => testi.push({ testo: nomeIntero(id) + ', ' + ruolo + ' delle pulizie, è assente ' + via[id].join(' e ') + ': cambialo nella scheda Pulizie («Cambia per una sola adunanza») o nel Programma pulizie', settimana_id: w.id }));
     }));
     (R.st.pulizieAMano || []).forEach((x) => testi.push({ testo: 'Pulizie: il ' + x.ruolo + ' «' + x.nome + '» è scritto a mano, non è scelto dall\'elenco, quindi non entra nella turnazione', settimana_id: x.settimana_id }));
     const vuoti = [];
@@ -302,10 +311,41 @@
         const co = turno(w.id, 'PUL_COORD', 1, null), re = turno(w.id, 'PUL_REF', 1, null), gen = R.st.generali[w.id] || {};
         h += '<div class="w"><h4>' + (i + 1) + 'ª settimana · ' + intervallo(w.lunedi) + '</h4><div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px">' +
           '<span>Gruppo</span><b>' + esc(R.st.gruppi[w.id] || '—') + '</b><span>Coordinatore</span><b>' + nm(co && co.persona_id) + '</b><span>Referente</span><b>' + nm(re && re.persona_id) + '</b>' +
-          (gen.attiva ? '<span style="color:#235C90">Pulizia generale</span><b style="color:#235C90">' + esc([gen.gruppo, gen.data ? corto(gen.data) : ''].filter(Boolean).join(' · ')) + '</b><span>Coord. / ref.</span><b>' + nm(gen.coord) + ' · ' + nm(gen.ref) + '</b>' : '') + '</div></div>';
+          (gen.attiva ? '<span style="color:#235C90">Pulizia generale</span><b style="color:#235C90">' + esc([gen.gruppo, gen.data ? corto(gen.data) : ''].filter(Boolean).join(' · ')) + '</b><span>Coord. / ref.</span><b>' + nm(gen.coord) + ' · ' + nm(gen.ref) + '</b>' : '') + '</div>' +
+          cambiPulizie(w) + '</div>';
       });
       return h + '</div>' + vistaEventi();
     }
+  }
+  /* Cambio di coordinatore o referente per una sola adunanza: si salva nel Programma pulizie.
+   * Coordinatore: prima gli abilitati del gruppo di turno, poi gli altri abilitati, poi gli altri fratelli.
+   * Referente: solo il gruppo di turno (se non c'è nessuno, resta vuoto). Chi è assente a quell'adunanza non compare. */
+  function cambiPulizie(w) {
+    const ads = adunanzeAttive().filter((a) => a.settimana_id === w.id && !a.nessuna).sort((a, b) => a.data.localeCompare(b.data));
+    if (!ads.length || !R.d.fratelliPulizie) return '';
+    const gr = String(R.st.gruppi[w.id] || '').toLowerCase(), F = R.d.fratelliPulizie;
+    const nome = (p) => esc(p.cognome + ' ' + p.nome);
+    const via = (p, a) => ['A', 'S'].indexOf(statoCella(p.id, a)) >= 0;
+    const opz = (lista, v) => lista.map((p) => '<option value="' + p.id + '"' + (p.id === v ? ' selected' : '') + '>' + nome(p) + '</option>').join('');
+    const sel = (a, ruolo) => {
+      const cb = ((R.st.pulizieCambi || {})[a.id] || {})[ruolo] || '';
+      const campo = ruolo + (a.tipo === 'INFRA' ? 'I' : 'F');
+      const liberi = F.filter((p) => !via(p, a) || p.id === cb);
+      const del = (p) => String(p.gruppo).toLowerCase() === gr;
+      let o = '<option value="">come la settimana</option>';
+      if (ruolo === 'c') {
+        const g1 = liberi.filter((p) => p.coord && del(p)), g2 = liberi.filter((p) => p.coord && !del(p)), g3 = liberi.filter((p) => !p.coord);
+        o += (g1.length ? '<optgroup label="Abilitati del gruppo ' + esc(R.st.gruppi[w.id] || '') + '">' + opz(g1, cb) + '</optgroup>' : '') +
+          (g2.length ? '<optgroup label="Altri abilitati">' + opz(g2, cb) + '</optgroup>' : '') + (g3.length ? '<optgroup label="Altri fratelli">' + opz(g3, cb) + '</optgroup>' : '');
+      } else {
+        const g = liberi.filter(del);
+        o += g.length ? '<optgroup label="Gruppo ' + esc(R.st.gruppi[w.id] || '') + '">' + opz(g.filter((p) => p.ref).concat(g.filter((p) => !p.ref)), cb) + '</optgroup>' : '';
+      }
+      return '<select data-rp="pulCambio" data-s="' + w.id + '" data-v="' + campo + '"' + (R.d.puoPulizie === false ? ' disabled' : '') + '>' + o + '</select>';
+    };
+    return '<details style="margin-top:8px"' + (ads.some((a) => (R.st.pulizieCambi || {})[a.id]) ? ' open' : '') + '><summary style="font-size:12.5px;cursor:pointer;color:#A86F00;font-weight:600">Cambia per una sola adunanza</summary>' +
+      ads.map((a) => '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;font-size:12.5px;margin-top:6px"><b style="grid-column:1/-1;color:' + (a.tipo === 'INFRA' ? '#A8432B' : '#521F46') + '">' + corto(a.data) + '</b>' +
+        '<span>Coordinatore</span>' + sel(a, 'c') + '<span>Referente</span>' + sel(a, 'r') + '</div>').join('') + '</details>';
   }
   function vistaEventi() {
     let h = '<h3 class="t">Settimane con un evento</h3><p class="rp-aiuto">Assemblee, congressi e Commemorazione arrivano dai <b>Programmi adunanze</b> (con la foto del programma): si modificano solo lì e qui si aggiornano da soli.</p><div class="rp-pul">';
@@ -321,10 +361,38 @@
   }
 
   /* ── scheda Foglio A4 (stessa grafica dell'artefatto) ── */
+  /** Chi ha almeno un turno nel mese (reparti, pulizie, pulizia generale, cambi). */
+  function conTurni() {
+    const cb = Object.values(R.st.pulizieCambi || {});
+    return R.d.persone.slice().sort((a, b) => (a.cognome + ' ' + a.nome).localeCompare(b.cognome + ' ' + b.nome, 'it'))
+      .filter((p) => R.st.turni.some((t) => t.persona_id === p.id) || Object.values(R.st.generali).some((g) => g.attiva && (g.coord === p.id || g.ref === p.id)) || cb.some((x) => x.c === p.id || x.r === p.id));
+  }
+  const pdfPronto = () => (window.PdfPortale ? Promise.resolve() : P.carica('pdf.js'));
+  const titoloPdf = (chi) => 'Turnazione reparti ' + nomeMese(R.mese) + (chi ? ' – ' + nomeIntero(chi) : '');
+  function preparaPdf() {
+    const el = document.querySelector('#rpScale .pgm-print');
+    if (!el) return;
+    P.toast('Preparo il PDF…');
+    pdfPronto().then(() => window.PdfPortale.salva([el], titoloPdf(R.chi))).catch((e) => P.toast('PDF non riuscito: ' + e.message, true));
+  }
+  function preparaTutti() {
+    const pers = conTurni();
+    if (!pers.length) return P.toast('Nessun fratello in turno questo mese', true);
+    const box = document.createElement('div');
+    box.className = 'rp-anteprima fa4';
+    box.style.cssText = 'position:fixed;left:-20000px;top:0;width:794px;pointer-events:none';
+    document.body.appendChild(box);
+    const lista = pers.map((p) => { const d = document.createElement('div'); d.innerHTML = foglio(p.id); box.appendChild(d); return { nome: titoloPdf(p.id), fogli: [d.firstElementChild] }; });
+    P.toast('Preparo ' + lista.length + ' PDF…');
+    pdfPronto().then(() => window.PdfPortale.zip(lista, 'Turnazione reparti ' + nomeMese(R.mese) + ' – personali', (i, n) => P.toast('PDF ' + i + ' di ' + n + '…')))
+      .then(() => P.toast('PDF personali pronti'))
+      .catch((e) => P.toast('PDF non riusciti: ' + e.message, true))
+      .finally(() => box.remove());
+  }
   function vistaFoglio() {
-    const pers = R.d.persone.slice().sort((a, b) => a.cognome.localeCompare(b.cognome, 'it'));
-    let h = '<div class="rp-bar"><select data-rp="chi"><option value="">Foglio generale</option>' + pers.filter((p) => R.st.turni.some((t) => t.persona_id === p.id) || Object.values(R.st.generali).some((g) => g.coord === p.id || g.ref === p.id)).map((p) => '<option value="' + p.id + '"' + (R.chi === p.id ? ' selected' : '') + '>Personale · ' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</select>' +
-      '<button class="btn" data-rp="stampa">Stampa / Salva PDF</button></div><p class="rp-aiuto">Nella finestra di stampa scegli «Salva come PDF», formato A4, margini «Nessuno», con la grafica di sfondo attiva. La versione personale evidenzia i turni del fratello e ha il riquadro «I miei turni».</p>';
+    const pers = conTurni();
+    let h = '<div class="rp-bar"><select data-rp="chi"><option value="">Foglio generale</option>' + pers.map((p) => '<option value="' + p.id + '"' + (R.chi === p.id ? ' selected' : '') + '>Personale · ' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</select>' +
+      '<button class="btn" data-rp="pdf">Prepara PDF</button><button class="btn soft" data-rp="pdfTutti">Tutti i personali</button></div><p class="rp-aiuto"><b>Prepara PDF</b> crea il file A4 del foglio che vedi (sul telefono si apre la condivisione). <b>Tutti i personali</b> prepara in una volta il PDF di ogni fratello, raccolti in un file ZIP. La versione personale evidenzia i turni del fratello e ha il riquadro «I miei turni».</p>';
     return h + '<div class="rp-anteprima fa4"><div class="pgm-fit" id="rpFit"><div class="pgm-scale" id="rpScale">' + foglio(R.chi) + '</div></div></div>';
   }
   function foglio(chi) {
@@ -334,11 +402,14 @@
     const mese = nomeMese(R.mese).toUpperCase();
     const col = R.d.colori || {};
     const stileCol = (col.infra ? '--rust:' + col.infra + ';--rustbg:color-mix(in srgb,' + col.infra + ' 10%,#fff);' : '') + (col.fine ? '--plum:' + col.fine + ';--plumbg:color-mix(in srgb,' + col.fine + ' 9%,#fff);' : '');
-    let h = '<article class="pgm pgm-print"' + (stileCol ? ' style="' + stileCol + '"' : '') + '><header class="pgm-head"><div class="left"><div class="cong">Napoli Pianura Trencia</div><div class="gold"></div><h1>Turnazione reparti</h1><div class="mese">' + mese + '</div>' +
+    const testa = '<div class="testa"><div class="cong">Napoli Pianura Trencia</div><div class="gold"></div><h1>Turnazione reparti</h1></div>';
+    let h = '<article class="pgm pgm-print"' + (stileCol ? ' style="' + stileCol + '"' : '') + '><header class="pgm-head h2"><div class="sx">' + testa +
+      '<div class="mese">' + mese + '</div><div class="vuoto"></div>' +
+      (chi ? '<div class="chi"><small>Programma personale di</small><b>' + esc(nomeIntero(chi)) + '</b></div>' : '') +
       '<div class="orari"><div class="o inf"><span>Adunanza infrasettimanale</span><b>' + esc(R.d.orari.infra) + '</b></div><div class="o fs"><span>Adunanza del fine settimana</span><b>' + esc(R.d.orari.fs || 'Orario da definire') + '</b></div></div></div>';
+    // a destra: nel generale la pulizia generale parte all'altezza del mese (sopra, una copia invisibile della testata tiene lo spazio)
     if (chi) h += lato(chi, gen, ads);
-    else if (gen.length) h += '<aside class="promemoria" style="border-left:3px solid #2E75B5;background:#EAF2FA;border-radius:3px;padding:8px 12px;min-width:210px;align-self:start"><small style="display:block;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#235C90">Promemoria</small><h2 style="margin:2px 0 6px;font-size:15px;color:#235C90;text-transform:uppercase">Pulizia generale</h2>' +
-      gen.map(([, g]) => '<div class="pg" style="font-size:10px;line-height:1.5"><b style="display:block;font-size:11.5px">' + lungo(g.data) + '</b><div>Gruppo <b>' + esc(g.gruppo || '—') + '</b></div><div>Coordinatore <b>' + esc(sigla(g.coord) || '—') + '</b></div>' + (g.ref ? '<div>Referente <b>' + esc(sigla(g.ref)) + '</b></div>' : '') + '</div>').join('') + '</aside>';
+    else h += '<div class="dx">' + (gen.length ? testa.replace('class="testa"', 'class="testa ombra" aria-hidden="true"') + gen.map(([, g]) => boxGenerale(g)).join('') : '') + '</div>';
     h += '</header>';
     R.d.settimane.forEach((w, i) => {
       h += '<section class="pgm-week"><h2><b>' + (i + 1) + 'ª settimana</b><i>|</i><span>' + intervallo(w.lunedi) + '</span></h2><div class="pgm-days">' + giorniSettimana(w, ads, mk) + '</div></section>';
@@ -373,10 +444,17 @@
     };
     const fill = (n) => Array.from({ length: Math.max(0, n) }, () => '<tr class="fill"><td class="k"></td><td class="v"></td></tr>').join('');
     const usc = righe(['USCIERI']), av = righe(['AUDIO_VIDEO']), g = R.st.gruppi[w.id];
-    const pul = M.posti.filter((p) => p.livello === 'SETTIMANA').map((p) => '<tr><td class="k">' + (p.incarico.codice === 'REFERENTE' ? 'Referente' : 'Coordinatore') + '</td><td class="v">' + mk(t(p.incarico.id, p.posizione, null)) + '</td></tr>').join('');
+    const pul = [['c', 'Coordinatore'], ['r', 'Referente']].map(([r, et]) => { const x = pulizieA(w, a, r); return '<tr><td class="k">' + et + '</td><td class="v"' + (x.cambio ? ' style="font-style:italic"' : '') + '>' + mk(x.id) + '</td></tr>'; }).join('');
     return '<div class="pgm-card ' + (a.tipo === 'INFRA' ? 'inf' : 'fs') + '"><div class="band"><div><small>' + (a.tipo === 'INFRA' ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana') + '</small><b>' + lungo(a.data) + '</b></div></div>' +
       '<div class="cols"><div><h3>Uscieri</h3><table><tbody>' + usc.join('') + fill(av.length - usc.length) + '</tbody></table><h3 class="lt">Letteratura e territori</h3><table><tbody>' + righe(['LETTERATURA', 'TERRITORI']).join('') + '</tbody></table></div>' +
       '<div><h3>Audio/Video</h3><table><tbody>' + av.join('') + fill(usc.length - av.length) + '</tbody></table><h3 class="pul"><span>Pulizie</span>' + (g ? '<em class="gtag">Gruppo ' + esc(g) + '</em>' : '') + '</h3><table><tbody>' + pul + '</tbody></table></div></div></div>';
+  }
+  /* Pulizia generale: cosa (titolo con la scopa), quando e gruppo grandi alla pari, sotto coordinatore e referente. */
+  const SCOPA = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 3.5 13 11"/><path d="M10.2 9.2 15.4 12.8 13.6 15.3 8.4 11.7Z" fill="#fff"/><path d="M8.4 11.7 5 18.2c-.3.6.1 1.3.8 1.3h6.1c.4 0 .8-.2 1-.6l.7-3.6"/><path d="M8.6 19.4l1.6-4M11.2 19.4l1-3.2"/></svg>';
+  function boxGenerale(g) {
+    return '<div class="pg3"><div class="tt"><span class="ico">' + SCOPA + '</span><b>Pulizia generale</b></div>' +
+      '<div class="due"><div class="dt"><small>Quando</small><strong>' + (g.data ? lungo(g.data) : 'Da definire') + '</strong></div><div><small>Gruppo</small><strong>' + esc(g.gruppo || '—') + '</strong></div></div>' +
+      '<div class="ft"><span>Coordinatore <b>' + esc(sigla(g.coord) || '—') + '</b></span><span>Referente <b>' + esc(sigla(g.ref) || '—') + '</b></span></div></div>';
   }
   function lato(chi, gen, ads) {
     const nomeInc = (inc) => { const x = M.incarichi.find((r) => r.id === inc), rep = M.reparti.find((r) => r.id === x.reparto_id); return rep.codice === 'LETTERATURA' || rep.codice === 'TERRITORI' ? rep.nome : x.nome.replace('Addetto ', ''); };
@@ -387,15 +465,21 @@
         const y = R.st.turni.filter((t) => t.adunanza_id === a.id && t.persona_id === chi).map((t) => nomeInc(t.incarico_id));
         if (y.length) { tot += y.length; v.push('<div class="ln"><b class="' + (a.tipo === 'INFRA' ? 'inf' : 'fs') + '">' + corto(a.data) + '</b><span>' + esc(y.join(', ')) + '</span></div>'); }
       });
-      const pu = R.st.turni.filter((t) => t.settimana_id === w.id && !t.adunanza_id && t.persona_id === chi);
-      if (pu.length) { tot += pu.length; v.push('<div class="ln"><b class="pu">PUL.</b><span>Pulizie – ' + pu.map((t) => (t.incarico_id === 'PUL_REF' ? 'referente' : 'coordinatore')).join(', ') + '</span></div>'); }
+      const adw = ads.filter((a) => a.settimana_id === w.id && !a.nessuna).sort((a, b) => a.data.localeCompare(b.data));
+      [['c', 'coordinatore'], ['r', 'referente']].forEach(([r, ruolo]) => {
+        const qui = adw.filter((a) => pulizieA(w, a, r).id === chi);
+        if (!qui.length) return;
+        tot++;
+        if (qui.length === adw.length) v.push('<div class="ln"><b class="pu">PUL.</b><span>Pulizie – ' + ruolo + '</span></div>');
+        else qui.forEach((a) => v.push('<div class="ln"><b class="' + (a.tipo === 'INFRA' ? 'inf' : 'fs') + '">' + corto(a.data) + '</b><span>Pulizie – ' + ruolo + '</span></div>'));
+      });
       const g = R.st.generali[w.id];
       if (g && g.attiva && (g.coord === chi || g.ref === chi)) { tot++; v.push('<div class="ln"><b class="pu">' + corto(g.data) + '</b><span>Pulizia generale – ' + (g.coord === chi ? 'coord.' : 'ref.') + '</span></div>'); }
       return '<div class="wk"><small>' + (i + 1) + 'ª settimana</small>' + (v.length ? v.join('') : '<div class="ln none">Nessun turno</div>') + '</div>';
     });
     const c3 = wk.length >= 5;
-    return '<div class="side2">' + (gen.length ? '<div class="bx pgen"><span>Promemoria · pulizia generale</span>' + gen.map(([, g]) => '<div class="pgv"><div class="r1"><b class="dt">' + lungo(g.data) + '</b><span class="gr">Gruppo <b>' + esc(g.gruppo || '—') + '</b></span></div><div class="r2"><span>Coordinatore <b>' + esc(sigla(g.coord) || '—') + '</b></span><span>Referente <b>' + esc(sigla(g.ref) || '—') + '</b></span></div></div>').join('') + '</div>' : '') +
-      '<div class="bx turni"><div class="th"><span>I miei turni' + (c3 ? '' : '<em> · ' + tot + ' ' + (tot === 1 ? 'incarico' : 'incarichi') + '</em>') + '</span><b class="nm">' + esc(nomeIntero(chi)) + '</b></div><div class="wks ' + (c3 ? 'c3' : '') + '">' + wk.join('') + '</div></div></div>';
+    return '<div class="dx pers">' + gen.map(([, g]) => boxGenerale(g)).join('') +
+      '<div class="bx turni"><div class="th"><span>I miei turni<em> · ' + tot + ' ' + (tot === 1 ? 'incarico' : 'incarichi') + '</em></span></div><div class="wks ' + (c3 ? 'c3' : '') + '">' + wk.join('') + '</div></div></div>';
   }
   function adatta() {
     const fit = document.getElementById('rpFit'), sc = document.getElementById('rpScale');
@@ -471,6 +555,8 @@
     }
     if (k === 'genOn') { const g = R.st.generali[u.dataset.s] || (R.st.generali[u.dataset.s] = {}); g.attiva = u.checked; cambiato(); return rd(); }
     if (k === 'stampa') { adatta(); return window.print(); }
+    if (k === 'pdf') return preparaPdf();
+    if (k === 'pdfTutti') return preparaTutti();
     if (k === 'pubblica') {
       if (!confirm('Pubblico in bacheca la turnazione di ' + nomeMese(R.mese) + ' così com\'è adesso? I fratelli la vedranno con i loro turni.')) return;
       u.disabled = true;
@@ -483,6 +569,16 @@
     if (S.vista !== 'reparti') return;
     const u = e.target.closest('[data-rp]');
     if (!u) return;
+    if (u.dataset.rp === 'pulCambio') {
+      const sid = u.dataset.s, campo = u.dataset.v, val = u.value, adId = sid + (campo.charAt(1) === 'I' ? '-INFRA' : '-FINE');
+      const cb = R.st.pulizieCambi = R.st.pulizieCambi || {};
+      const x = cb[adId] = Object.assign({ c: '', r: '' }, cb[adId]);
+      x[campo.charAt(0)] = val;
+      if (!x.c && !x.r) delete cb[adId];
+      R.rev = null; rd();
+      P.srv('cambioPulizia', sid, campo, val).then(() => P.toast('Salvato nel Programma pulizie')).catch((err) => { P.toast(err.message, true); carica(R.mese); });
+      return;
+    }
     const k = u.dataset.rp;
     if (k === 'mese') { if (R.salvo === 'Da salvare') { clearTimeout(R.coda); salva(); } R.mese = u.value; R.salvo = ''; return carica(u.value); }
     if (k === 'turno') {

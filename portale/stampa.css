@@ -489,3 +489,49 @@ table.rp-eq th,table.rp-eq td{border-bottom:1px solid #EFEDE8;padding:4px 6px;te
 table.rp-eq th:first-child,table.rp-eq td:first-child{text-align:left}
 table.rp-eq td.su{color:#B3261E;font-weight:700}table.rp-eq td.giu{color:#2E6E7C;font-weight:700}
 .rp-pub{display:inline-flex;gap:8px;align-items:center;font-size:12.5px;color:var(--slate);flex-wrap:wrap}
+
+/* ── Intestazione della turnazione reparti (h2): due colonne allineate ai riquadri delle settimane ──
+ * Sinistra (colonna dell'infrasettimanale): congregazione, titolo, mese, [programma personale di…], orari.
+ * Il riquadro dell'infrasettimanale negli orari finisce dove finiscono i nomi della prima colonna dei riquadri,
+ * quello del fine settimana dove finisce il riquadro. Destra (colonna del fine settimana): pulizia generale
+ * (dall'altezza del mese) oppure, nel personale, pulizia generale + I miei turni. */
+.fa4 .pgm-head.h2{display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; align-items: stretch; margin-top: -10px;}
+.fa4 .pgm-head.h2 > .sx, .fa4 .pgm-head.h2 > .dx{min-width: 0; display: flex; flex-direction: column; gap: 6px;}
+.fa4 .pgm-head.h2 > .sx{gap: 0;}
+.fa4 .pgm-head.h2 .testa{display: flex; flex-direction: column; align-items: flex-start;}
+.fa4 .pgm-head.h2 .testa.ombra{visibility: hidden; margin-bottom: -6px;}
+.fa4 .pgm-head.h2 .cong{font-size: 11px;}
+.fa4 .pgm-head.h2 .gold{margin: 6px 0 8px;}
+.fa4 .pgm-head.h2 h1{font-size: 35.7px; white-space: nowrap; margin-bottom: 7px;}
+.fa4 .pgm-head.h2 .mese{font-size: 16px; margin-top: 0;}
+.fa4 .pgm-head.h2 .vuoto{flex: 1; min-height: 12px;}
+.fa4 .pgm-head.h2 .chi{margin: 0 0 8px; border-left: 3px solid #C9A227; background: #FFFBEF; padding: 6px 10px 7px; border-radius: 3px;}
+.fa4 .pgm-head.h2 .chi small{display: block; font-size: 8.8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9A7A1E;}
+.fa4 .pgm-head.h2 .chi b{display: block; font-size: 19px; font-weight: 800; line-height: 1.15; text-transform: uppercase; color: var(--ink); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.fa4 .pgm-head.h2 .orari{width: auto; min-width: 0; grid-template-columns: calc((100% - 34px) / 2 + 11px) minmax(0, 1fr); gap: 12px; margin-top: 0;}
+.fa4 .pgm-head.h2 .o{padding: 8px 10px 8px 11px;}
+.fa4 .pgm-head.h2 .o span{font-size: 8.8px;}
+.fa4 .pgm-head.h2 .o b{font-size: 14.5px;}
+.fa4 .pgm-head.h2 > .dx > .pg3{flex: 1;}
+.fa4 .pgm-head.h2 > .dx.pers > .pg3{flex: none;}
+.fa4 .pgm-head.h2 > .dx.pers > .turni{flex: 1;}
+/* pulizia generale */
+.fa4 .pgm-head .pg3{display: grid; grid-template-rows: auto 1fr auto; row-gap: 2px; background: var(--bluebg, #EAF2FA); border-left: 3px solid var(--blue); border-radius: 3px; padding: 5px 14px 5px 12px;}
+.fa4 .pgm-head .pg3 .tt{display: flex; align-items: center; gap: 7px;}
+.fa4 .pgm-head .pg3 .ico{width: 20px; height: 20px; border-radius: 50%; background: var(--blue); display: grid; place-items: center; flex: none;}
+.fa4 .pgm-head .pg3 .ico svg{width: 14px; height: 14px;}
+.fa4 .pgm-head .pg3 .tt b{font-size: 12.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--bluedk, #235C90);}
+.fa4 .pgm-head .pg3 .due{display: grid; grid-template-columns: 1.35fr 1fr; align-items: end;}
+.fa4 .pgm-head .pg3 .due > div{display: grid; gap: 1px; min-width: 0;}
+.fa4 .pgm-head .pg3 .due > div + div{border-left: 1px solid #B7D0EA; padding-left: 12px;}
+.fa4 .pgm-head .pg3 .due small{font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--slate);}
+.fa4 .pgm-head .pg3 .due strong{font-size: 16px; font-weight: 800; line-height: 1.05; text-transform: uppercase; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.fa4 .pgm-head .pg3 .due .dt strong{color: var(--bluedk, #235C90);}
+.fa4 .pgm-head .pg3 .ft{display: flex; gap: 16px; font-size: 10px; color: var(--slate); border-top: 1px solid #C9DCEF; padding-top: 2px; white-space: nowrap;}
+.fa4 .pgm-head .pg3 .ft b{color: var(--ink); font-weight: 700; text-transform: uppercase;}
+/* I miei turni (personale), più grande e largo quanto la colonna */
+.fa4 .pgm-head.h2 .turni{display: block; border-left: 3px solid var(--gold); border-radius: 3px; padding: 6px 12px 8px;}
+.fa4 .pgm-head.h2 .turni .th span{display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;}
+.fa4 .pgm-head.h2 .wk small{font-size: 8px;}
+.fa4 .pgm-head.h2 .wk .ln{font-size: 11px; grid-template-columns: 44px 1fr;}
+.fa4 .pgm-head.h2 .wks.c3 .wk .ln{font-size: 10px; grid-template-columns: 40px 1fr;}
