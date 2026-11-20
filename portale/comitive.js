@@ -403,8 +403,8 @@
       pers.map((p) => '<option value="p:' + p.id + '"' + (C.versione === 'p:' + p.id ? ' selected' : '') + '>Personale · ' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</select>' +
       '<span class="seg">' + [['schede', 'Schede'], ['tabella', 'Tabella']].map((v) => '<button data-cm="variante" data-v="' + v[0] + '" class="' + (variante === v[0] ? 'on' : '') + '">' + v[1] + '</button>').join('') + '</span>' +
       '<select data-cm="margini">' + Object.keys(F.MARGINI).map((k) => '<option value="' + k + '"' + (margini === k ? ' selected' : '') + '>Margini ' + F.MARGINI[k].label.toLowerCase() + '</option>').join('') + '</select>' +
-      '<button class="btn" data-cm="stampa" style="background:#A86F00;border-color:#A86F00">Stampa / Salva PDF</button></div>' +
-      '<p class="rp-aiuto">Nella finestra di stampa scegli «Salva come PDF», A4, margini «Nessuno», grafica di sfondo attiva. Le comitive nascoste non compaiono; quelle annullate restano grigie con il motivo.</p>';
+      '<button class="btn" data-cm="pdf" style="background:#A86F00;border-color:#A86F00">Prepara PDF</button>' + (pers.length ? '<button class="btn soft" data-cm="pdfTutti">Tutti i personali</button>' : '') + '</div>' +
+      '<p class="rp-aiuto"><b>Prepara PDF</b> crea il file A4 del foglio che vedi: poi scegli <b>Invia…</b> (WhatsApp, senza scaricarlo) o <b>Scarica</b>. <b>Tutti i personali</b> prepara il PDF di ogni conduttore: li mandi uno dopo l\'altro con <b>Invia</b>, oppure li scarichi tutti in un file ZIP. Le comitive nascoste non compaiono; quelle annullate restano grigie con il motivo.</p>';
     const piede = (D.foglio && D.foglio.piede) || {};
     h += '<details class="cm-pan"><summary>Impostazioni del foglio · sorvegliante, assistenti e piè di pagina</summary><div class="g">' +
       '<label>Sorvegliante del servizio<input data-cm="imp" data-v="sorvegliante" value="' + esc(imp.sorvegliante || '') + '" placeholder="es. P. Guerrazzi"></label>' +
@@ -434,6 +434,33 @@
       F.riquadri(D).map((g) => '<b style="font-size:12px">' + esc(g.titolo) + '</b><div style="display:grid;gap:4px;margin:2px 0 6px">' + g.voci.map((r) => sl(r.label, 'data-cm="riq" data-k="' + esc(r.chiave) + '"', riq[r.chiave] || 1, ' r')).join('') + '</div>').join('') +
       '<div style="text-align:right"><button class="btn small soft" data-cm="layout0">Ripristina</button></div></details>';
     return h + '<div class="rp-anteprima cm4"><div class="pgm-fit" id="cmFit"><div class="pgm-scale" id="cmScale">' + F.carta(D, chiDi(C.versione), variante, margini) + '</div></div></div>';
+  }
+  /* ── PDF (stesso motore della turnazione reparti): Invia… / Scarica, personali in sequenza ── */
+  const pdfPronto = () => (window.PdfPortale ? Promise.resolve() : P.carica('pdf.js'));
+  const titoloPdf = (v) => 'Programma comitive ' + nomeMese(C.mese) + (v === 'tabella' ? ' – tabella informazioni' : v && v.slice(0, 2) === 'p:' ? ' – ' + nomeIntero(v.slice(2)) : '');
+  function preparaPdf() {
+    const el = document.querySelector('#cmScale .pgm');
+    if (!el) return;
+    P.toast('Preparo il PDF…');
+    pdfPronto().then(() => window.PdfPortale.salva([el], titoloPdf(C.versione))).catch((e) => P.toast('PDF non riuscito: ' + e.message, true));
+  }
+  function preparaTutti() {
+    const F = P.fogliCM, pers = F.conduttoriComitive(C.d);
+    if (!pers.length) return P.toast('Nessun conduttore questo mese', true);
+    const variante = pref('cm-comitive-variante', 'schede'), margini = pref('cm-margini', 'standard');
+    const box = document.createElement('div');
+    box.className = 'rp-anteprima cm4';
+    box.style.cssText = 'position:fixed;left:-20000px;top:0;width:794px;pointer-events:none';
+    document.body.appendChild(box);
+    const lista = pers.map((p) => {
+      const d = document.createElement('div'); d.innerHTML = F.carta(C.d, p.id, variante, margini); box.appendChild(d);
+      const el = d.querySelector('.pgm'); F.adattaNomi(el);
+      return { etichetta: p.cognome + ' ' + p.nome, nome: titoloPdf('p:' + p.id), fogli: [el] };
+    });
+    P.toast('Preparo ' + lista.length + ' PDF…');
+    pdfPronto().then(() => window.PdfPortale.sequenza(lista, 'PDF personali · ' + nomeMese(C.mese), 'Programma comitive ' + nomeMese(C.mese) + ' – personali', (i, n) => P.toast('PDF ' + i + ' di ' + n + '…')))
+      .catch((e) => P.toast('PDF non riusciti: ' + e.message, true))
+      .finally(() => box.remove());
   }
   function layout() { const imp = C.st.impostazioni || (C.st.impostazioni = {}); imp.layout = imp.layout || {}; ['caratteri', 'meta', 'testo', 'riquadri'].forEach((x) => { imp.layout[x] = imp.layout[x] || {}; }); return imp.layout; }
   function adatta() {
@@ -467,7 +494,8 @@
       if (f.dataset.k) return cambioCalendario(f.dataset.k, Object.assign({ azione: 'cambia' }, d));
       return cambioCalendario('', Object.assign({ azione: 'aggiungi' }, d));
     }
-    if (k === 'stampa') { adatta(); return window.print(); }
+    if (k === 'pdf') return preparaPdf();
+    if (k === 'pdfTutti') return preparaTutti();
     if (k === 'variante') { salvaPref('cm-comitive-variante', v); return rd(); }
     if (k === 'meta') {
       const L = layout(), id = u.dataset.k, F = P.fogliCM, c = C.d.settimane.flatMap((w) => w.comitive).find((x) => x.k === id);

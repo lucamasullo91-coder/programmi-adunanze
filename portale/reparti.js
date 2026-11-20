@@ -382,17 +382,16 @@
     box.className = 'rp-anteprima fa4';
     box.style.cssText = 'position:fixed;left:-20000px;top:0;width:794px;pointer-events:none';
     document.body.appendChild(box);
-    const lista = pers.map((p) => { const d = document.createElement('div'); d.innerHTML = foglio(p.id); box.appendChild(d); return { nome: titoloPdf(p.id), fogli: [d.firstElementChild] }; });
+    const lista = pers.map((p) => { const d = document.createElement('div'); d.innerHTML = foglio(p.id); box.appendChild(d); return { etichetta: p.cognome + ' ' + p.nome, nome: titoloPdf(p.id), fogli: [d.firstElementChild] }; });
     P.toast('Preparo ' + lista.length + ' PDF…');
-    pdfPronto().then(() => window.PdfPortale.zip(lista, 'Turnazione reparti ' + nomeMese(R.mese) + ' – personali', (i, n) => P.toast('PDF ' + i + ' di ' + n + '…')))
-      .then(() => P.toast('PDF personali pronti'))
+    pdfPronto().then(() => window.PdfPortale.sequenza(lista, 'PDF personali · ' + nomeMese(R.mese), 'Turnazione reparti ' + nomeMese(R.mese) + ' – personali', (i, n) => P.toast('PDF ' + i + ' di ' + n + '…')))
       .catch((e) => P.toast('PDF non riusciti: ' + e.message, true))
       .finally(() => box.remove());
   }
   function vistaFoglio() {
     const pers = conTurni();
     let h = '<div class="rp-bar"><select data-rp="chi"><option value="">Foglio generale</option>' + pers.map((p) => '<option value="' + p.id + '"' + (R.chi === p.id ? ' selected' : '') + '>Personale · ' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</select>' +
-      '<button class="btn" data-rp="pdf">Prepara PDF</button><button class="btn soft" data-rp="pdfTutti">Tutti i personali</button></div><p class="rp-aiuto"><b>Prepara PDF</b> crea il file A4 del foglio che vedi (sul telefono si apre la condivisione). <b>Tutti i personali</b> prepara in una volta il PDF di ogni fratello, raccolti in un file ZIP. La versione personale evidenzia i turni del fratello e ha il riquadro «I miei turni».</p>';
+      '<button class="btn" data-rp="pdf">Prepara PDF</button><button class="btn soft" data-rp="pdfTutti">Tutti i personali</button></div><p class="rp-aiuto"><b>Prepara PDF</b> crea il file A4 del foglio che vedi: poi scegli <b>Invia…</b> (WhatsApp, senza scaricarlo) o <b>Scarica</b>. <b>Tutti i personali</b> prepara il PDF di ogni fratello: li mandi uno dopo l\'altro con <b>Invia</b>, oppure li scarichi tutti in un file ZIP. La versione personale evidenzia i turni del fratello e ha il riquadro «I miei turni».</p>';
     return h + '<div class="rp-anteprima fa4"><div class="pgm-fit" id="rpFit"><div class="pgm-scale" id="rpScale">' + foglio(R.chi) + '</div></div></div>';
   }
   function foglio(chi) {
