@@ -58,7 +58,7 @@
   function carica(mese) {
     R.carico = true; R.d = null;
     P.srv('reparti', mese || '').then((d) => {
-      R.d = d; R.mese = d.mese; R.st = d.stato; R.pub = null; R.pers = new Map(d.persone.map((p) => [p.id, p])); R.carico = false; R.rev = null;
+      R.d = d; R.mese = d.mese; R.st = sistemaTurni(d.stato); R.st.nessunaTolte = R.st.nessunaTolte || {}; R.d.eventi = d.eventi || {}; R.d.colori = d.colori || {}; R.pub = null; R.pers = new Map(d.persone.map((p) => [p.id, p])); R.carico = false; R.rev = null;
       if (S.vista === 'reparti') P.disegna();
     }).catch((e) => { R.carico = false; P.toast(e.message, true); });
   }
@@ -141,7 +141,11 @@
 
   /* ── scheda Turni ── */
   function posto(inc, pos) { return M.posti.find((x) => x.incarico.id === inc && x.posizione === pos); }
-  function turno(sid, inc, pos, ad) { return R.st.turni.find((t) => t.settimana_id === sid && t.incarico_id === inc && t.posizione === pos && t.adunanza_id === ad); }
+  /* I turni della settimana (pulizie) hanno adunanza_id null; nel passaggio dal Foglio alla pagina può arrivare vuoto o mancare:
+   * lo riportiamo sempre a null, così tutte le schede li trovano. */
+  const ugualeAd = (x, y) => (x || null) === (y || null);
+  const sistemaTurni = (st) => { st.turni = (st.turni || []).map((t) => Object.assign({}, t, { adunanza_id: t.adunanza_id || null, posizione: Number(t.posizione) || 1 })); return st; };
+  function turno(sid, inc, pos, ad) { return R.st.turni.find((t) => t.settimana_id === sid && t.incarico_id === inc && t.posizione === pos && ugualeAd(t.adunanza_id, ad)); }
   function revisione() {
     if (R.rev) return R.rev;
     const c = ctx();
@@ -150,6 +154,13 @@
     const testi = M.revisione({ ctx: c, settimane: R.d.settimane, pInc: R.d.pInc, posti: M.postiProposta, incarichi: M.incarichi, nome: (id) => nomeIntero(id),
       etichetta: (inc) => { const p = M.posti.find((x) => x.incarico.id === inc); return p ? M.etichetta(p).replace(/ \d.*$/, '') : inc; },
       settimanaPrima: R.d.settimanaPrima, precedenti: R.d.storico.filter((t) => R.d.settimanaPrima && t.settimana_id === R.d.settimanaPrima.id) });
+    R.d.settimane.forEach((w) => [['PUL_COORD', 'coordinatore'], ['PUL_REF', 'referente']].forEach(([inc, ruolo]) => {
+      const t = turno(w.id, inc, 1, null);
+      if (!t) return;
+      const via = c.adunanze.filter((a) => a.settimana_id === w.id && !a.nessuna && ['A', 'S'].indexOf(statoCella(t.persona_id, a)) >= 0);
+      if (via.length) testi.push({ testo: nomeIntero(t.persona_id) + ', ' + ruolo + ' delle pulizie, è assente ' + via.map((a) => corto(a.data)).join(' e ') + ': cambialo nel Programma pulizie', settimana_id: w.id });
+    }));
+    (R.st.pulizieAMano || []).forEach((x) => testi.push({ testo: 'Pulizie: il ' + x.ruolo + ' «' + x.nome + '» è scritto a mano, non è scelto dall\'elenco, quindi non entra nella turnazione', settimana_id: x.settimana_id }));
     const vuoti = [];
     c.adunanze.filter((a) => !a.nessuna).forEach((a) => M.postiProposta.forEach((p) => { if (!turno(a.settimana_id, p.incarico.id, p.posizione, a.id)) vuoti.push(corto(a.data) + ' · ' + M.etichetta(p)); }));
     return (R.rev = { mappa, testi, vuoti });
@@ -176,11 +187,12 @@
     }
     R.d.settimane.forEach((w, i) => {
       const ads = c.adunanze.filter((a) => a.settimana_id === w.id).sort((a, b) => a.data.localeCompare(b.data));
-      const ev = R.st.eventi[w.id];
+      const ev = R.d.eventi[w.id];
       h += '<section class="rp-wk"><h3><b>' + (i + 1) + 'ª settimana</b><span>' + intervallo(w.lunedi) + '</span>' + (R.st.gruppi[w.id] ? '<em>Pulizie: gruppo ' + esc(R.st.gruppi[w.id]) + '</em>' : '') + (ev ? '<em style="color:#521F46">' + esc(ev.tipo) + '</em>' : '') + '</h3><div class="rp-ads">';
       ads.forEach((a) => {
         const cl = a.tipo === 'INFRA' ? 'inf' : 'fs';
-        h += '<div class="rp-ad ' + cl + '"><div class="band"><div><small>' + (a.tipo === 'INFRA' ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana') + '</small>' + lungo(a.data) + (a.spostata ? ' · spostata' : '') + '</div>' +
+        const bc = (R.d.colori || {})[a.tipo === 'INFRA' ? 'infra' : 'fine'];
+        h += '<div class="rp-ad ' + cl + '"><div class="band"' + (bc ? ' style="background:' + bc + '"' : '') + '><div><small>' + (a.tipo === 'INFRA' ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana') + '</small>' + lungo(a.data) + (a.spostata ? ' · spostata' : '') + '</div>' +
           '<label><input type="checkbox" data-rp="nessuna" data-v="' + a.id + '"' + (a.nessuna ? ' checked' : '') + '> non si tiene</label></div>';
         if (a.nessuna) { h += '<div class="none">In questa data non si terrà l\'adunanza</div></div>'; return; }
         let gr = '';
@@ -296,11 +308,14 @@
     }
   }
   function vistaEventi() {
-    let h = '<h3 class="t">Settimane con un evento</h3><p class="rp-aiuto">Nel foglio la settimana dell\'evento (assemblea, congresso) ha il suo riquadro. Arrivano dal Calendario; qui puoi completare tema e orario.</p><div class="rp-pul">';
-    R.d.settimane.filter((w) => R.st.eventi[w.id]).forEach((w) => {
-      const ev = R.st.eventi[w.id];
-      h += '<div class="w"><h4>' + intervallo(w.lunedi) + '</h4>' + ['tipo', 'tema', 'luogo', 'orario', 'nota'].map((f) => '<label>' + P.cap(f) + '<input data-rp="ev" data-s="' + w.id + '" data-v="' + f + '" value="' + esc(ev[f] || '') + '"></label>').join('') +
-        '<button class="btn small soft" data-rp="evRm" data-s="' + w.id + '">Togli l\'evento</button></div>';
+    let h = '<h3 class="t">Settimane con un evento</h3><p class="rp-aiuto">Assemblee, congressi e Commemorazione arrivano dai <b>Programmi adunanze</b> (con la foto del programma): si modificano solo lì e qui si aggiornano da soli.</p><div class="rp-pul">';
+    const conEv = R.d.settimane.filter((w) => R.d.eventi[w.id]);
+    if (!conEv.length) h += '<p class="nota">Nessun evento in questo mese.</p>';
+    conEv.forEach((w) => {
+      const ev = R.d.eventi[w.id];
+      h += '<div class="w"><h4>' + intervallo(w.lunedi) + '</h4><div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px">' +
+        [['Evento', ev.tipo], ['Tema', ev.tema], ['Luogo', ev.luogo], ['Orario', ev.orario], ['Nota', ev.nota]].filter((x) => x[1]).map((x) => '<span>' + x[0] + '</span><b>' + esc(x[1]) + '</b>').join('') + '</div>' +
+        (ev.foto ? '<img src="' + ev.foto + '" alt="Programma" style="margin-top:8px;max-width:100%;max-height:220px;border:1px solid var(--rule,#D9D6D0)">' : '<p class="nota">Foto del programma non ancora caricata.</p>') + '</div>';
     });
     return h + '</div>';
   }
@@ -317,7 +332,9 @@
     const mk = (id) => (id ? (id === chi ? '<mark>' + esc(sigla(id)) + '</mark>' : esc(sigla(id))) : '');
     const gen = Object.entries(R.st.generali).filter(([, g]) => g.attiva).sort((a, b) => String(a[1].data).localeCompare(String(b[1].data)));
     const mese = nomeMese(R.mese).toUpperCase();
-    let h = '<article class="pgm pgm-print"><header class="pgm-head"><div class="left"><div class="cong">Napoli Pianura Trencia</div><div class="gold"></div><h1>Turnazione reparti</h1><div class="mese">' + mese + '</div>' +
+    const col = R.d.colori || {};
+    const stileCol = (col.infra ? '--rust:' + col.infra + ';--rustbg:color-mix(in srgb,' + col.infra + ' 10%,#fff);' : '') + (col.fine ? '--plum:' + col.fine + ';--plumbg:color-mix(in srgb,' + col.fine + ' 9%,#fff);' : '');
+    let h = '<article class="pgm pgm-print"' + (stileCol ? ' style="' + stileCol + '"' : '') + '><header class="pgm-head"><div class="left"><div class="cong">Napoli Pianura Trencia</div><div class="gold"></div><h1>Turnazione reparti</h1><div class="mese">' + mese + '</div>' +
       '<div class="orari"><div class="o inf"><span>Adunanza infrasettimanale</span><b>' + esc(R.d.orari.infra) + '</b></div><div class="o fs"><span>Adunanza del fine settimana</span><b>' + esc(R.d.orari.fs || 'Orario da definire') + '</b></div></div></div>';
     if (chi) h += lato(chi, gen, ads);
     else if (gen.length) h += '<aside class="promemoria" style="border-left:3px solid #2E75B5;background:#EAF2FA;border-radius:3px;padding:8px 12px;min-width:210px;align-self:start"><small style="display:block;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#235C90">Promemoria</small><h2 style="margin:2px 0 6px;font-size:15px;color:#235C90;text-transform:uppercase">Pulizia generale</h2>' +
@@ -331,13 +348,13 @@
   }
   function giorniSettimana(w, ads, mk) {
     const e = ads.filter((a) => a.settimana_id === w.id).sort((a, b) => a.data.localeCompare(b.data));
-    const ev = R.st.eventi[w.id];
+    const ev = R.d.eventi[w.id];
     const vuota = (a) => '<div class="pgm-card ' + (a.tipo === 'INFRA' ? 'inf' : 'fs') + '"><div class="band"><div><small>' + (a.tipo === 'INFRA' ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana') + '</small><b>' + lungo(a.data) + '</b></div></div><div class="none">In questa data non si terrà l\'adunanza</div></div>';
     if (!ev) return e.map((a) => (a.nessuna ? vuota(a) : carta(w, a, mk))).join('');
     const vere = e.filter((a) => !a.nessuna), no = e.filter((a) => a.nessuna);
     const giorni = (no.length ? no : e).map((a) => lungo(a.data)).join(' · ');
     const righe = [['Luogo', ev.luogo], ['Orario', ev.orario]].filter((x) => x[1]);
-    const evento = '<div class="pgm-card ev' + (vere.length ? '' : ' intera') + '"><div class="band"><div><small>' + esc(giorni) + '</small><b>' + esc(ev.tipo) + '</b></div></div><div class="ev-bd senza-foto"><div class="ev-info">' +
+    const evento = '<div class="pgm-card ev' + (vere.length ? '' : ' intera') + '"><div class="band"><div><small>' + esc(giorni) + '</small><b>' + esc(ev.tipo) + '</b></div></div><div class="ev-bd' + (ev.foto ? '' : ' senza-foto') + '">' + (ev.foto ? '<img class="ev-foto" src="' + ev.foto + '" alt="Programma">' : '') + '<div class="ev-info">' +
       (ev.tema ? '<div class="ev-tema">' + esc(ev.tema) + '</div>' : '') + righe.map((r) => '<div class="ev-r"><small>' + r[0] + '</small><span>' + esc(r[1]) + '</span></div>').join('') + (ev.nota ? '<div class="ev-nota">' + esc(ev.nota) + '</div>' : '') + '</div></div></div>';
     let out = '';
     e.filter((a) => !a.nessuna || a === no[0]).forEach((a) => { out += a.nessuna ? evento : carta(w, a, mk); });
@@ -395,7 +412,8 @@
   P.fogli.reparti = function (dati, chi) {
     const prima = { d: R.d, st: R.st, pers: R.pers, mese: R.mese };
     R.d = Object.assign({ sondaggio: {}, parti: [], pInc: [], storico: [] }, dati);
-    R.st = Object.assign({ togli: {}, assenze: {}, periodi: [], gruppi: {}, generali: {}, nessuna: {}, eventi: {} }, dati.stato);
+    R.st = sistemaTurni(Object.assign({ togli: {}, assenze: {}, periodi: [], gruppi: {}, generali: {}, nessuna: {} }, dati.stato));
+    R.d.eventi = dati.eventi || {}; R.d.colori = dati.colori || {};
     R.pers = new Map(dati.persone.map((p) => [p.id, p])); R.mese = dati.mese;
     try { return foglio(chi || ''); } finally { Object.assign(R, prima); }
   };
@@ -423,7 +441,7 @@
       return setTimeout(() => proponi(v), 30);
     }
     if (k === 'svuota') { if (!confirm('Tolgo tutti i turni delle adunanze? Le pulizie restano.')) return; R.st.turni = R.st.turni.filter((t) => !t.adunanza_id); cambiato(); return rd(); }
-    if (k === 'nessuna') { R.st.nessuna[v] = u.checked; if (u.checked) R.st.turni = R.st.turni.filter((t) => t.adunanza_id !== v); cambiato(); return rd(); }
+    if (k === 'nessuna') { R.st.nessuna[v] = u.checked; R.st.nessunaTolte = R.st.nessunaTolte || {}; if (u.checked) delete R.st.nessunaTolte[v]; else R.st.nessunaTolte[v] = true; if (u.checked) R.st.turni = R.st.turni.filter((t) => t.adunanza_id !== v); cambiato(); return rd(); }
     if (k === 'cella') {
       const key = u.dataset.p + '|' + u.dataset.a, a = adunanzeAttive().find((x) => x.id === u.dataset.a), s = statoCella(u.dataset.p, a);
       const per = (R.st.periodi || []).find((x) => x.persona_id === u.dataset.p && x.dal <= a.data && (x.al || x.dal) >= a.data);
@@ -452,7 +470,6 @@
       return P.srv('aggiungiAlias', sel.value, x.nome).then(() => { P.toast('Collegato: d\'ora in poi «' + x.nome + '» lo riconosco'); carica(R.mese); }).catch((err) => { u.disabled = false; P.toast(err.message, true); });
     }
     if (k === 'genOn') { const g = R.st.generali[u.dataset.s] || (R.st.generali[u.dataset.s] = {}); g.attiva = u.checked; cambiato(); return rd(); }
-    if (k === 'evRm') { if (!confirm('Tolgo il riquadro dell\'evento da questa settimana?')) return; delete R.st.eventi[u.dataset.s]; R.st.eventiTolti = true; cambiato(); return rd(); }
     if (k === 'stampa') { adatta(); return window.print(); }
     if (k === 'pubblica') {
       if (!confirm('Pubblico in bacheca la turnazione di ' + nomeMese(R.mese) + ' così com\'è adesso? I fratelli la vedranno con i loro turni.')) return;
@@ -470,7 +487,7 @@
     if (k === 'mese') { if (R.salvo === 'Da salvare') { clearTimeout(R.coda); salva(); } R.mese = u.value; R.salvo = ''; return carica(u.value); }
     if (k === 'turno') {
       const s = u.dataset.s, a = u.dataset.a, inc = u.dataset.i, pos = Number(u.dataset.p);
-      R.st.turni = R.st.turni.filter((t) => !(t.settimana_id === s && t.adunanza_id === a && t.incarico_id === inc && t.posizione === pos));
+      R.st.turni = R.st.turni.filter((t) => !(t.settimana_id === s && ugualeAd(t.adunanza_id, a) && t.incarico_id === inc && t.posizione === pos));
       if (u.value) R.st.turni.push({ settimana_id: s, adunanza_id: a, incarico_id: inc, posizione: pos, persona_id: u.value });
       cambiato(); return rd();
     }
@@ -482,7 +499,6 @@
       cambiato(); return rd();
     }
     if (k === 'gen') { const g = R.st.generali[u.dataset.s] || (R.st.generali[u.dataset.s] = { attiva: true }); g[u.dataset.v] = u.value; cambiato(); return; }
-    if (k === 'ev') { R.st.eventi[u.dataset.s][u.dataset.v] = u.value; cambiato(); return; }
     if (k === 'chi') { R.chi = u.value; return rd(); }
   });
 })();

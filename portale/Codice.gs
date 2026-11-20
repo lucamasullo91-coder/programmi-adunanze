@@ -1256,10 +1256,12 @@ function reparti(k, mese) {
   ['assenze', 'gruppi', 'generali', 'nessuna', 'eventi', 'togli'].forEach((x) => { stato[x] = stato[x] || {}; });
   stato.periodi = stato.periodi || [];
   sett.forEach((w) => {
-    if (w.speciale && !stato.eventi[w.lunedi] && !stato.eventiTolti) stato.eventi[w.lunedi] = { tipo: w.speciale.nome, luogo: w.speciale.luogo || '', orario: '', tema: '', nota: '' };
     if (w.speciale && w.speciale.adunanze === false) { stato.nessuna[w.lunedi + '-INFRA'] = true; stato.nessuna[w.lunedi + '-FINE'] = true; }
   });
   stato.pulizieProgramma = applicaPulizie_(stato, sett.map((w) => w.lunedi), false);
+  const ev = eventiSettimane_(sett, true);
+  Object.keys(ev.sostituite).forEach((a) => { if (stato.nessunaTolte && stato.nessunaTolte[a]) return; stato.nessuna[a] = true; });
+  delete stato.eventi; delete stato.eventiTolti;
   const adunanze = adunanzeReparti_(cal, sett, stato.nessuna);
   const pInc = abilitazioniReparti_();
   const inTurno = {}; pInc.forEach((x) => { inTurno[x.persona_id] = true; });
@@ -1305,7 +1307,7 @@ function reparti(k, mese) {
     pInc: pInc, sondaggio: sondaggio, risposto: risposto, mancano: mancano,
     parti: pr.parti, partiIgnote: pr.ignote, partiErrore: pr.errore,
     storico: storico, settimanaPrima: settimanaPrima, adunanzePrima: settimanaPrima ? adPrima.filter((a) => a.settimana_id === prima) : [],
-    gruppiPulizie: LISTE[8], stato: stato,
+    gruppiPulizie: LISTE[8], stato: stato, eventi: ev.eventi, colori: coloriMese_(mese),
   };
 }
 function orarioTesto_(cal, sett, q) {
@@ -1322,8 +1324,8 @@ function salvaReparti(k, mese, stato) {
   const pulito = {
     turni: compatta_((stato.turni || []).filter((t) => ids[t.persona_id])),
     assenze: stato.assenze || {}, periodi: (stato.periodi || []).filter((x) => x && ids[x.persona_id] && x.dal),
-    gruppi: stato.gruppi || {}, generali: stato.generali || {}, nessuna: stato.nessuna || {}, eventi: stato.eventi || {},
-    togli: stato.togli || {}, eventiTolti: !!stato.eventiTolti, importato: stato.importato || '', compatto: 1,
+    gruppi: stato.gruppi || {}, generali: stato.generali || {}, nessuna: stato.nessuna || {}, nessunaTolte: stato.nessunaTolte || {},
+    togli: stato.togli || {}, importato: stato.importato || '', compatto: 1,
   };
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try { scriviImpostazione_('reparti:' + mese, pulito); } finally { lock.releaseLock(); }
@@ -1511,7 +1513,54 @@ function ruoloProgrammi_(io) {
 }
 function coppie_(sh) {
   const out = {};
-  if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach((r) => { if (r[0]) out[String(r[0])] = String(r[1]); });
+  if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach((r) => { if (r[0]) out[String(r[0])] = testoCella_(r[1]); });
+  return out;
+}
+/** Il valore di una cella come testo: il Foglio trasforma da solo «2026-11-20» in una data, qui torna «2026-11-20». */
+function testoCella_(v) {
+  if (!(v instanceof Date)) return String(v);
+  const tz = Session.getScriptTimeZone() || 'Europe/Rome';
+  return Utilities.formatDate(v, tz, Utilities.formatDate(v, tz, 'HH:mm') === '00:00' ? 'yyyy-MM-dd' : 'yyyy-MM-dd HH:mm');
+}
+/** Eventi delle settimane (assemblea, congresso, Commemorazione): li scrive chi compila i Programmi adunanze
+ * (chiave «<lunedì>-inf:evento» / «-fs:evento», con la foto del programma); se lì non c'è, quello del Calendario.
+ * La turnazione e la bacheca li leggono da qui ogni volta: nessuna copia. */
+function eventiSettimane_(sett, conFoto) {
+  let val = {};
+  try { val = coppie_(foglioProgrammi_().getSheetByName('Programma')); } catch (e) {}
+  const eventi = {}, sostituite = {};
+  sett.forEach((w) => {
+    const lun = w.lunedi, parti = [];
+    [['inf', 'INFRA'], ['fs', 'FINE']].forEach(([t, T]) => {
+      const v = val[lun + '-' + t + ':evento'];
+      if (!v) return;
+      try { parti.push(JSON.parse(v)); sostituite[lun + '-' + T] = true; } catch (e) {}
+    });
+    if (!parti.length && w.speciale) parti.push({ tipo: w.speciale.nome, luogo: w.speciale.luogo || '' });
+    if (!parti.length) return;
+    const primo = (f) => { for (const x of parti) if (x && x[f]) return String(x[f]); return ''; };
+    const e = { tipo: primo('tipo') || 'Evento', tema: primo('tema'), luogo: primo('luogo'), indirizzo: primo('indirizzo'), orario: primo('orario'), nota: primo('nota') };
+    const fotoId = primo('fotoId');
+    if (conFoto && fotoId) {
+      try {
+        const b = DriveApp.getFileById(fotoId).getBlob(), by = b.getBytes();
+        if (by.length < 2500000) e.foto = 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(by);
+      } catch (x) {}
+    }
+    eventi[lun] = e;
+  });
+  return { eventi: eventi, sostituite: sostituite };
+}
+/** Colori del mese dalla guida (infrasettimanale) e dalla Torre di Guardia (fine settimana): dati/AAAA-MM.json → stile.colori. */
+function coloriMese_(mese) {
+  const c = CacheService.getScriptCache(), key = 'colori:' + mese, t = c.get(key);
+  if (t) return JSON.parse(t);
+  let out = { infra: '', fine: '' };
+  try {
+    const r = UrlFetchApp.fetch(REPO + 'dati/' + mese + '.json', { muteHttpExceptions: true });
+    if (r.getResponseCode() === 200) { const k = (JSON.parse(r.getContentText()).stile || {}).colori || {}; out = { infra: k.infra || '', fine: k.fine || '' }; }
+  } catch (e) {}
+  try { c.put(key, JSON.stringify(out), 3600); } catch (e) {}
   return out;
 }
 /** Podio di ogni adunanza («2026-12-08|INFRA» → nome), dalla Turnazione reparti del portale. */
@@ -1865,15 +1914,18 @@ function repartiPubblicati_(mese) {
   const sett = settimane_(cal, mese);
   const st = p.dati;
   st.turni = scompatta_(st.turni);
-  ['gruppi', 'generali', 'nessuna', 'eventi'].forEach((x) => { st[x] = st[x] || {}; });
+  ['gruppi', 'generali', 'nessuna'].forEach((x) => { st[x] = st[x] || {}; });
   applicaPulizie_(st, sett.map((w) => w.lunedi), true);
+  const ev = eventiSettimane_(sett, true);
+  Object.keys(ev.sostituite).forEach((a) => { if (!(st.nessunaTolte && st.nessunaTolte[a])) st.nessuna[a] = true; });
   sett.forEach((w) => { if (w.speciale && w.speciale.adunanze === false) { st.nessuna[w.lunedi + '-INFRA'] = true; st.nessuna[w.lunedi + '-FINE'] = true; } });
   const servono = {}; st.turni.forEach((t) => { servono[t.persona_id] = true; });
   Object.keys(st.generali).forEach((s) => { const g = st.generali[s]; if (g.coord) servono[g.coord] = true; if (g.ref) servono[g.ref] = true; });
   const lista = persone_().filter((x) => servono[x.id]), sg = sigle_(lista);
   return { mese: mese, quando: p.quando, settimane: sett.map((w) => ({ id: w.lunedi, lunedi: w.lunedi })), adunanze: adunanzeReparti_(cal, sett, st.nessuna),
     orari: { infra: orarioTesto_(cal, sett, 'infra'), fs: orarioTesto_(cal, sett, 'fs') },
-    persone: lista.map((x) => ({ id: x.id, sigla: sg[x.id], nome: x.n, cognome: x.cognome, gruppo: x.gruppo })), stato: st };
+    persone: lista.map((x) => ({ id: x.id, sigla: sg[x.id], nome: x.n, cognome: x.cognome, gruppo: x.gruppo })), stato: st,
+    eventi: ev.eventi, colori: coloriMese_(mese) };
 }
 function comitivePubblicate_(mese) {
   const p = leggiImpostazione_('pub:comitive:' + mese, null);
@@ -2176,6 +2228,7 @@ function applicaPulizie_(st, lunedis, pubblicato) {
     st.turni = st.turni.filter((t) => !(t.settimana_id === lun && /^PUL_/.test(t.incarico_id)));
     if (idPersona_(e.c)) st.turni.push({ settimana_id: lun, adunanza_id: null, incarico_id: 'PUL_COORD', posizione: 1, persona_id: idPersona_(e.c) });
     if (idPersona_(e.r)) st.turni.push({ settimana_id: lun, adunanza_id: null, incarico_id: 'PUL_REF', posizione: 1, persona_id: idPersona_(e.r) });
+    ['c', 'r'].forEach((x) => { if (e[x] && String(e[x]).indexOf('txt:') === 0) (st.pulizieAMano = st.pulizieAMano || []).push({ settimana_id: lun, ruolo: x === 'c' ? 'coordinatore' : 'referente', nome: String(e[x]).slice(4) }); });
     if (e.g) st.gruppi[lun] = e.g; else delete st.gruppi[lun];
     if (e.gg || e.gd || e.gc || e.gr) st.generali[lun] = { attiva: true, gruppo: e.gg || '', data: e.gd || '', coord: idPersona_(e.gc), ref: idPersona_(e.gr) };
     else delete st.generali[lun];
@@ -2216,7 +2269,27 @@ function pulizie(k, anno) {
   const fratelli = persone_().filter((p) => p.sesso === 'Uomo').map((p) => ({ id: p.id, nome: p.n, cognome: p.cognome, gruppo: p.gruppo, coord: !!coord[p.id], ref: !!ref[p.id] }))
     .sort((a, b) => (a.cognome + a.nome).localeCompare(b.cognome + b.nome, 'it'));
   return { anno: anno, oggi: oggi, settimane: lunediAnno_(anno).map((l) => ({ lunedi: l, al: piu_(l, 6), speciale: speciali[l] || null })),
-    righe: x.righe || {}, gruppi: gruppiServizio_(), fratelli: fratelli, cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), luca: !!io.tutto };
+    righe: x.righe || {}, assenti: assentiSettimane_(cal, anno), gruppi: gruppiServizio_(), fratelli: fratelli, cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), luca: !!io.tutto };
+}
+/** Per ogni settimana (lunedì) chi è assente a un'adunanza e in quali date: assenze segnate nella turnazione,
+ * periodi «dal… al…» e risposte al sondaggio. Solo dal mese scorso a tre mesi avanti (gli altri non servono e costano). */
+function assentiSettimane_(cal, anno) {
+  const out = {}, ora = oggi_().slice(0, 7), da = meseDopo_(ora, -1), a = meseDopo_(ora, 3);
+  for (let m = 0; m < 12; m++) {
+    const mese = meseDopo_(anno + '-09', m);
+    if (mese < da || mese > a) continue;
+    const st = leggiImpostazione_('reparti:' + mese, null) || {};
+    const ass = st.assenze || {}, per = st.periodi || [], togli = st.togli || {}, sond = {};
+    try { const rd = risposteDelMese_(mese, 'adunanze'); Object.keys(rd.risposte).forEach((id) => rd.risposte[id].r.assenze.forEach((x) => { sond[id + '|' + x] = true; })); } catch (e) {}
+    settimane_(cal, mese).forEach((w) => w.adunanze.forEach((ad) => {
+      const id = w.lunedi + (ad.tipo === 'inf' ? '-INFRA' : '-FINE'), chi = {};
+      Object.keys(ass).forEach((k) => { const [p, x] = k.split('|'); if (x === id && ass[k] === 'A') chi[p] = true; });
+      per.forEach((x) => { if (x && x.tipo !== 'T' && x.dal <= ad.data && (x.al || x.dal) >= ad.data) chi[x.persona_id] = true; });
+      Object.keys(sond).forEach((k) => { const [p, x] = k.split('|'); if (x === id && !togli[k] && !ass[k]) chi[p] = true; });
+      Object.keys(chi).forEach((p) => { const s = out[w.lunedi] = out[w.lunedi] || {}; (s[p] = s[p] || []).push(ad.data); });
+    }));
+  }
+  return out;
 }
 /** Una settimana del programma pulizie (salvata da sola: chi compila insieme non si sovrascrive). */
 function salvaPulizia(k, anno, lunedi, riga) {

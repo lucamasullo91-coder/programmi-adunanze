@@ -89,6 +89,15 @@
     if (!p) return '?';
     return sigla ? (p.nome ? p.nome.charAt(0) + '. ' : '') + p.cognome : p.nome + ' ' + p.cognome;
   };
+  /* Avviso sotto il nome: assente a un'adunanza della settimana, oppure nome scritto a mano (non entra nella turnazione). */
+  function avviso(lun, v) {
+    if (!v) return '';
+    const st = 'display:block;margin-top:3px;font-size:11px;line-height:1.3;color:#B3261E;font-weight:600';
+    if (String(v).indexOf('txt:') === 0) return '<small style="' + st + '">Scritto a mano: non entra nella turnazione</small>';
+    const giorni = ((U.d.assenti || {})[lun] || {})[v];
+    if (!giorni || !giorni.length) return '';
+    return '<small style="' + st + '">⚠ Assente ' + giorni.map((g) => dm(g)).join(' e ') + '</small>';
+  }
   function selPersona(lun, campo, v, tipo) {
     const D = U.d, txt = v && String(v).indexOf('txt:') === 0;
     const prima = D.fratelli.filter((p) => p[tipo]), altri = D.fratelli.filter((p) => !p[tipo]);
@@ -122,7 +131,7 @@
       const e = D.righe[l] || {}, pass = piu(l, 6) < D.oggi;
       h += '<tr class="' + (nuovo ? 'm ' : '') + (pass ? 'pass' : '') + '"><td class="me">' + (nuovo ? cap(MESI[m]) : '') + '</td><td class="c">' + n + '</td><td class="dal">' + dm(l) + ' – ' + dm(w.al) + (w.speciale ? ' <span class="sp">' + esc(w.speciale.nome) + '</span>' : '') + '</td>' +
         '<td data-l="Gruppo"><input list="puGruppi" data-pu="f" data-l="' + l + '" data-c="g" value="' + esc(e.g || '') + '" placeholder="—"></td>' +
-        '<td data-l="Coordinatore">' + selPersona(l, 'c', e.c, 'coord') + '</td><td data-l="Referente">' + selPersona(l, 'r', e.r, 'ref') + '</td>' +
+        '<td data-l="Coordinatore">' + selPersona(l, 'c', e.c, 'coord') + avviso(l, e.c) + '</td><td data-l="Referente">' + selPersona(l, 'r', e.r, 'ref') + avviso(l, e.r) + '</td>' +
         '<td data-l="Pulizia generale · gruppo" class="g2"><input list="puGruppi" data-pu="f" data-l="' + l + '" data-c="gg" value="' + esc(e.gg || '') + '" placeholder="—"></td>' +
         '<td data-l="Data"><input type="date" min="' + l + '" max="' + w.al + '" data-pu="f" data-l="' + l + '" data-c="gd" value="' + esc(e.gd || '') + '"></td>' +
         '<td data-l="Coord. generale">' + selPersona(l, 'gc', e.gc, 'coord') + '</td><td data-l="Ref. generale">' + selPersona(l, 'gr', e.gr, 'ref') + '</td>' +

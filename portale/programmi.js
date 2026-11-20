@@ -63,7 +63,8 @@
     if (fr && d && d.waFatto && fr.id === 'waGen') { fr.remove(); if (d.n) P.toast('Immagini dei reparti pronte per Telegram (' + d.n + (d.n === 1 ? ' settimana)' : ' settimane)')); return; }
     if (!fr || !d || !d.paQ) return;
     const q = fr.dataset.q;
-    const fn = q === 'whatsapp' || q === 'genera' ? FN_WA[d.fn] : q === 'bachecaProgrammi' ? (d.fn === 'stato' ? 'pa_bacheca' : d.fn === 'foto' ? 'pa_foto' : null)
+    // la foto di un evento serve a tutte le pagine dei programmi (anteprime, bacheca, Pronto per WhatsApp)
+    const fn = d.fn === 'foto' ? 'pa_foto' : q === 'whatsapp' || q === 'genera' ? FN_WA[d.fn] : q === 'bachecaProgrammi' ? (d.fn === 'stato' ? 'pa_bacheca' : d.fn === 'foto' ? 'pa_foto' : null)
       : q === 'bachecaEspositori' ? (d.fn === 'stato' ? 'oem_bacheca' : null)
       : (q === 'espositori' ? FN_OEM : FN)[d.fn];
     const rispondi = (ok, v) => fr.contentWindow.postMessage(ok ? { paR: 1, id: d.id, ok: true, v: v } : { paR: 1, id: d.id, ok: false, e: v }, '*');
