@@ -68,7 +68,7 @@
   .fa4 .og-li.capo{font-weight:800;background:#F7EFDF}
   .fa4 .og-li.ass{font-weight:700;background:#FBF6EC}
   .fa4 .og-li i{font-style:normal;font-size:.82em;font-weight:700;letter-spacing:.04em;color:#A86F00;border:1px solid #E6D3AE;border-radius:3px;padding:0 4px;line-height:1.35;flex:none}
-  .fa4 .og-agg{margin:auto 0 4px;text-align:right;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#9aa3ad}
+  .fa4 .og-agg{margin:auto 0 5px;display:flex;justify-content:space-between;gap:12px;font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;color:#9aa3ad;white-space:nowrap}
   .fa4 .og-agg+.pgm-foot{margin-top:0}
   .fa4 .og-sez{margin:16px 0 8px;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);border-bottom:1.5px solid var(--slate);padding-bottom:4px}
   .fa4 .og-ruoli{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -197,7 +197,9 @@
       h += '<section class="og-box"><div class="og-band"><div><small>Gruppo</small><b>' + esc(g.titolo) + '</b></div><em>' + g.membri.length + (g.membri.length === 1 ? ' proclamatore' : ' proclamatori') + '</em></div>' +
         g.membri.map((m, i) => '<div class="og-li' + (m.capo ? ' capo' : m.ass ? ' ass' : '') + '"><span><u>' + (i + 1) + '</u>' + esc(m.nome) + '</span>' + (m.sigla ? '<i>' + esc(m.sigla) + '</i>' : '') + '</div>').join('') + '</section>';
     });
-    return h + '</div><p class="og-agg">Aggiornato a ' + esc(quando(d.quando)) + '</p><footer class="pgm-foot"><span><b>Gruppi di servizio</b>' + gg.length + ' gruppi</span><span>SGS sorvegliante · SDG servitore · ASS assistente · PR pioniere regolare · PA ausiliario · NB non battezzato</span><span class="code">' + esc(codice('fsg', d.quando)) + '</span></footer></article>';
+    // sopra il piè di pagina, in piccolo: le sigle a sinistra, la data a destra
+    return h + '</div><div class="og-agg"><span>SGS sorvegliante del gruppo · SDG servitore del gruppo · ASS assistente · PR pioniere regolare · PA pioniere ausiliario · NB non battezzato</span><span>Aggiornato a ' + esc(quando(d.quando)) + '</span></div>' +
+      '<footer class="pgm-foot"><span><b>Gruppi di servizio</b>' + esc(d.cong || 'Napoli Pianura Trencia') + '</span><span class="code">' + esc(codice('fsg', d.quando)) + '</span></footer></article>';
   };
   P.fogli.organigramma = function (d) {
     let h = '<article class="pgm pgm-print og-sheet og-org"><header class="pgm-head"><div class="left"><div class="cong">' + esc(d.cong || 'Napoli Pianura Trencia') + '</div><div class="gold"></div><h1>Organigramma</h1><div class="mese">Della congregazione</div></div></header>';
