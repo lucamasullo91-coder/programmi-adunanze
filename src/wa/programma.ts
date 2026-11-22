@@ -83,6 +83,26 @@ export function immaginiCarta(
   const sezDp = c.sezioni.find((z) => /discorso pubblico/i.test(z.titolo));
   const striscia = { testo: "Audio/Video · prove", colore: COLORE_AV };
   const podioBlocco: Blocco = { colore: COLORE_AV, voci: [{ etichetta: "Podio", nomi: [{ v: podio }] }] };
+  if (c.speciale) {
+    // special meeting: its own rows, in order, with the names
+    const z = c.sezioni[0];
+    const colS = col(z?.colore ?? "@generale");
+    const voci: Voce[] = (z?.righe ?? [])
+      .filter((r) => r.tipo === "parte" || r.tipo === "voce")
+      .map((r) =>
+        r.tipo === "voce"
+          ? { etichetta: r.titolo, testo: (r.chi ?? "").trim() }
+          : haNome(r)
+            ? { etichetta: r.titolo, nomi: [nome(r, "chi", valori)] }
+            : { etichetta: r.titolo, testo: r.min ? `${r.min} min` : "" },
+      );
+    const blocco: Blocco = { titolo: z?.titolo ?? "Adunanza speciale", colore: colS, voci };
+    const colB = c.tipo === "FINE" ? f.stile.colori.fine : f.stile.colori.infra;
+    return {
+      pres: { kicker: "Presidente", titolo: "Adunanza speciale", sotto: sottoData(c, f), colore: colB, piede, blocchi: [blocco] },
+      av: { titolo: "Adunanza speciale", sotto: sottoData(c, f), colore: colB, striscia, piede, blocchi: [podioBlocco, blocco] },
+    };
+  }
   if (c.tipo === "FINE") {
     const dp = discorsoPubblico(c, valori);
     const fine = f.stile.colori.fine;

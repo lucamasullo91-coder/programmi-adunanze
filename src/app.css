@@ -35,6 +35,25 @@ html, body { margin: 0; background: var(--pa-bg); color: var(--pa-ink); font-fam
 .pa-box label.pa-check { display: flex; align-items: flex-start; gap: 10px; font-weight: 400; line-height: 1.35; }
 .pa-box label.pa-check input { height: 20px; width: 20px; flex: none; margin: 0; }
 .pa-box input[type="file"] { height: auto; padding: 8px; font-size: 14px; }
+/* special meeting rows and titles/minutes of one meeting */
+.pa-righe { display: grid; gap: 8px; }
+.pa-righe > b { font-size: 13px; }
+.pa-rsp { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 6px; align-items: center; }
+.pa-rsp-sotto { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pa-rsp .min, .pa-rsp .dur { text-align: center; padding: 0 4px; }
+.pa-rit .pa-rsp:has(.dur) { grid-template-columns: minmax(0, 1fr) 92px; }
+.pa-rsp-az { display: flex; gap: 16px; justify-content: flex-end; }
+.pa-rsp-az .pa-link { font-size: 15px; }
+.pa-rsp-t { font-size: 14px; color: var(--pa-muted); }
+.pa-righe .pa-rsp + .pa-rsp { border-top: 1px dashed var(--pa-line); padding-top: 8px; }
+.pa-rit { display: grid; gap: 10px; }
+.pa-rit fieldset { border: 1px solid var(--pa-line); border-radius: 10px; padding: 8px; margin: 0; display: grid; gap: 6px; }
+.pa-nota { margin: -4px 0 0; font-size: 13px; color: var(--pa-muted); }
+.pa-pagsel { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.pa-pagsel button { border: 2px solid var(--pa-line); border-radius: 8px; background: #fff; padding: 4px; display: grid; gap: 4px; cursor: pointer; font: inherit; font-size: 12px; }
+.pa-pagsel button.si { border-color: var(--pa-acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pa-acc) 25%, transparent); }
+.pa-pagsel img { width: 100%; display: block; border-radius: 4px; background: #f3f2ee; }
+
 .pa-azioni { display: flex; gap: 8px; align-items: center; }
 .pa-azioni span { flex: 1; }
 /* Print: only the pages, at their real size */

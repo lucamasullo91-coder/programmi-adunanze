@@ -122,7 +122,7 @@
       '<button class="btn soft" data-pu="ruota">Gruppi a turno nelle settimane vuote</button><button class="btn soft" data-pu="foglio">' + (U.foglio ? 'Torna al programma' : 'Foglio A4') + '</button>' + pubblicazione() + '<span class="rp-salvo" id="puSalvo"></span></div>' +
       '<datalist id="puGruppi">' + D.gruppi.map((g) => '<option value="' + esc(g) + '">').join('') + '</datalist>' +
       '<p class="rp-aiuto">Una riga per settimana, da settembre ad agosto. Ogni cambio si salva da solo e vale anche per la Turnazione reparti, i fogli, la bacheca e le immagini WhatsApp. Per lo storico puoi scrivere il nome che il gruppo aveva allora e, con «Scrivo io il nome…», anche chi oggi non è più in anagrafica.</p>';
-    if (U.foglio) return h + '<div class="rp-bar"><button class="btn" data-pu="stampa" style="background:#A86F00;border-color:#A86F00">Stampa / Salva PDF</button></div><div class="rp-anteprima pu4"><div class="pgm-fit" id="puFit"><div class="pgm-scale" id="puScale">' + P.fogli.pulizie(D) + '</div></div></div>';
+    if (U.foglio) return h + '<div class="rp-bar"><button class="btn" data-pu="pdf" style="background:#A86F00;border-color:#A86F00">Prepara PDF</button></div><div class="rp-anteprima pu4"><div class="pgm-fit" id="puFit"><div class="pgm-scale" id="puScale">' + P.fogli.pulizie(D) + '</div></div></div>';
     let mp = -1;
     h += '<div class="pu-lay"><div class="pu-wrap"><table class="pu-t"><thead><tr><th>Mese</th><th>Sett.</th><th>Dal – al</th><th>Pulizia post adunanze</th><th>Coordinatore</th><th>Referente</th><th>Pulizia generale</th><th>Data</th><th>Coord. generale</th><th>Ref. generale</th><th>Note</th></tr></thead><tbody>';
     D.settimane.forEach((w) => {
@@ -219,7 +219,14 @@
     if (k === 'anno') { U.anno += Number(u.dataset.v); U.d = null; return P.disegna(); }
     if (k === 'ruota') return ruota();
     if (k === 'foglio') { U.foglio = !U.foglio; return P.disegna(); }
-    if (k === 'stampa') { adatta(); return window.print(); }
+    if (k === 'pdf') {
+      // PDF diretto (niente finestra di stampa: niente link del portale a piè di pagina)
+      const el = document.querySelector('#puScale .pgm-print');
+      if (!el) return;
+      P.toast('Preparo il PDF…');
+      return (window.PdfPortale ? Promise.resolve() : P.carica('pdf.js')).then(() => window.PdfPortale.salva([el], 'Programma pulizie ' + U.anno + '-' + (U.anno + 1)))
+        .catch((e) => P.toast('PDF non riuscito: ' + e.message, true));
+    }
     if (k === 'pubblica') {
       if (!confirm('Pubblico in bacheca il programma pulizie ' + U.anno + '/' + (U.anno + 1) + ' così com\'è adesso?')) return;
       u.disabled = true;

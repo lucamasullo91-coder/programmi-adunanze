@@ -46,6 +46,16 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
 
 ## 4. Regole fisse
 
+### Programmi adunanze
+- **Adunanza speciale** (es. visita della filiale): evento che *non* sostituisce l'adunanza. Tema, luogo, nota e righe
+  (titolo + minuti + nome facoltativo) stanno in `<carta>:evento` con `tipo: 'Adunanza speciale'`; giorno e orario vanno
+  nel Calendario come variazione `spostata` **solo per quella settimana**. Turnazione reparti e avvisi la contano come adunanza.
+- **Titoli e durate di una sola adunanza** (`<carta>:ritocchi`): li può cambiare anche chi compila quell'adunanza; la guida non cambia.
+  Gli orari delle parti si ricalcolano; «Ripristina come la guida» toglie tutto.
+- L'intestazione del foglio («Sabato 19:30») mostra sempre l'orario abituale: un'adunanza spostata o speciale non la cambia.
+- **PDF senza finestra di stampa** in tutto il portale (la stampa mette il link del portale a piè di pagina):
+  Programmi adunanze ha «Scarica PDF» (tutto) e «Scegli pagine»; gli altri fogli «Prepara PDF».
+
 ### Turnazione reparti
 - Abilitazioni dall'anagrafica. Le abilitazioni non vengono spuntate in automatico (eccezione: comitive di congregazione già spuntate per i nominati).
 - Esclusi da uscieri e audio/video, *solo per quell'adunanza*:

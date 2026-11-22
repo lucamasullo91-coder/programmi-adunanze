@@ -89,6 +89,8 @@ export type Carta = {
   editData?: boolean;
   /** The meeting is replaced by another event (circuit assembly, convention…). */
   evento?: Evento;
+  /** Special meeting: the program is the one written for that day (see TIPO_SPECIALE). */
+  speciale?: boolean;
 };
 
 export type Evento = {
@@ -100,6 +102,20 @@ export type Evento = {
   nota?: string;
   /** Picture of the program (data URL). */
   foto?: string;
+  /** Special meeting (Adunanza speciale): the rows of its program, names written like any other part. */
+  righe?: RigaSpeciale[];
+};
+
+/** A row of a special meeting: title, minutes (move the clock) and, when it has one, the name of who handles it. */
+export type RigaSpeciale = { id: string; titolo: string; min?: number | null; nome?: boolean };
+
+/** The meeting happens, with a program of its own (visit of the branch…), at the day and time of that week only. */
+export const TIPO_SPECIALE = "Adunanza speciale";
+
+/** Titles and minutes changed for one meeting only (the guide stays as it is): key "<carta>:ritocchi". */
+export type Ritocchi = {
+  s?: Record<string, { titolo?: string; durata?: string }>;
+  r?: Record<string, { titolo?: string; min?: number | null }>;
 };
 
 export type Versione = "std" | "nom" | "full";

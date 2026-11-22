@@ -553,7 +553,6 @@
       return P.srv('aggiungiAlias', sel.value, x.nome).then(() => { P.toast('Collegato: d\'ora in poi «' + x.nome + '» lo riconosco'); carica(R.mese); }).catch((err) => { u.disabled = false; P.toast(err.message, true); });
     }
     if (k === 'genOn') { const g = R.st.generali[u.dataset.s] || (R.st.generali[u.dataset.s] = {}); g.attiva = u.checked; cambiato(); return rd(); }
-    if (k === 'stampa') { adatta(); return window.print(); }
     if (k === 'pdf') return preparaPdf();
     if (k === 'pdfTutti') return preparaTutti();
     if (k === 'pubblica') {

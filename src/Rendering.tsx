@@ -318,7 +318,7 @@ export function CartaFoglio({
   const conOre = [...info.values()].some((v) => v.ora);
   const band = coloreCarta(c, stile.colori);
   const sa = selAttr("carta", c.id, x);
-  const k = c.kicker ?? kicker ?? NOMI_CARTA[c.tipo];
+  const k = c.speciale ? (kicker ? `${kicker} · Adunanza speciale` : "Adunanza speciale") : c.kicker ?? kicker ?? NOMI_CARTA[c.tipo];
   return (
     <article
       data-tipo={c.tipo}
@@ -327,7 +327,7 @@ export function CartaFoglio({
     >
       <div {...sa} className={cls("fg-band", sa.className)}>
         <div className="tx">
-          {k && <div className="k">{c.kicker && kicker ? `${kicker} · ${c.kicker}` : k}</div>}
+          {k && <div className="k">{c.kicker && kicker && !c.speciale ? `${kicker} · ${c.kicker}` : k}</div>}
           <div className="t">
             {c.editData ? (
               <span className="campo data" data-campo={`${c.id}:data`}>

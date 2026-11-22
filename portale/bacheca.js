@@ -1,11 +1,13 @@
 /* Bacheca: per tutti, con il link personale. Solo programmi pubblicati, ognuno secondo le sue abilitazioni.
- * In cima «I miei impegni» in un elenco compatto (sul telefono si scorre); sotto un riquadro per programma con
- * l'anteprima del foglio e un pulsante per ogni versione: si apre il foglio intero, da stampare o salvare in PDF. */
+ * In cima «I miei impegni»: una scheda per impegno, data per esteso in maiuscolo nel colore della sezione,
+ * il dettaglio della parte e il ruolo in sovrimpressione. Sotto la biblioteca dei programmi: una copertina con
+ * l'anteprima per ogni programma (e per ogni versione); toccandola si apre il foglio intero, con «Prepara PDF». */
 (function () {
   'use strict';
   const P = window.PC, S = P.S, esc = P.esc;
   const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
   const GB = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
+  const GL = ['DOMENICA', 'LUNEDÌ', 'MARTEDÌ', 'MERCOLEDÌ', 'GIOVEDÌ', 'VENERDÌ', 'SABATO'];
   const B = { mese: '', d: null, carico: false, apri: null };
   const COL = { inf: '#A8432B', fs: '#521F46', rep: '#4D5A68', pul: '#9A7A1E', com: '#A86F00', oem: '#2F7F8C' };
   const TAG = { inf: 'Infrasettimanale', fs: 'Fine settimana', rep: 'Reparti', pul: 'Pulizie', com: 'Comitive', oem: 'Espositori' };
@@ -15,27 +17,27 @@
 
   const css = document.createElement('style');
   css.textContent = `
-  .bc-imp{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px 14px;margin:2px 0 18px}
-  .bc-r{display:grid;grid-template-columns:62px 6px minmax(0,1fr);gap:8px;align-items:center;padding:6px 2px;border-bottom:1px solid #EEEBE5;min-height:36px}
-  .bc-r.pass{opacity:.45}
-  .bc-r .d{font-size:12px;font-weight:800;letter-spacing:.04em;color:var(--ink2);white-space:nowrap}
-  .bc-r .d small{font-weight:700;color:var(--slate);margin-right:3px;font-size:10.5px;letter-spacing:.08em}
-  .bc-r i{align-self:stretch;border-radius:3px;background:var(--c)}
-  .bc-r .x{font-size:13.5px;line-height:1.25;min-width:0}
-  .bc-r .x em{display:block;font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c)}
-  .bc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
-  .bc-c{border:1px solid var(--rule);border-top:4px solid var(--c);border-radius:10px;background:#fff;padding:10px;display:grid;gap:8px;align-content:start}
-  .bc-c h3{margin:0;font-size:14.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--c)}
-  .bc-c .q{font-size:11.5px;color:var(--slate);margin-top:-6px}
-  .bc-prev{height:230px;overflow:hidden;border-radius:6px;background:#EDEBE6;padding:6px;position:relative;cursor:pointer}
-  .bc-prev:after{content:"";position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(transparent,#EDEBE6)}
-  .bc-prev .pgm-fit{pointer-events:none}
-  .bc-prev iframe{border:0;width:100%;height:100%;pointer-events:none;background:#EDEBE6}
-  .bc-bt{display:flex;flex-wrap:wrap;gap:6px}
-  .bc-bt .btn{flex:1 1 auto;justify-content:center;text-align:center;background:var(--c);border-color:var(--c)}
-  .bc-bt .btn.soft{background:#fff;color:var(--c);border-color:var(--c)}
   .bc-vuoto{color:var(--slate);font-size:14px;padding:6px 0 14px}
-  .bc-full .rp-bar{position:sticky;top:0;z-index:5;background:var(--paper,#F6F5F2);padding:6px 0}`;
+  .bc-full .rp-bar{position:sticky;top:0;z-index:5;background:var(--paper,#F6F5F2);padding:6px 0}
+  .bc-imps{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin:2px 0 20px}
+  .bc-ic{background:#fff;border-radius:12px;padding:14px 16px;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.06);border-left:5px solid var(--c)}
+  .bc-ic.pass{opacity:.5}
+  .bc-ic .dt{color:var(--c);font-size:16px;font-weight:600;letter-spacing:.04em;margin:0 96px 8px 0;line-height:1.25}
+  .bc-ic .dt small{font-size:13px;font-weight:600;margin-left:6px;opacity:.85;letter-spacing:.02em}
+  .bc-ic .bd{position:absolute;top:12px;right:12px;background:var(--c);color:#fff;font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 9px;border-radius:6px;text-transform:uppercase;max-width:110px;text-align:center;line-height:1.2}
+  .bc-ic .tt{color:var(--c);font-size:16px;font-weight:600;margin:0;line-height:1.3}
+  .bc-ic .s{font-size:14px;color:#55544f;margin:4px 0 0;line-height:1.45}
+  .bc-lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px 14px;margin-bottom:10px}
+  .bc-book{cursor:pointer;display:grid;gap:7px;align-content:start;border:0;background:none;padding:0;font:inherit;text-align:center}
+  .bc-book .pg{position:relative;aspect-ratio:1/1.414;overflow:hidden;border-radius:6px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.14);border-top:4px solid var(--c)}
+  .bc-book .pg iframe{position:absolute;inset:0;border:0;width:100%;height:100%;pointer-events:none;background:#fff}
+  .bc-book .pg .pgm-fit{pointer-events:none}
+  .bc-book .pg .vuota{position:absolute;inset:14px 12px;display:grid;gap:7px;align-content:start}
+  .bc-book .pg .vuota i{display:block;height:5px;border-radius:2px;background:#E4E2DB}
+  .bc-book .pg .vuota i:first-child{height:8px;width:70%;background:var(--c)}
+  .bc-book b{font-size:13px;font-weight:600;color:#1F2630;line-height:1.25}
+  .bc-book small{display:block;font-size:11.5px;color:var(--slate);font-weight:400;margin-top:2px}
+  .bc-book.solo-nom .pg::after{content:"Nominati";position:absolute;top:6px;right:6px;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#1F2630;color:#fff;padding:2px 6px;border-radius:4px}`;
   document.head.appendChild(css);
 
   function carica() {
@@ -66,6 +68,19 @@
   }
   const anteprima = (classe, html) => '<div class="rp-anteprima ' + classe + '" style="padding:0;background:none"><div class="pgm-fit" data-fit="1"><div class="pgm-scale">' + html + '</div></div></div>';
 
+  /** Una scheda di «I miei impegni». */
+  function scheda(x, d) {
+    const g = dt(x.data), c = x.col || COL[x.tipo] || '#4D5A68';
+    const giorno = GL[g.getUTCDay()] + ' ' + g.getUTCDate() + ' ' + MESI[g.getUTCMonth()].toUpperCase();
+    const data = x.sett ? 'SETTIMANA DAL ' + g.getUTCDate() + ' ' + MESI[g.getUTCMonth()].toUpperCase() : giorno;
+    const fine = x.sett ? dt(x.data) : null; if (fine) fine.setUTCDate(fine.getUTCDate() + 6);
+    const passato = (x.sett ? fine.toISOString().slice(0, 10) : x.data) < d.oggi;
+    return '<div class="bc-ic' + (passato ? ' pass' : '') + '" style="--c:' + c + '">' + (x.ruolo ? '<span class="bd">' + esc(x.ruolo) + '</span>' : '') +
+      '<p class="dt">' + esc(data) + (fine ? ' AL ' + fine.getUTCDate() + ' ' + MESI[fine.getUTCMonth()].toUpperCase() : '') + (x.ora ? '<small>' + esc(x.ora) + '</small>' : '') + '</p>' +
+      '<p class="tt">' + esc(x.titolo || x.testo) + '</p>' +
+      (x.dett ? '<p class="s">' + esc(x.dett) + '</p>' : '') + (x.con ? '<p class="s">' + esc(x.con) + '</p>' : '') + '</div>';
+  }
+
   P.viste.bacheca = function () {
     const h0 = P.testata('Bacheca', B.d ? esc(B.d.nomeMese) : '', 'home');
     if (!B.d) { if (!B.carico) carica(); return h0 + '<p class="nota">Carico la bacheca…</p>'; }
@@ -77,8 +92,8 @@
         const v = B.apri.v || f.versioni[0][0];
         return P.testata(f.titolo, esc(d.nomeMese), 'bacheca') + '<div class="bc-full"><div class="rp-bar"><button class="back" data-bc="chiudi">‹ Bacheca</button>' +
           (f.versioni.length > 1 ? '<select data-bc="ver">' + f.versioni.map((x) => '<option value="' + x[0] + '"' + (x[0] === v ? ' selected' : '') + '>' + esc(x[1]) + '</option>').join('') + '</select>' : '') +
-          '<button class="btn" data-bc="stampa" style="background:' + f.c + ';border-color:' + f.c + '">Stampa o salva PDF</button></div>' +
-          '<p class="rp-aiuto">Per il PDF: nella finestra di stampa scegli «Salva come PDF» (sul telefono: Condividi → Stampa, poi allarga l\'anteprima e condividi il PDF).</p>' +
+          '<button class="btn" data-bc="pdf" style="background:' + f.c + ';border-color:' + f.c + '">Prepara PDF</button></div>' +
+          '<p class="rp-aiuto"><b>Prepara PDF</b> crea il file A4 del foglio: poi scegli <b>Invia…</b> (WhatsApp, senza scaricarlo) o <b>Scarica</b>.</p>' +
           '<div class="rp-anteprima ' + f.classe + '"><div class="pgm-fit" data-fit="1"><div class="pgm-scale">' + f.foglio(v) + '</div></div></div></div>';
       }
       B.apri = null;
@@ -86,30 +101,20 @@
     let h = h0 + '<div class="rp-bar"><select data-bc="mese">' + [-1, 0, 1, 2].map((n) => meseDopo(d.oggi.slice(0, 7), n)).map((m) => '<option value="' + m + '"' + (m === d.mese ? ' selected' : '') + '>' + P.cap(nomeMese(m)) + '</option>').join('') + '</select></div>';
     h += '<h3 class="t">I miei impegni</h3>';
     if (!d.impegni.length) h += '<p class="bc-vuoto">Nei programmi pubblicati di ' + esc(nomeMese(d.mese)) + ' non hai impegni.</p>';
-    else h += '<div class="bc-imp">' + d.impegni.map((x) => {
-      const g = dt(x.data);
-      return '<div class="bc-r' + (x.data < d.oggi ? ' pass' : '') + '" style="--c:' + (COL[x.tipo] || '#4D5A68') + '"><span class="d"><small>' + GB[g.getUTCDay()] + '</small>' + g.getUTCDate() + ' ' + MESI[g.getUTCMonth()].slice(0, 3) + '</span><i></i><span class="x"><em>' + (TAG[x.tipo] || '') + '</em>' + esc(x.testo) + '</span></div>';
-    }).join('') + '</div>';
-    h += '<h3 class="t">Programmi del mese</h3><div class="bc-grid">';
+    else h += '<div class="bc-imps">' + d.impegni.map((x) => scheda(x, d)).join('') + '</div>';
+    h += '<h3 class="t">Programmi · ' + esc(P.cap(nomeMese(d.mese))) + '</h3><div class="bc-lib">';
     let n = 0;
+    const libro = (attr, c, titolo, sotto, pagina, soloNom) => { n++; return '<button class="bc-book' + (soloNom ? ' solo-nom' : '') + '" style="--c:' + c + '" ' + attr + '><span class="pg">' + pagina + '</span><b>' + esc(titolo) + (sotto ? '<small>' + esc(sotto) + '</small>' : '') + '</b></button>'; };
     if (d.programmi.inf || d.programmi.fs) {
-      n++;
-      const bt = [['inf', 'Infrasettimanale', !!d.programmi.inf], ['fs', 'Fine settimana', !!d.programmi.fs], ['uni', 'Combinato', d.programmi.inf && d.programmi.fs]].filter((x) => x[2]);
-      if (d.io.nominato) bt.push(['rep', 'Adunanze e reparti', true]);
-      h += '<div class="bc-c" style="--c:#A8432B"><h3>Programma delle adunanze</h3><div class="q">' + quando(d.programmi.inf || d.programmi.fs) + '</div>' +
-        '<div class="bc-prev" data-bc="prog" data-v="' + (bt.find((x) => x[0] === 'uni') ? 'uni' : bt[0][0]) + '"><iframe data-anteprima="' + (bt.find((x) => x[0] === 'uni') ? 'uni' : bt[0][0]) + '" title="Anteprima del programma" tabindex="-1"></iframe></div>' +
-        '<div class="bc-bt">' + bt.map((x, i) => '<button class="btn' + (i ? ' soft' : '') + '" data-bc="prog" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div></div>';
+      const pr = [['inf', 'Adunanza infrasettimanale', !!d.programmi.inf, '#A8432B'], ['fs', 'Adunanza del fine settimana', !!d.programmi.fs, '#521F46'],
+        ['uni', 'Programma combinato', !!(d.programmi.inf && d.programmi.fs), '#4D5A68']].filter((x) => x[2]);
+      if (d.io.nominato) pr.push(['rep', 'Adunanze e reparti', true, '#4D5A68', true]);
+      pr.forEach((x) => { h += libro('data-bc="prog" data-v="' + x[0] + '"', x[3], x[1], quando(d.programmi.inf || d.programmi.fs), '<iframe data-anteprima="' + x[0] + '" title="Anteprima: ' + esc(x[1]) + '" tabindex="-1"></iframe>', x[4]); });
     }
-    F.forEach((f) => {
-      n++;
-      h += '<div class="bc-c" style="--c:' + f.c + '"><h3>' + esc(f.titolo) + '</h3><div class="q">' + quando(f.q) + '</div>' +
-        '<div class="bc-prev" data-bc="apri" data-t="' + f.t + '" data-v="' + f.versioni[0][0] + '">' + anteprima(f.classe, f.foglio(f.versioni[0][0])) + '</div>' +
-        '<div class="bc-bt">' + f.versioni.map((x, i) => '<button class="btn' + (i ? ' soft' : '') + '" data-bc="apri" data-t="' + f.t + '" data-v="' + x[0] + '">' + esc(x[1]) + '</button>').join('') + '</div></div>';
-    });
-    if (d.espositori) {
-      n++;
-      h += '<div class="bc-c" style="--c:#2F7F8C"><h3>Programma espositori</h3><div class="q">' + quando(d.espositori.quando) + '</div><div class="bc-bt"><button class="btn" data-bc="oem">Apri il programma</button></div></div>';
-    }
+    F.forEach((f) => f.versioni.forEach((x) => {
+      h += libro('data-bc="apri" data-t="' + f.t + '" data-v="' + x[0] + '"', f.c, f.titolo, (f.versioni.length > 1 ? x[1] + ' · ' : '') + quando(f.q), anteprima(f.classe, f.foglio(x[0])));
+    }));
+    if (d.espositori) h += libro('data-bc="oem"', '#2F7F8C', 'Programma espositori', quando(d.espositori.quando), '<span class="vuota"><i></i><i></i><i></i><i style="width:60%"></i><i></i><i style="width:75%"></i></span>');
     h += '</div>';
     if (!n) h += '<p class="bc-vuoto">Per ' + esc(nomeMese(d.mese)) + ' non è ancora stato pubblicato niente.</p>';
     return h;
@@ -135,7 +140,15 @@
     if (k === 'oem') { S.vista = 'bachecaEspositori'; window.scrollTo(0, 0); return P.disegna(); }
     if (k === 'apri') { B.apri = { t: u.dataset.t, v: u.dataset.v }; window.scrollTo(0, 0); return P.disegna(); }
     if (k === 'chiudi') { B.apri = null; return P.disegna(); }
-    if (k === 'stampa') { adatta(); window.print(); }
+    if (k === 'pdf') {
+      // PDF diretto (niente finestra di stampa: niente link del portale a piè di pagina)
+      const el = P.app.querySelector('.bc-full .pgm-print');
+      if (!el) return;
+      const f = fogli(B.d).find((x) => x.t === B.apri.t), v = f && f.versioni.find((x) => x[0] === (B.apri.v || f.versioni[0][0]));
+      P.toast('Preparo il PDF…');
+      (window.PdfPortale ? Promise.resolve() : P.carica('pdf.js')).then(() => window.PdfPortale.salva([el], (f ? f.titolo : 'Programma') + ' ' + B.d.nomeMese + (v && f.versioni.length > 1 ? ' – ' + v[1] : '')))
+        .catch((e2) => P.toast('PDF non riuscito: ' + e2.message, true));
+    }
   });
   P.app.addEventListener('change', (e) => {
     if (S.vista !== 'bacheca') return;

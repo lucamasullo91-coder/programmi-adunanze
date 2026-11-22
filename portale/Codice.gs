@@ -1594,7 +1594,12 @@ function eventiSettimane_(sett, conFoto) {
     [['inf', 'INFRA'], ['fs', 'FINE']].forEach(([t, T]) => {
       const v = val[lun + '-' + t + ':evento'];
       if (!v) return;
-      try { parti.push(JSON.parse(v)); sostituite[lun + '-' + T] = true; } catch (e) {}
+      try {
+        const x = JSON.parse(v);
+        // l'adunanza speciale non sostituisce l'adunanza: c'è, con giorno e orario del Calendario (reparti compresi)
+        if (x && x.tipo === 'Adunanza speciale') return;
+        parti.push(x); sostituite[lun + '-' + T] = true;
+      } catch (e) {}
     });
     if (!parti.length && w.speciale) parti.push({ tipo: w.speciale.nome, luogo: w.speciale.luogo || '' });
     if (!parti.length) return;
@@ -2085,21 +2090,52 @@ function statoPubblicazione(k, tipo, mese) {
   return { pubblicato: true, quando: p.quando, chi: p.chi, cambiato: cambiato };
 }
 
-/** Le righe della guida con un nome da scrivere, con un'etichetta leggibile (per «I miei impegni»). */
+/** Le righe della guida con un nome da scrivere, con un'etichetta leggibile (per «I miei impegni»)
+ *  e i dettagli per la scheda della bacheca: numero, titolo, minuti, ambito, riferimento, colore della sezione, ruolo. */
 function righeGuida_(mese) {
-  const c = CacheService.getScriptCache(), key = 'righe:' + mese, t = c.get(key);
+  const c = CacheService.getScriptCache(), key = 'righe2:' + mese, t = c.get(key);
   if (t) return JSON.parse(t);
   let g;
   try { const r = UrlFetchApp.fetch(REPO + 'dati/' + mese + '.json', { muteHttpExceptions: true }); if (r.getResponseCode() !== 200) return []; g = JSON.parse(r.getContentText()); } catch (e) { return []; }
+  const pal = (g.stile || {}).colori || {};
+  const colore = (x) => { x = String(x || ''); return x.charAt(0) === '@' ? (pal[x.slice(1)] || '') : x; };
+  const RUOLI = { 'Stud.': 'Studente', 'Ass.': 'Assistente', 'Cond.': 'Conduttore', 'Lett.': 'Lettore' };
   const out = [];
-  (g.settimane || []).forEach((w) => (w.carte || []).forEach((ca) => (ca.sezioni || []).forEach((z) => (z.righe || []).forEach((r) => {
-    (r.campi || []).forEach((campo) => {
-      if (campo !== 'chi' && campo !== 'chi2') return;
-      const ruolo = campo === 'chi2' ? ({ 'Ass.': 'assistente', 'Lett.': 'lettore' }[r.ruolo2] || '') : ({ 'Stud.': 'studente', 'Cond.': 'conduttore' }[r.ruolo] || '');
-      const base = r.ruolo === 'Presidente' ? 'Presidente' : r.tipo === 'cantico' ? 'Preghiera' : String(r.titolo || r.ruolo || z.titolo);
-      out.push({ k: r.id + ':' + campo, carta: ca.id, tipo: ca.tipo, testo: base + (ruolo ? ' (' + ruolo + ')' : ''), sezione: String(z.titolo || '') });
-    });
-  }))));
+  (g.settimane || []).forEach((w) => (w.carte || []).forEach((ca) => {
+    let n = 0;
+    const tutte = [].concat.apply([], (ca.sezioni || []).map((z) => z.righe || []));
+    const preghiere = tutte.filter((r) => r.tipo === 'cantico' && r.ruolo === 'Preghiera');
+    (ca.sezioni || []).forEach((z) => (z.righe || []).forEach((r) => {
+      const num = r.numero ? ++n : null;
+      (r.campi || []).forEach((campo) => {
+        if (campo !== 'chi' && campo !== 'chi2') return;
+        const ruolo = campo === 'chi2' ? ({ 'Ass.': 'assistente', 'Lett.': 'lettore' }[r.ruolo2] || '') : ({ 'Stud.': 'studente', 'Cond.': 'conduttore' }[r.ruolo] || '');
+        const base = r.ruolo === 'Presidente' ? 'Presidente' : r.tipo === 'cantico' ? 'Preghiera' : String(r.titolo || r.ruolo || z.titolo);
+        const d = { k: r.id + ':' + campo, carta: ca.id, tipo: ca.tipo, testo: base + (ruolo ? ' (' + ruolo + ')' : ''), sezione: String(z.titolo || ''),
+          col: colore(z.colore) || colore(ca.tipo === 'INFRA' ? '@infra' : '@fine') };
+        if (r.tipo === 'parte') {
+          d.titolo = (num ? num + '. ' : '') + String(r.titolo || '') + (r.min ? ' (' + r.min + ' min)' : '');
+          d.dett = [r.ambito ? String(r.ambito).toUpperCase() : '', r.rif || ''].filter(Boolean).join(' · ');
+          d.ruolo = RUOLI[campo === 'chi2' ? r.ruolo2 : r.ruolo] || '';
+          const altro = campo === 'chi' ? 'chi2' : 'chi';
+          if ((r.campi || []).indexOf(altro) >= 0) { d.con = r.id + ':' + altro; d.conRuolo = RUOLI[altro === 'chi2' ? r.ruolo2 : r.ruolo] || ''; }
+        } else if (r.tipo === 'cantico') {
+          d.titolo = r === preghiere[0] && preghiere.length > 1 ? 'Preghiera iniziale' : 'Preghiera finale';
+          d.dett = r.titolo ? 'Cantico ' + r.titolo : '';
+          d.ruolo = 'Preghiera';
+        } else if (r.tipo === 'testa') {
+          d.titolo = 'Presidente dell\'adunanza'; d.ruolo = 'Presidente'; d.dett = r.rif ? String(r.titolo || '') + ' · ' + r.rif : '';
+        } else {
+          // voce (Oratore, Conduttore, Lettore): la sezione e il suo tema
+          const tema = (z.righe || []).find((x) => x.tipo === 'parte');
+          d.titolo = String(z.titolo || ''); d.ruolo = String(r.titolo || '');
+          d.dett = tema ? String(tema.titolo || '') : '';
+          if (tema && (tema.campi || []).indexOf('titolo') >= 0) d.tema = tema.id + ':titolo';
+        }
+        out.push(d);
+      });
+    }));
+  }));
   try { c.put(key, JSON.stringify(out), 21600); } catch (e) {}
   return out;
 }
@@ -2166,14 +2202,31 @@ function bachecaPer_(io, mese) {
   const idx = indiceNomi_();
   const mie = (nome) => { const ids = idx[chiaveNome_(nome)]; return ids && ids.length === 1 && ids[0] === io.id; };
   const val = Object.assign({}, pin ? pin.dati : {}, pfs ? pfs.dati : {});
-  righeGuida_(mese).forEach((r) => { if (val[r.k] && mie(val[r.k])) out.impegni.push({ data: dataDi(r.carta), tipo: r.tipo === 'INFRA' ? 'inf' : 'fs', testo: r.testo }); });
+  const adDi = (carta) => { const id = String(carta).replace(/-inf$/, '-INFRA').replace(/-fs$/, '-FINE'); return ads.find((x) => x.id === id) || null; };
+  const nomeTesto = (v) => String(v || '').replace(/^txt:/, '').toUpperCase();
+  righeGuida_(mese).forEach((r) => {
+    if (!val[r.k] || !mie(val[r.k])) return;
+    const a = adDi(r.carta);
+    out.impegni.push({ data: dataDi(r.carta), tipo: r.tipo === 'INFRA' ? 'inf' : 'fs', testo: r.testo,
+      col: r.col || '', ruolo: r.ruolo || '', titolo: r.titolo || r.testo, ora: a ? a.ora || '' : '',
+      dett: (r.tema && val[r.tema] ? String(val[r.tema]) : r.dett) || '',
+      con: r.con && val[r.con] ? (r.conRuolo ? r.conRuolo + ': ' : 'Con ') + nomeTesto(val[r.con]) : '' });
+  });
   // reparti
   const rp = repartiPubblicati_(mese);
   if (rp) {
     const nomeInc = { USC_COORD: 'Coordinatore uscieri', USC_ING: 'Usciere all\'ingresso', USC_AUD: 'Usciere in auditorium', USC_PAR: 'Usciere al parcheggio', AV_POD: 'Podio', AV_MIC: 'Microfonista', AV_MIX: 'Mixer', AV_PC: 'PC', LET: 'Letteratura', TER: 'Territori', PUL_COORD: 'Coordinatore pulizie', PUL_REF: 'Referente pulizie' };
+    // scheda della bacheca: reparto, il mio posto in sovrimpressione, gli altri dello stesso reparto in quella adunanza
+    const REP = [['Reparto audio video', '#521F46', ['AV_POD', 'AV_MIC', 'AV_MIX', 'AV_PC']], ['Uscieri', '#4D5A68', ['USC_COORD', 'USC_ING', 'USC_AUD', 'USC_PAR']], ['Letteratura e territori', '#A86F00', ['LET', 'TER']]];
+    const POSTO = { USC_COORD: 'Coordinatore', USC_ING: 'Ingresso', USC_AUD: 'Auditorium', USC_PAR: 'Parcheggio', AV_POD: 'Podio', AV_MIC: 'Microfono', AV_MIX: 'Mixer', AV_PC: 'PC', LET: 'Letteratura', TER: 'Territori' };
+    const nomeP = {}; (rp.persone || []).forEach((x) => { nomeP[x.id] = (x.nome + ' ' + x.cognome).trim().toUpperCase(); });
     rp.stato.turni.filter((t) => t.persona_id === io.id && !/^PUL_/.test(t.incarico_id)).forEach((t) => {
       const a = rp.adunanze.find((x) => x.id === t.adunanza_id);
-      out.impegni.push({ data: a ? a.data : t.settimana_id, tipo: 'rep', testo: nomeInc[t.incarico_id] + (a ? '' : ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7)) });
+      const R = REP.find((x) => x[2].indexOf(t.incarico_id) >= 0);
+      const altri = R ? rp.stato.turni.filter((y) => y !== t && y.adunanza_id === t.adunanza_id && y.settimana_id === t.settimana_id && R[2].indexOf(y.incarico_id) >= 0 && y.persona_id && y.persona_id !== io.id)
+        .map((y) => POSTO[y.incarico_id] + ' ' + (nomeP[y.persona_id] || '')) : [];
+      out.impegni.push({ data: a ? a.data : t.settimana_id, tipo: 'rep', testo: nomeInc[t.incarico_id] + (a ? '' : ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7)),
+        col: R ? R[1] : '#4D5A68', ruolo: POSTO[t.incarico_id] || '', titolo: R ? R[0] : nomeInc[t.incarico_id], ora: a ? a.ora || '' : '', dett: altri.join(' · '), sett: !a });
     });
     if (!rp.stato.pulizieProgramma) {
       rp.stato.turni.filter((t) => t.persona_id === io.id && /^PUL_/.test(t.incarico_id)).forEach((t) => out.impegni.push({ data: t.settimana_id, tipo: 'pul', testo: nomeInc[t.incarico_id] + ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7) }));
@@ -2214,11 +2267,36 @@ function bachecaPer_(io, mese) {
         out.espositori = { quando: iso_(pub.getRange(r, 3).getValue()) };
         const X = JSON.parse(String(pub.getRange(r, 2).getValue()));
         const posti = {}; (X.postazioni || []).forEach((x) => { posti[x.id] = x.nome; });
-        Object.keys(X.turni || {}).forEach((kk) => { if ((X.turni[kk] || []).some(mie)) { const [d, pid, ora] = kk.split('|'); out.impegni.push({ data: d, tipo: 'oem', testo: 'Espositori · ' + (posti[pid] || pid) + ' · ' + ora }); } });
+        Object.keys(X.turni || {}).forEach((kk) => {
+          const chi = X.turni[kk] || [];
+          if (!chi.some(mie)) return;
+          const [d, pid, ora] = kk.split('|');
+          const con = chi.filter((n) => n && !mie(n)).map((n) => String(n).replace(/^txt:/, '').toUpperCase());
+          out.impegni.push({ data: d, tipo: 'oem', testo: 'Espositori · ' + (posti[pid] || pid) + ' · ' + ora, dett: con.length ? 'con ' + con.join(', ') : '' });
+        });
       }
     } catch (e) { /* Foglio espositori non raggiungibile */ }
   }
   out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+  // schede della bacheca per pulizie, comitive ed espositori (parti e reparti hanno già i loro dettagli)
+  out.impegni.forEach((x) => {
+    if (x.titolo) return;
+    if (x.tipo === 'pul') {
+      const m = /^(Coordinatore|Referente) pulizie(?: \(solo ([^)]+)\))?(?: · (settimana del .+))?$/.exec(x.testo), g = /^Pulizia generale · (\w+)/.exec(x.testo);
+      x.col = '#9A7A1E';
+      if (g) { x.titolo = 'Pulizia generale'; x.ruolo = g[1].charAt(0).toUpperCase() + g[1].slice(1); }
+      else if (m) { x.titolo = 'Pulizie della Sala' + (m[2] ? ' · solo ' + m[2] : ''); x.ruolo = m[1]; x.sett = true; }
+      else x.titolo = x.testo;
+    } else if (x.tipo === 'com') {
+      const m = /^Comitiva( della domenica)? (\d{1,2}:\d{2}) · (.*)$/.exec(x.testo);
+      x.col = '#A86F00'; x.ruolo = 'Conduttore';
+      if (m) { x.titolo = m[1] ? 'Comitiva della domenica' : 'Comitiva di congregazione'; x.ora = m[2]; x.dett = m[3]; } else x.titolo = x.testo;
+    } else if (x.tipo === 'oem') {
+      const m = /^Espositori · (.*) · ([^·]+)$/.exec(x.testo);
+      x.col = '#2F7F8C'; x.ruolo = 'Espositori';
+      if (m) { x.titolo = 'Postazione ' + m[1]; x.ora = m[2].trim(); } else x.titolo = x.testo;
+    }
+  });
   out.mieiPub = { reparti: !!rp, comitive: !!cm };
   out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   return out;

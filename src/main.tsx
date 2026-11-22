@@ -16,7 +16,7 @@ import {
   dimensioniPagina,
   useScala,
 } from "./Rendering";
-import { normalizza, GIORNI_IT, MESI_IT, cap, type Carta, type Evento, type Foglio, type Riga } from "./tipi";
+import { normalizza, GIORNI_IT, MESI_IT, TIPO_SPECIALE, cap, type Carta, type Evento, type Foglio, type Riga, type Ritocchi, type RigaSpeciale } from "./tipi";
 import { jpegDaDataUrl, pdfDaJpeg, scarica } from "./pdfzip";
 import { CSS_IMMAGINE } from "./wa/immagine";
 import { CSS_PANNELLO, PannelloWhatsApp } from "./wa/Pannello";
@@ -163,6 +163,42 @@ function titoloData(iso: string) {
   const x = new Date(Date.UTC(y, m - 1, d));
   return `${cap(GIORNI_IT[x.getUTCDay()]!)} ${x.getUTCDate()} ${MESI_IT[x.getUTCMonth()]}`;
 }
+/** Special meeting: the card keeps its day and time (from the Calendar) and gets the program written for it. */
+function programmaSpeciale(c: Carta, e: Evento) {
+  c.speciale = true;
+  c.kicker = undefined;
+  c.flag = undefined;
+  const righe: Riga[] = [];
+  if (e.luogo) righe.push({ id: `${c.id}-sp-luogo`, tipo: "voce", titolo: "Luogo", chi: e.luogo });
+  for (const x of e.righe ?? [])
+    righe.push({
+      id: x.id,
+      tipo: "parte",
+      titolo: x.titolo,
+      min: x.min ?? null,
+      mostraMin: !!x.min,
+      ...(x.nome ? { chi: "", campi: ["chi"] as ("chi" | "chi2" | "titolo")[] } : {}),
+    });
+  if (e.nota) righe.push({ id: `${c.id}-sp-nota`, tipo: "testo", titolo: e.nota });
+  c.sezioni = [{ id: `${c.id}-sp`, titolo: e.tema || TIPO_SPECIALE, colore: "@generale", icona: "discorso", righe }];
+}
+/** Titles and minutes changed for one meeting. A section length that matched the old minutes of a changed row follows it. */
+function applicaRitocchi(c: Carta, x: Ritocchi) {
+  for (const z of c.sezioni) {
+    for (const r of z.righe) {
+      const v = x.r?.[r.id];
+      if (!v) continue;
+      if (v.titolo != null && !r.campi?.includes("titolo")) r.titolo = v.titolo;
+      if (v.min !== undefined) {
+        if (z.durata && r.min != null && z.durata === `(${r.min} min)` && v.min != null) z.durata = `(${v.min} min)`;
+        r.min = v.min;
+      }
+    }
+    const s = x.s?.[z.id];
+    if (s?.titolo != null) z.titolo = s.titolo;
+    if (s?.durata != null) z.durata = s.durata;
+  }
+}
 function applica(f: Foglio, valori: Record<string, string>, foto: Record<string, string>, imp: Record<string, string>, cal?: Stato["cal"]): Foglio {
   const g = structuredClone(f);
   if (g.id >= "2027-01") g.stile = { ...g.stile, strisciaGrigia: true };
@@ -193,9 +229,20 @@ function applica(f: Foglio, valori: Record<string, string>, foto: Record<string,
       if (ev)
         try {
           const e = JSON.parse(ev) as Evento & { fotoId?: string };
-          c.evento = { ...e, ...(e.fotoId && foto[e.fotoId] ? { foto: foto[e.fotoId] } : {}) };
-          c.kicker = e.tipo;
-          c.flag = undefined;
+          if (e.tipo === TIPO_SPECIALE) programmaSpeciale(c, e);
+          else {
+            c.evento = { ...e, ...(e.fotoId && foto[e.fotoId] ? { foto: foto[e.fotoId] } : {}) };
+            c.kicker = e.tipo;
+            c.flag = undefined;
+          }
+        } catch {
+          /* ignore a broken value */
+        }
+      // titles and minutes changed for this meeting only
+      const rit = valori[`${c.id}:ritocchi`];
+      if (rit && !c.evento)
+        try {
+          applicaRitocchi(c, JSON.parse(rit) as Ritocchi);
         } catch {
           /* ignore a broken value */
         }
@@ -208,9 +255,12 @@ function applica(f: Foglio, valori: Record<string, string>, foto: Record<string,
             if (prima) r.prima = { ...r.prima, [k]: prima };
           }
     }
-  // Header ("Mercoledì 19:30"): day and time of the first meeting of each kind in the month
+  // Header ("Mercoledì 19:30"): the usual day and time of the month, so the first regular meeting of each kind.
+  // A meeting moved for one week only (or replaced by an event, a special meeting) is an exception and never sets the header.
+  const carte = g.settimane.flatMap((s) => s.carte);
+  const regolare = (c: Carta) => !c.kicker && !c.evento && !cal?.[c.id]?.spostata && !valori[`${c.id}:ora`] && !valori[`${c.id}:data`];
   const prima = (t: "INFRA" | "FINE") =>
-    g.settimane.flatMap((s) => s.carte).find((c) => c.tipo === t && !c.kicker && !c.evento);
+    carte.find((c) => c.tipo === t && regolare(c)) ?? carte.find((c) => c.tipo === t && !c.kicker && !c.evento && !cal?.[c.id]?.spostata);
   for (const v of g.viste ?? [])
     for (const q of v.quando ?? []) {
       const c = prima(q.colore === "fine" ? "FINE" : "INFRA");
@@ -231,12 +281,22 @@ const TIPI_EVENTO = [
   "Assemblea di circoscrizione",
   "Congresso regionale",
   "Commemorazione",
+  TIPO_SPECIALE,
   "Nessuna adunanza",
 ];
 
 type Modifica =
   | { k: "nome"; chiave: string; etichetta: string; parte: string; valore: string }
-  | { k: "carta"; carta: Carta; data: string; ora: string; evento: (Evento & { fotoId?: string }) | null };
+  | {
+      k: "carta";
+      carta: Carta;
+      data: string;
+      ora: string;
+      evento: (Evento & { fotoId?: string }) | null;
+      /** The card as the guide has it (titles and minutes to compare and restore). */
+      base?: Carta | undefined;
+      ritocchi: Ritocchi;
+    };
 
 function App() {
   const [stato, setStato] = useState<Stato | null>(null);
@@ -255,6 +315,7 @@ function App() {
   const [mod, setMod] = useState<Modifica | null>(null);
   const [lavoro, setLavoro] = useState("");
   const [stampa, setStampa] = useState(false);
+  const [scelta, setScelta] = useState<{ img: string[]; sel: boolean[] } | null>(null);
   const [wa, setWa] = useState(false);
   const pagine = useRef<HTMLDivElement>(null);
 
@@ -350,7 +411,17 @@ function App() {
     if (!carta) return;
     if (k === "data") {
       const ev = stato.valori[`${cartaId}:evento`];
-      setMod({ k: "carta", carta, data: carta.titolo, ora: carta.ora ?? fogli[0]?.inizio ?? "", evento: ev ? JSON.parse(ev) : null });
+      const rit = stato.valori[`${cartaId}:ritocchi`];
+      const base0 = Object.values(base)
+        .flatMap((f) => f.settimane.flatMap((s) => s.carte))
+        .find((c) => c.id === cartaId);
+      let ritocchi: Ritocchi = {};
+      try {
+        ritocchi = rit ? (JSON.parse(rit) as Ritocchi) : {};
+      } catch {
+        /* broken value: start again */
+      }
+      setMod({ k: "carta", carta, data: carta.titolo, ora: carta.ora ?? fogli[0]?.inizio ?? "", evento: ev ? JSON.parse(ev) : null, base: base0, ritocchi });
       return;
     }
     const r = carta.sezioni.flatMap((z) => z.righe).find((x) => x.id === id) as Riga;
@@ -374,10 +445,10 @@ function App() {
     return () => clearTimeout(t);
   }, [stampa]);
 
-  async function pdf() {
+  /** Every A4 page of the view as a JPEG (the same pages you see, no print dialog: no link at the foot of the page). */
+  async function immaginiPagine(): Promise<string[]> {
     const box = pagine.current;
-    if (!box || !fogli[0]) return;
-    setLavoro("Preparo il PDF…");
+    if (!box || !fogli[0]) return [];
     box.classList.add("esporta");
     try {
       const { toJpeg } = await import("./vendor/html-to-image/index.js");
@@ -395,25 +466,49 @@ function App() {
         for (let k = 0; k < prove; k++) await toJpeg(el, opz);
         img.push(await toJpeg(el, opz));
       }
-      const [w, h] = dimensioniPagina(fogli[0].stile);
-      const nome = `Programma ${VISTE.find((v) => v[0] === vista)![1].toLowerCase()} ${bimestri.find((b) => b.id === bim)?.nome ?? ""}`.trim();
-      const dati = pdfDaJpeg(img.map(jpegDaDataUrl), nome, { w: w * 0.75, h: h * 0.75 });
-      const blob = new Blob([dati as BlobPart], { type: "application/pdf" });
-      const file = new File([blob], `${nome}.pdf`, { type: "application/pdf" });
-      const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
-      if (/iPhone|iPad|Android/i.test(navigator.userAgent) && nav.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: nome });
-          return;
-        } catch {
-          /* fall back to the download */
-        }
-      }
-      scarica(`${nome}.pdf`, dati, "application/pdf");
-    } catch (e) {
-      alert("PDF non riuscito: " + (e as Error).message + ". Usa «Stampa o salva PDF».");
+      return img;
     } finally {
       box.classList.remove("esporta");
+    }
+  }
+  /** The PDF of the given pages: shared on the phone (WhatsApp, Mail…), downloaded elsewhere. */
+  async function consegnaPdf(img: string[], pagine?: number[]) {
+    const [w, h] = dimensioniPagina(fogli[0]!.stile);
+    const base = `Programma ${(VISTE.find((v) => v[0] === vista)?.[1] ?? "Adunanze e reparti").toLowerCase()} ${bimestri.find((b) => b.id === bim)?.nome ?? ""}`.trim();
+    const nome = pagine?.length ? `${base} (pag. ${pagine.map((i) => i + 1).join(", ")})` : base;
+    const dati = pdfDaJpeg(img.map(jpegDaDataUrl), nome, { w: w * 0.75, h: h * 0.75 });
+    const blob = new Blob([dati as BlobPart], { type: "application/pdf" });
+    const file = new File([blob], `${nome}.pdf`, { type: "application/pdf" });
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    if (/iPhone|iPad|Android/i.test(navigator.userAgent) && nav.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: nome });
+        return;
+      } catch {
+        /* fall back to the download */
+      }
+    }
+    scarica(`${nome}.pdf`, dati, "application/pdf");
+  }
+  async function pdf() {
+    setLavoro("Preparo il PDF…");
+    try {
+      const img = await immaginiPagine();
+      if (img.length) await consegnaPdf(img);
+    } catch (e) {
+      alert("PDF non riuscito: " + (e as Error).message + ". Riprova tra qualche secondo.");
+    } finally {
+      setLavoro("");
+    }
+  }
+  async function scegliPagine() {
+    setLavoro("Preparo le pagine…");
+    try {
+      const img = await immaginiPagine();
+      if (img.length) setScelta({ img, sel: img.map(() => true) });
+    } catch (e) {
+      alert("Pagine non pronte: " + (e as Error).message + ". Riprova tra qualche secondo.");
+    } finally {
       setLavoro("");
     }
   }
@@ -519,8 +614,8 @@ function App() {
           <button className="pa-btn" onClick={() => void pdf()} disabled={!!lavoro || wa}>
             {lavoro || "Scarica PDF"}
           </button>
-          <button className="pa-btn sec" onClick={() => setStampa(true)} disabled={wa}>
-            Stampa o salva PDF
+          <button className="pa-btn sec" onClick={() => void scegliPagine()} disabled={!!lavoro || wa}>
+            Scegli pagine
           </button>
         </div>
         {stato.ruolo !== "legge" && <p className="pa-aiuto">
@@ -552,11 +647,61 @@ function App() {
           }}
         />
       )}
+      {scelta && (
+        <div className="pa-fin" onClick={(e) => e.target === e.currentTarget && setScelta(null)}>
+          <div className="pa-box">
+            <small>Scegli le pagine da mettere nel PDF</small>
+            <div className="pa-azioni">
+              <button type="button" className="pa-link" onClick={() => setScelta({ ...scelta, sel: scelta.img.map(() => true) })}>
+                Tutte
+              </button>
+              <button type="button" className="pa-link" onClick={() => setScelta({ ...scelta, sel: scelta.img.map(() => false) })}>
+                Nessuna
+              </button>
+            </div>
+            <div className="pa-pagsel">
+              {scelta.img.map((u, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={scelta.sel[i] ? "si" : ""}
+                  aria-pressed={scelta.sel[i]}
+                  onClick={() => setScelta({ ...scelta, sel: scelta.sel.map((x, j) => (j === i ? !x : x)) })}
+                >
+                  <img src={u} alt={`Pagina ${i + 1}`} />
+                  {scelta.sel[i] ? "✓ " : ""}Pagina {i + 1}
+                </button>
+              ))}
+            </div>
+            <div className="pa-azioni">
+              <span />
+              <button type="button" className="pa-btn sec" onClick={() => setScelta(null)}>
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="pa-btn"
+                disabled={!scelta.sel.some(Boolean)}
+                onClick={() => {
+                  const pag = scelta.sel.flatMap((x, i) => (x ? [i] : []));
+                  const img = pag.map((i) => scelta.img[i]!);
+                  setScelta(null);
+                  void consegnaPdf(img, pag.length < scelta.img.length ? pag : undefined).catch((e: Error) => alert("PDF non riuscito: " + e.message));
+                }}
+              >
+                Scarica {scelta.sel.filter(Boolean).length === 1 ? "la pagina" : `${scelta.sel.filter(Boolean).length} pagine`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {mod?.k === "carta" && (
         <FinestraCarta
           m={mod}
           chiudi={() => setMod(null)}
-          salva={async (data, ora, seguenti, ev, file) => {
+          salva={async (data, ora, seguenti, ev, file, ritocchi) => {
+            const speciale = ev?.tipo === TIPO_SPECIALE;
+            if (speciale) seguenti = false; // a special meeting is one day only
             let fotoId = ev?.fotoId;
             if (file && ev) {
               setLavoro("Carico la foto…");
@@ -577,7 +722,7 @@ function App() {
             const oraBase = base0?.ora ?? Object.values(base)[0]?.inizio ?? "";
             const g = giornoDiTesto(data);
             const righe: [string, string][] = [];
-            if (stato?.cal && !ev && g >= 0) {
+            if (stato?.cal && (!ev || speciale) && g >= 0) {
               // portal: the move goes to the Calendar (everyone follows: surveys, rotations, outings, images)
               const [y, mm, dd] = lunediDi(id).split("-").map(Number) as [number, number, number];
               const iso = new Date(Date.UTC(y, mm - 1, dd + ((g + 6) % 7))).toISOString().slice(0, 10);
@@ -603,6 +748,7 @@ function App() {
             void salva([
               ...righe,
               [`${mod.carta.id}:evento`, ev ? JSON.stringify({ ...ev, foto: undefined, ...(fotoId ? { fotoId } : {}) }) : ""],
+              [`${mod.carta.id}:ritocchi`, ritocchi && (Object.keys(ritocchi.s ?? {}).length || Object.keys(ritocchi.r ?? {}).length) ? JSON.stringify(ritocchi) : ""],
             ]);
             setMod(null);
           }}
@@ -706,26 +852,48 @@ function FinestraCarta({
 }: {
   m: Extract<Modifica, { k: "carta" }>;
   chiudi: () => void;
-  salva: (data: string, ora: string, seguenti: boolean, ev: (Evento & { fotoId?: string }) | null, file: File | null) => void;
+  salva: (
+    data: string,
+    ora: string,
+    seguenti: boolean,
+    ev: (Evento & { fotoId?: string }) | null,
+    file: File | null,
+    ritocchi: Ritocchi | null,
+  ) => void;
 }) {
   const [data, setData] = useState(m.data);
   const [ora, setOra] = useState(m.ora);
   const [seguenti, setSeguenti] = useState(false);
   const [ev, setEv] = useState<(Evento & { fotoId?: string }) | null>(m.evento);
   const [file, setFile] = useState<File | null>(null);
+  const [rit, setRit] = useState<Ritocchi>(m.ritocchi);
+  const [apriRit, setApriRit] = useState(false);
   const p = (x: Partial<Evento>) => setEv((e) => ({ tipo: TIPI_EVENTO[0]!, ...(e ?? {}), ...x }));
   const fine = m.carta.tipo === "FINE";
+  const speciale = ev?.tipo === TIPO_SPECIALE;
+  // the time can be changed on a normal meeting and on a special one (not on an assembly week)
+  const conOra = speciale || !ev || !m.carta.kicker || m.carta.kicker === m.evento?.tipo;
+  const righe = ev?.righe ?? [];
+  const setRighe = (r: RigaSpeciale[]) => p({ righe: r });
+  const nuovaRiga = (): RigaSpeciale => ({
+    id: `${m.carta.id}-r${900000 + Math.floor(Math.random() * 99999)}`,
+    titolo: "",
+    min: null,
+    nome: true,
+  });
+  const quanti = Object.keys(rit.s ?? {}).length + Object.keys(rit.r ?? {}).length;
   return (
     <div className="pa-fin" onClick={(e) => e.target === e.currentTarget && chiudi()}>
       <form
         className="pa-box"
         onSubmit={(e) => {
           e.preventDefault();
-          if (seguenti && giornoDiTesto(data) < 0) {
+          if (seguenti && !speciale && giornoDiTesto(data) < 0) {
             alert("Scrivi il giorno all’inizio, per esempio «Mercoledì 6 gennaio».");
             return;
           }
-          salva(data, ora, seguenti, ev, file);
+          const ev2 = ev && speciale ? { ...ev, righe: righe.filter((r) => r.titolo.trim()) } : ev;
+          salva(data, ora, seguenti, ev2, file, ev ? null : rit);
         }}
       >
         <small>{fine ? "Adunanza del fine settimana" : "Adunanza infrasettimanale"}</small>
@@ -733,23 +901,31 @@ function FinestraCarta({
           Giorno
           <input value={data} onChange={(e) => setData(e.target.value)} placeholder="Martedì 3 novembre" />
         </label>
-        {!m.carta.kicker && (
+        {conOra && (
           <>
             <label>
               Orario d’inizio
               <input type="time" value={ora} onChange={(e) => setOra(e.target.value)} />
             </label>
-            <label className="pa-check">
-              <input type="checkbox" checked={seguenti} onChange={(e) => setSeguenti(e.target.checked)} />
-              Usa questo giorno della settimana e questo orario anche per tutte le settimane seguenti
-            </label>
+            {speciale ? (
+              <p className="pa-nota">Giorno e orario valgono solo per questa adunanza.</p>
+            ) : (
+              <label className="pa-check">
+                <input type="checkbox" checked={seguenti} onChange={(e) => setSeguenti(e.target.checked)} />
+                Usa questo giorno della settimana e questo orario anche per tutte le settimane seguenti
+              </label>
+            )}
           </>
         )}
         <label>
           Questa settimana
           <select
             value={ev?.tipo ?? ""}
-            onChange={(e) => (e.target.value ? p({ tipo: e.target.value }) : setEv(null))}
+            onChange={(e) =>
+              e.target.value
+                ? p({ tipo: e.target.value, ...(e.target.value === TIPO_SPECIALE && !ev?.righe?.length ? { righe: [nuovaRiga()] } : {}) })
+                : setEv(null)
+            }
           >
             <option value="">C’è l’adunanza (programma normale)</option>
             {TIPI_EVENTO.map((t) => (
@@ -759,7 +935,70 @@ function FinestraCarta({
             ))}
           </select>
         </label>
-        {ev && (
+        {ev && speciale && (
+          <>
+            <label>
+              Tema
+              <input value={ev.tema ?? ""} onChange={(e) => p({ tema: e.target.value })} placeholder="Visita alla filiale italiana" />
+            </label>
+            <label>
+              Luogo (se non è in Sala)
+              <input value={ev.luogo ?? ""} onChange={(e) => p({ luogo: e.target.value })} />
+            </label>
+            <div className="pa-righe">
+              <b>Programma</b>
+              {righe.map((r, i) => (
+                <div key={r.id} className="pa-rsp">
+                  <input
+                    value={r.titolo}
+                    placeholder="Titolo (es. Cantico 1 e preghiera, Discorso…)"
+                    onChange={(e) => setRighe(righe.map((x) => (x.id === r.id ? { ...x, titolo: e.target.value } : x)))}
+                  />
+                  <input
+                    className="min"
+                    inputMode="numeric"
+                    placeholder="min"
+                    value={r.min ?? ""}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      setRighe(righe.map((x) => (x.id === r.id ? { ...x, min: Number.isFinite(n) ? n : null } : x)));
+                    }}
+                  />
+                  <div className="pa-rsp-sotto">
+                  <label className="pa-check">
+                    <input
+                      type="checkbox"
+                      checked={!!r.nome}
+                      onChange={(e) => setRighe(righe.map((x) => (x.id === r.id ? { ...x, nome: e.target.checked } : x)))}
+                    />
+                    con nome
+                  </label>
+                  <span className="pa-rsp-az">
+                    <button type="button" className="pa-link" disabled={i === 0} onClick={() => { const y = [...righe]; [y[i - 1], y[i]] = [y[i]!, y[i - 1]!]; setRighe(y); }}>
+                      ↑
+                    </button>
+                    <button type="button" className="pa-link" disabled={i === righe.length - 1} onClick={() => { const y = [...righe]; [y[i + 1], y[i]] = [y[i]!, y[i + 1]!]; setRighe(y); }}>
+                      ↓
+                    </button>
+                    <button type="button" className="pa-link" onClick={() => setRighe(righe.filter((x) => x.id !== r.id))}>
+                      Togli
+                    </button>
+                  </span>
+                  </div>
+                </div>
+              ))}
+              <button type="button" className="pa-btn sec" onClick={() => setRighe([...righe, nuovaRiga()])}>
+                + Aggiungi una riga
+              </button>
+              <small>I nomi si scrivono poi sul programma, toccando lo spazio tratteggiato, come per le altre parti.</small>
+            </div>
+            <label>
+              Nota
+              <input value={ev.nota ?? ""} onChange={(e) => p({ nota: e.target.value })} />
+            </label>
+          </>
+        )}
+        {ev && !speciale && (
           <>
             <label>
               Tema
@@ -792,6 +1031,14 @@ function FinestraCarta({
             )}
           </>
         )}
+        {!ev && m.base && (
+          <div className="pa-righe">
+            <button type="button" className="pa-link" onClick={() => setApriRit((x) => !x)}>
+              {apriRit ? "▾" : "▸"} Titoli e durate di questa adunanza{quanti ? ` (${quanti} ${quanti === 1 ? "modifica" : "modifiche"})` : ""}
+            </button>
+            {apriRit && <Ritocca base={m.base} rit={rit} setRit={setRit} />}
+          </div>
+        )}
         <div className="pa-azioni">
           <span />
           <button type="button" className="pa-btn sec" onClick={chiudi}>
@@ -800,6 +1047,89 @@ function FinestraCarta({
           <button className="pa-btn">Salva</button>
         </div>
       </form>
+    </div>
+  );
+}
+
+/** Titles and minutes of one meeting: each field starts from the guide; a value equal to the guide is not kept. */
+function Ritocca({ base, rit, setRit }: { base: Carta; rit: Ritocchi; setRit: (r: Ritocchi) => void }) {
+  const setS = (id: string, k: "titolo" | "durata", v: string, b: string | undefined) => {
+    const s = { ...(rit.s ?? {}) };
+    const x = { ...(s[id] ?? {}) };
+    if (v === (b ?? "")) delete x[k];
+    else x[k] = v;
+    if (Object.keys(x).length) s[id] = x;
+    else delete s[id];
+    setRit({ ...rit, s });
+  };
+  const setR = (id: string, k: "titolo" | "min", v: string | number | null, b: string | number | null | undefined) => {
+    const r = { ...(rit.r ?? {}) };
+    const x = { ...(r[id] ?? {}) } as { titolo?: string; min?: number | null };
+    if (v === (b ?? (k === "min" ? null : ""))) delete x[k];
+    else if (k === "min") x.min = v as number | null;
+    else x.titolo = v as string;
+    if (Object.keys(x).length) r[id] = x;
+    else delete r[id];
+    setRit({ ...rit, r });
+  };
+  const titoloRiga = (r: Riga) => r.tipo === "parte" || r.tipo === "testo";
+  // what the sheet shows now (a section length follows the minutes of its part)
+  const eff = structuredClone(base);
+  applicaRitocchi(eff, rit);
+  const durataEff = (id: string) => eff.sezioni.find((x) => x.id === id)?.durata ?? "";
+  return (
+    <div className="pa-rit">
+      <small>Valgono solo per questa adunanza. Gli orari delle parti dopo si ricalcolano da soli.</small>
+      {base.sezioni.map((z) => (
+        <fieldset key={z.id}>
+          {!z.senzaTitolo && (
+            <div className="pa-rsp">
+              <input
+                value={rit.s?.[z.id]?.titolo ?? z.titolo}
+                onChange={(e) => setS(z.id, "titolo", e.target.value, z.titolo)}
+                aria-label="Titolo della sezione"
+              />
+              <input
+                className="dur"
+                value={durataEff(z.id)}
+                placeholder="(… min)"
+                onChange={(e) => setS(z.id, "durata", e.target.value, z.durata)}
+                aria-label="Durata della sezione"
+              />
+            </div>
+          )}
+          {z.righe
+            .filter((r) => (titoloRiga(r) && !r.campi?.includes("titolo")) || r.min != null)
+            .map((r) => {
+              const tt = rit.r?.[r.id]?.titolo ?? r.titolo;
+              const mm = rit.r?.[r.id] && "min" in rit.r[r.id]! ? rit.r[r.id]!.min : r.min;
+              return (
+                <div key={r.id} className="pa-rsp">
+                  {titoloRiga(r) && !r.campi?.includes("titolo") ? (
+                    <input value={tt} onChange={(e) => setR(r.id, "titolo", e.target.value, r.titolo)} aria-label="Titolo" />
+                  ) : (
+                    <span className="pa-rsp-t">{r.tipo === "cantico" ? `Cantico ${r.titolo || ""}`.trim() : r.titolo || "Tema del discorso"}</span>
+                  )}
+                  {r.min != null && (
+                    <input
+                      className="min"
+                      inputMode="numeric"
+                      value={mm ?? ""}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        setR(r.id, "min", Number.isFinite(n) ? n : null, r.min);
+                      }}
+                      aria-label="Minuti"
+                    />
+                  )}
+                </div>
+              );
+            })}
+        </fieldset>
+      ))}
+      <button type="button" className="pa-link" onClick={() => setRit({})}>
+        Ripristina come la guida
+      </button>
     </div>
   );
 }
