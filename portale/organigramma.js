@@ -9,7 +9,7 @@
   const CC = { nome: 2, n: 3, cognome: 4, sesso: 6, gruppo: 8, nomina: 9, ruolo: 11, sigla: 12, stato: 14 };
   const COMITATO = ['Coordinatore del corpo degli anziani', 'Segretario', 'Sorvegliante del servizio'];
   const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
-  const COL_REP = { 'Audio/Video': '#521F46', 'Uscieri': '#4D5A68', 'Letteratura e territori': '#A86F00', 'Pulizie': '#9A7A1E' };
+  const COL_REP = { 'Audio/Video': '#521F46', 'Uscieri': '#4D5A68', 'Letteratura e territori': '#A86F00', 'Pulizie': '#2E75B5' };
   const O = { tab: 'reparti', st: null, carico: false, perm: null, come: null, lavoro: false };
 
   const css = document.createElement('style');
@@ -48,32 +48,56 @@
   .og-come p{margin:0;font-size:13px;color:#235C90}
   .og-sticky{position:sticky;bottom:0;background:var(--paper,#F6F5F2);padding:8px 0;display:flex;gap:8px;border-top:1px solid var(--rule);margin-top:10px}
   /* fogli A4 */
-  .fa4 .og-sheet{gap:0}
-  .fa4 .og-sheet .pgm-head h1{color:var(--slate)}
-  .fa4 .og-gr{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 12px;margin-top:14px;align-content:start}
-  .fa4 .og-box{border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:#fff;break-inside:avoid}
-  .fa4 .og-band{background:var(--bc,#4D5A68);color:#fff;padding:5px 10px 6px}
+  .fa4 .og-sheet .og-ico{width:20px;height:20px;flex:none}
+  .fa4 .og-gs .pgm-head h1{color:#A86F00}
+  .fa4 .og-gs .pgm-head{border-color:#A86F00}
+  .fa4 .og-num{display:grid;grid-template-columns:repeat(3,auto);gap:6px;align-self:end}
+  .fa4 .og-num>div{background:#F7EFDF;border-left:3px solid #A86F00;border-radius:3px;padding:4px 10px 5px;min-width:96px}
+  .fa4 .og-num b{display:block;font-size:17px;font-weight:800;color:#1F2630;line-height:1.1}
+  .fa4 .og-num span{display:block;font-size:7.6px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#A86F00;white-space:nowrap}
+  .fa4 .og-gr{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;align-content:start}
+  .fa4 .og-box{border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:#fff}
+  .fa4 .og-band{background:var(--bc,#A86F00);color:#fff;padding:5px 10px 6px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
   .fa4 .og-band small{display:block;font-size:7.8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;opacity:.9}
   .fa4 .og-band b{display:block;font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1}
-  .fa4 .og-li{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 10px;height:var(--rh,17px);font-size:calc(var(--rh,17px) * .58);border-bottom:1px solid #ECE9E3;white-space:nowrap}
+  .fa4 .og-band em{font-style:normal;font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.95;white-space:nowrap;padding-bottom:1px}
+  .fa4 .og-li{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 9px;height:var(--rh,17px);font-size:calc(var(--rh,17px) * .58);border-bottom:1px solid #EFE7D6;white-space:nowrap}
   .fa4 .og-li:last-child{border-bottom:0}
   .fa4 .og-li span{overflow:hidden;text-overflow:ellipsis}
-  .fa4 .og-li.capo{font-weight:800;background:#F4F3EF}
-  .fa4 .og-li.ass{font-weight:700}
-  .fa4 .og-li i{font-style:normal;font-size:.82em;font-weight:700;letter-spacing:.04em;color:var(--slate);border:1px solid #CFCAC0;border-radius:3px;padding:0 4px;line-height:1.35;flex:none}
-  .fa4 .og-sez{margin:22px 0 9px;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);border-bottom:1.5px solid var(--slate);padding-bottom:4px}
+  .fa4 .og-li u{text-decoration:none;display:inline-block;min-width:1.6em;color:#A86F00;font-weight:700;font-size:.85em}
+  .fa4 .og-li.capo{font-weight:800;background:#F7EFDF}
+  .fa4 .og-li.ass{font-weight:700;background:#FBF6EC}
+  .fa4 .og-li i{font-style:normal;font-size:.82em;font-weight:700;letter-spacing:.04em;color:#A86F00;border:1px solid #E6D3AE;border-radius:3px;padding:0 4px;line-height:1.35;flex:none}
+  .fa4 .og-agg{margin:auto 0 4px;text-align:right;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#9aa3ad}
+  .fa4 .og-agg+.pgm-foot{margin-top:0}
+  .fa4 .og-sez{margin:16px 0 8px;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);border-bottom:1.5px solid var(--slate);padding-bottom:4px}
+  .fa4 .og-ruoli{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .fa4 .og-ruolo{border:1px solid var(--rule);border-top:0;border-radius:4px;overflow:hidden;background:var(--rb)}
+  .fa4 .og-rt{display:flex;align-items:center;gap:8px;background:var(--rc);color:#fff;padding:7px 10px;min-height:40px}
+  .fa4 .og-rt b{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.2}
+  .fa4 .og-ico.img{width:24px;height:24px;border-radius:4px;border:1.5px solid rgba(255,255,255,.85)}
+  .fa4 .og-n{font-size:12px;font-weight:800;text-transform:uppercase;padding:2px 0;line-height:1.25}
+  .fa4 .og-inc{padding:7px 10px 6px}
+  .fa4 .og-inc .og-n{font-size:13.5px;color:var(--rc)}
+  .fa4 .og-ass{padding:5px 10px 8px;border-top:1px dashed rgba(0,0,0,.14)}
+  .fa4 .og-ass small,.fa4 .og-capo small,.fa4 .og-cs3 small,.fa4 .og-el small{display:block;font-size:7.6px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin-bottom:2px}
+  .fa4 .og-ass .og-n{font-size:11px;font-weight:600}
   .fa4 .og-cs3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .fa4 .og-cs3>div{background:#F7ECE8;border-left:3px solid #A8432B;border-radius:3px;padding:7px 10px}
-  .fa4 .og-cs3 small{display:block;font-size:7.8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#A8432B}
-  .fa4 .og-cs3 b{display:block;font-size:15px;font-weight:800;text-transform:uppercase;margin-top:2px}
-  .fa4 .og-an{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
-  .fa4 .og-an>div{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 0;border-bottom:1px solid #ECE9E3;font-size:12px}
-  .fa4 .og-an span{color:var(--slate)} .fa4 .og-an b{text-align:right;font-weight:800;text-transform:uppercase}
-  .fa4 .og-an em{grid-column:1/-1;font-style:normal;font-size:10.5px;color:var(--slate)}
-  .fa4 .og-rp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .fa4 .og-rp .og-li{height:auto;min-height:26px;padding:4px 10px;font-size:12px;white-space:normal}
-  .fa4 .og-rp .og-li span:first-child{color:var(--slate);text-transform:uppercase;font-size:9px;flex:none;font-weight:700;letter-spacing:.1em}
-  .fa4 .og-rp .og-li span:last-child{font-weight:800;text-transform:uppercase;text-align:right}
+  .fa4 .og-cs3>div{background:var(--rb);border-left:4px solid var(--rc);border-radius:3px;padding:7px 10px}
+  .fa4 .og-cs3 small{color:var(--rc)}
+  .fa4 .og-rp{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:start}
+  .fa4 .og-rep .og-capo{padding:6px 10px;background:#F4F3EF;border-bottom:1px solid #fff}
+  .fa4 .og-rep .og-capo .og-n{color:var(--bc)}
+  .fa4 .og-rp{align-items:stretch}
+  .fa4 .og-rep{display:flex;flex-direction:column}
+  .fa4 .og-rep .og-band{height:40px;align-items:center}
+  .fa4 .og-rep .og-band b{font-size:12px;white-space:nowrap;letter-spacing:.01em}
+  .fa4 .og-rep .og-band b.lungo{font-size:10.5px}
+  .fa4 .og-rep .og-ass{flex:1}
+  .fa4 .og-el{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .fa4 .og-el>div{background:#F4F3EF;border-radius:3px;padding:7px 10px}
+  .fa4 .og-el .og-n{font-size:10.5px;font-weight:600;padding:1px 0}
+  .fa4 .og-el .cols{columns:2;column-gap:12px}
   .fa4 .og-vuoto{color:#9aa3ad;font-weight:400}`;
   document.head.appendChild(css);
 
@@ -130,34 +154,71 @@
 
   /* ── fogli A4 (anche per la bacheca) ── */
   P.fogli = P.fogli || {};
+  const ASSETS = (window.__BASE || 'https://raw.githubusercontent.com/lucamasullo91-coder/programmi-adunanze/main/portale/').replace(/portale\/$/, '') + 'src/assets/';
   const quando = (iso) => { const d = iso ? new Date(iso) : new Date(); return MESI[d.getMonth()] + ' ' + d.getFullYear(); };
-  const testa = (d, titolo, sotto) => '<header class="pgm-head"><div class="left"><div class="cong">' + esc(d.cong || 'Napoli Pianura Trencia') + '</div><div class="gold"></div><h1>' + esc(titolo) + '</h1><div class="mese">' + esc(sotto) + '</div></div></header>';
-  P.fogli.gruppi = function (d, iso) {
-    const gg = d.gruppi || [];
+  // icone a linee (si colorano col testo) e immagini della guida
+  const SVG = {
+    persone: '<path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.3a3.5 3.5 0 0 1 0 6.4M18.5 14.3c1.8.8 3 2.9 3 5.7"/>',
+    foglio: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6M9 9h2"/>',
+    chiave: '<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M17 6l3 3M14.5 8.5l2 2"/>',
+    dialogo: '<path d="M4 5h16v10H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+    torre: '<path d="M8 21V9h8v12M6 21h12M8 9l-1-3h10l-1 3M9 6V4h2v2M13 6V4h2v2M11 21v-4h2v4M10.5 12h3"/>',
+  };
+  const ico = (id, col) => {
+    const img = { ministero: 'ministero.png', tesori: 'tesori.png', vita: 'vita.png' }[id];
+    if (img) return '<img class="og-ico img" src="' + ASSETS + img + '" alt="">';
+    return '<svg class="og-ico" viewBox="0 0 24 24" fill="none" stroke="' + (col || '#fff') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (SVG[id] || '') + '</svg>';
+  };
+  // colore e icona di ogni compito degli anziani (colori delle sezioni della guida e della Torre di Guardia)
+  const COMPITO = {
+    'Coordinatore del corpo degli anziani': { c: '#A8432B', bg: '#F7ECE8', i: 'persone' },
+    'Segretario': { c: '#4E8A63', bg: '#EAF3ED', i: 'foglio' },
+    'Sorvegliante del servizio': { c: '#A86F00', bg: '#F7EFDF', i: 'ministero' },
+    "Sorvegliante dell'adunanza Vita e ministero": { c: '#2E6E7C', bg: '#E6F0F2', i: 'tesori' },
+    'Conduttore della Torre di Guardia': { c: '#16325C', bg: '#E8EDF4', i: 'torre' },
+    'Comitato di gestione': { c: '#4D5A68', bg: '#EEF0F2', i: 'chiave' },
+    'Consigliere': { c: '#6E5A9E', bg: '#F0EDF6', i: 'dialogo' },
+  };
+  // sigla del foglio, come nelle pubblicazioni: fsg11.26 (field service groups, mese.anno)
+  const codice = (s, iso) => { const d = iso ? new Date(iso) : new Date(); return s + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2); };
+  const stileCompito = (t) => COMPITO[t] || { c: '#4D5A68', bg: '#EEF0F2', i: 'persone' };
+  const nomi1 = (a) => (a && a.length ? a.map((x) => '<div class="og-n">' + esc(x) + '</div>').join('') : '<div class="og-n og-vuoto">—</div>');
+
+  P.fogli.gruppi = function (d) {
+    const gg = d.gruppi || [], k = d.numeri || {};
     const max = Math.max(1, ...gg.map((g) => g.membri.length));
     const righeCol = Math.ceil(gg.length / 3) || 1;
-    const rh = Math.max(11, Math.min(19, Math.floor((900 / righeCol - 40) / max)));
-    let h = '<article class="pgm pgm-print og-sheet">' + testa(d, 'Gruppi di servizio', 'Aggiornato a ' + quando(iso)) + '<div class="og-gr" style="--rh:' + rh + 'px">';
+    const rh = Math.max(11, Math.min(19, Math.floor((830 / righeCol - 48) / max)));
+    const num = (v, t) => '<div><b>' + (v == null ? '—' : v) + '</b><span>' + t + '</span></div>';
+    let h = '<article class="pgm pgm-print og-sheet og-gs"><header class="pgm-head"><div class="left"><div class="cong">' + esc(d.cong || 'Napoli Pianura Trencia') + '</div><div class="gold"></div><h1>Gruppi di servizio</h1></div>' +
+      '<div class="og-num">' + num(k.proclamatori, 'Proclamatori') + num(k.anziani, 'Anziani') + num(k.servitori, 'Servitori') + num(k.pr, 'Pionieri regolari') + num(k.pa, 'Pionieri ausiliari') + num(k.nb, 'Non battezzati') + '</div></header>' +
+      '<div class="og-gr" style="--rh:' + rh + 'px">';
     gg.forEach((g) => {
-      h += '<section class="og-box"><div class="og-band"><small>Gruppo</small><b>' + esc(g.titolo) + '</b></div>' +
-        g.membri.map((m) => '<div class="og-li' + (m.capo ? ' capo' : m.ass ? ' ass' : '') + '"><span>' + esc(m.nome) + '</span>' + (m.sigla ? '<i>' + esc(m.sigla) + '</i>' : '') + '</div>').join('') + '</section>';
+      h += '<section class="og-box"><div class="og-band"><div><small>Gruppo</small><b>' + esc(g.titolo) + '</b></div><em>' + g.membri.length + (g.membri.length === 1 ? ' proclamatore' : ' proclamatori') + '</em></div>' +
+        g.membri.map((m, i) => '<div class="og-li' + (m.capo ? ' capo' : m.ass ? ' ass' : '') + '"><span><u>' + (i + 1) + '</u>' + esc(m.nome) + '</span>' + (m.sigla ? '<i>' + esc(m.sigla) + '</i>' : '') + '</div>').join('') + '</section>';
     });
-    return h + '</div><footer class="pgm-foot"><span><b>Gruppi di servizio</b>' + gg.length + ' gruppi · ' + (d.n || gg.reduce((s, g) => s + g.membri.length, 0)) + ' proclamatori</span><span class="code">SGS sorvegliante · SDG servitore · ASS assistente del gruppo</span></footer></article>';
+    return h + '</div><p class="og-agg">Aggiornato a ' + esc(quando(d.quando)) + '</p><footer class="pgm-foot"><span><b>Gruppi di servizio</b>' + gg.length + ' gruppi</span><span>SGS sorvegliante · SDG servitore · ASS assistente · PR pioniere regolare · PA ausiliario · NB non battezzato</span><span class="code">' + esc(codice('fsg', d.quando)) + '</span></footer></article>';
   };
-  P.fogli.organigramma = function (d, iso) {
-    const nomi = (a) => (a && a.length ? a.map(esc).join(', ') : '<span class="og-vuoto">—</span>');
-    let h = '<article class="pgm pgm-print og-sheet">' + testa(d, 'Organigramma', 'Della congregazione · aggiornato a ' + quando(iso));
-    h += '<div class="og-sez">Comitato di servizio</div><div class="og-cs3">' + (d.comitato || []).map((x) => '<div><small>' + esc(x.compito) + '</small><b>' + nomi(x.chi) + '</b></div>').join('') + '</div>';
-    const altri = (d.anziani || []).filter((x) => COMITATO.indexOf(x.compito) < 0);
-    if (altri.length) h += '<div class="og-sez">Ruoli degli anziani</div><div class="og-an">' + altri.map((x) => '<div><span>' + esc(x.compito) + '</span><b>' + nomi(x.incaricati) + '</b>' + (x.assistenti.length ? '<em>Assistenti: ' + x.assistenti.map(esc).join(', ') + '</em>' : '') + '</div>').join('') + '</div>';
-    const ass = (d.anziani || []).filter((x) => COMITATO.indexOf(x.compito) >= 0 && x.assistenti.length);
-    if (ass.length) h += '<div class="og-an" style="margin-top:6px">' + ass.map((x) => '<div><span>' + esc(x.compito) + ' · assistenti</span><b>' + nomi(x.assistenti) + '</b></div>').join('') + '</div>';
-    h += '<div class="og-sez">Reparti</div><div class="og-rp">' + (d.reparti || []).map((r) => {
-      const li = (k, v) => '<div class="og-li"><span>' + k + '</span><span>' + nomi(v) + '</span></div>';
-      return '<section class="og-box"><div class="og-band" style="--bc:' + (COL_REP[r.reparto] || '#4D5A68') + '"><small>Reparto</small><b>' + esc(r.reparto) + '</b></div>' +
-        li('Sorvegliante', r.sorveglianti) + li('Coordinatore', r.coordinatori) + li('Assistenti', r.assistenti) + '</section>';
+  P.fogli.organigramma = function (d) {
+    let h = '<article class="pgm pgm-print og-sheet og-org"><header class="pgm-head"><div class="left"><div class="cong">' + esc(d.cong || 'Napoli Pianura Trencia') + '</div><div class="gold"></div><h1>Organigramma</h1><div class="mese">Della congregazione</div></div></header>';
+    h += '<div class="og-sez">Ruoli degli anziani</div><div class="og-ruoli">' + (d.anziani || []).map((x) => {
+      const s = stileCompito(x.compito);
+      return '<section class="og-ruolo" style="--rc:' + s.c + ';--rb:' + s.bg + '"><div class="og-rt">' + ico(s.i) + '<b>' + esc(x.compito) + '</b></div><div class="og-inc">' + nomi1(x.incaricati) + '</div>' +
+        (x.assistenti.length ? '<div class="og-ass"><small>Assistenti</small>' + nomi1(x.assistenti) + '</div>' : '') + '</section>';
     }).join('') + '</div>';
-    return h + '<footer class="pgm-foot"><span><b>Organigramma</b>Comitato di servizio, ruoli degli anziani e reparti</span><span class="code">' + esc(d.cong || '') + '</span></footer></article>';
+    h += '<div class="og-sez">Comitato di servizio</div><div class="og-cs3">' + (d.comitato || []).map((x) => {
+      const s = stileCompito(x.compito);
+      return '<div style="--rc:' + s.c + ';--rb:' + s.bg + '"><small>' + esc(x.compito) + '</small>' + nomi1(x.chi) + '</div>';
+    }).join('') + '</div>';
+    h += '<div class="og-sez">Reparti</div><div class="og-rp">' + (d.reparti || []).map((r) => {
+      const c = COL_REP[r.reparto] || '#4D5A68';
+      return '<section class="og-box og-rep" style="--bc:' + c + '"><div class="og-band"><div><small>Reparto</small><b' + (r.reparto.length > 16 ? ' class="lungo"' : '') + '>' + esc(r.reparto) + '</b></div></div>' +
+        '<div class="og-capo"><small>Sorvegliante</small>' + nomi1(r.sorveglianti) + '</div><div class="og-capo"><small>Coordinatore</small>' + nomi1(r.coordinatori) + '</div>' +
+        '<div class="og-ass"><small>Assistenti</small>' + nomi1(r.assistenti) + '</div></section>';
+    }).join('') + '</div>';
+    if (d.mostraElenchi && d.elenchi) h += '<div class="og-sez">Anziani e servitori di ministero</div><div class="og-el">' +
+      [['Anziani', d.elenchi.anziani], ['Servitori di ministero', d.elenchi.servitori]].map((x) => '<div><small>' + x[0] + ' · ' + x[1].length + '</small><div class="cols">' + nomi1(x[1]) + '</div></div>').join('') + '</div>';
+    return h + '<footer class="pgm-foot"><span><b>Organigramma</b>Ruoli degli anziani, comitato di servizio e reparti</span><span class="code">' + esc(d.cong || '') + '</span></footer></article>';
   };
   const anteprima = (html) => '<div class="rp-anteprima fa4"><div class="pgm-fit" data-ogfit="1"><div class="pgm-scale">' + html + '</div></div></div>';
   function adatta() {
@@ -210,6 +271,7 @@
     } else if (O.tab === 'gruppi' || O.tab === 'org') {
       const g = O.tab === 'gruppi', q = g ? 'gruppi' : 'organigramma', pub = O.st.pub[g ? 'gruppi' : 'org'];
       h += '<div class="rp-bar"><button class="btn" data-og="pdf">Prepara PDF</button><button class="btn soft" data-og="pubblica" data-q="' + q + '">Pubblica in bacheca</button><span class="nota" style="align-self:center">' + (pub ? 'Pubblicato il ' + pub.slice(8, 10) + '/' + pub.slice(5, 7) : 'Non pubblicato') + '</span></div>' +
+        (g ? '' : '<label class="pa-check" style="display:flex;gap:9px;align-items:center;margin:0 0 8px;font-size:14px"><input type="checkbox" data-og="elenchi"' + (O.st.org.mostraElenchi ? ' checked' : '') + ' style="width:19px;height:19px">Mostra in fondo l\'elenco di anziani e servitori di ministero</label>') +
         '<p class="rp-aiuto">' + (g ? 'Dall\'anagrafica: gruppo, ruolo nel gruppo e sigla. Gruppi in ordine alfabetico; in ogni gruppo prima chi lo guida, poi l\'assistente, poi gli altri per cognome.' : 'Dai ruoli degli anziani e dei reparti. ' + (O.st.org.pronto ? '' : 'Manca la sezione «Ruoli degli anziani»: creala dalla scheda «Ruoli degli anziani».')) + ' In bacheca va la versione pubblicata.</p>' +
         anteprima(g ? P.fogli.gruppi(O.st.gruppi) : P.fogli.organigramma(O.st.org));
     } else h += vistaPermessi();
@@ -267,6 +329,7 @@
     }
     if (k === 'aggiungi' && u.value) return salvaRuoli([{ id: u.value, c: Number(u.dataset.c), valore: 'Assistente' }]);
     if (k === 'come') return guarda(u.value);
+    if (k === 'elenchi') return P.srv('og_opzione', 'org:elenchi', u.checked).then((org) => { O.st.org = org; rd(); }).catch((x) => P.toast(x.message, true));
     if (k === 'perm') {
       const v = O.st.voci.find((y) => y.k === u.dataset.v);
       const lista = scelti(v).slice(), r = u.dataset.r, i = lista.indexOf(r);

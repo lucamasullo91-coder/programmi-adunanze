@@ -9,7 +9,7 @@
   const GB = ['DOM', 'LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB'];
   const GL = ['DOMENICA', 'LUNEDÌ', 'MARTEDÌ', 'MERCOLEDÌ', 'GIOVEDÌ', 'VENERDÌ', 'SABATO'];
   const B = { mese: '', d: null, carico: false, apri: null };
-  const COL = { inf: '#A8432B', fs: '#521F46', rep: '#4D5A68', pul: '#9A7A1E', com: '#A86F00', oem: '#2F7F8C' };
+  const COL = { inf: '#A8432B', fs: '#521F46', rep: '#4D5A68', pul: '#2E75B5', com: '#A86F00', oem: '#2F7F8C' };
   const TAG = { inf: 'Infrasettimanale', fs: 'Fine settimana', rep: 'Reparti', pul: 'Pulizie', com: 'Comitive', oem: 'Espositori' };
   const meseDopo = (m, n) => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + n, 1)).toISOString().slice(0, 7);
   const nomeMese = (m) => MESI[+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4);
@@ -19,14 +19,18 @@
   css.textContent = `
   .bc-vuoto{color:var(--slate);font-size:14px;padding:6px 0 14px}
   .bc-full .rp-bar{position:sticky;top:0;z-index:5;background:var(--paper,#F6F5F2);padding:6px 0}
-  .bc-imps{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin:2px 0 20px}
-  .bc-ic{background:#fff;border-radius:12px;padding:14px 16px;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.06);border-left:5px solid var(--c)}
+  .bc-sett{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);margin:16px 2px 8px;border-bottom:1px solid var(--rule);padding-bottom:4px}
+  .bc-sett:first-child{margin-top:2px}
+  .bc-imps{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+  .bc-ic{border-radius:8px;overflow:hidden;border:1px solid rgba(0,0,0,.08);background:var(--t)}
   .bc-ic.pass{opacity:.5}
-  .bc-ic .dt{color:var(--c);font-size:16px;font-weight:600;letter-spacing:.04em;margin:0 96px 8px 0;line-height:1.25}
-  .bc-ic .dt small{font-size:13px;font-weight:600;margin-left:6px;opacity:.85;letter-spacing:.02em}
-  .bc-ic .bd{position:absolute;top:12px;right:12px;background:var(--c);color:#fff;font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 9px;border-radius:6px;text-transform:uppercase;max-width:110px;text-align:center;line-height:1.2}
-  .bc-ic .tt{color:var(--c);font-size:16px;font-weight:600;margin:0;line-height:1.3}
-  .bc-ic .s{font-size:14px;color:#55544f;margin:4px 0 0;line-height:1.45}
+  .bc-ic .bnd{background:var(--c);color:#fff;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .bc-ic .bnd b{font-size:14.5px;font-weight:700;letter-spacing:.04em}
+  .bc-ic .bnd span{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(255,255,255,.75);border-radius:4px;padding:2px 6px;white-space:nowrap}
+  .bc-ic .cp{padding:9px 12px 10px}
+  .bc-ic .tt{color:var(--c);font-size:15px;font-weight:600;margin:0 0 2px;line-height:1.3}
+  .bc-ic .s{font-size:13.5px;color:#4D5A68;margin:2px 0 0;line-height:1.45}
+  .bc-ic .s b{color:#1F2630;font-weight:600}
   .bc-lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px 14px;margin-bottom:10px}
   .bc-book{cursor:pointer;display:grid;gap:7px;align-content:start;border:0;background:none;padding:0;font:inherit;text-align:center}
   .bc-book .pg{position:relative;aspect-ratio:1/1.414;overflow:hidden;border-radius:6px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.14);border-top:4px solid var(--c)}
@@ -71,17 +75,28 @@
   }
   const anteprima = (classe, html) => '<div class="rp-anteprima ' + classe + '" style="padding:0;background:none"><div class="pgm-fit" data-fit="1"><div class="pgm-scale">' + html + '</div></div></div>';
 
-  /** Una scheda di «I miei impegni». */
+  /** Colore tenue per il riquadro sotto la fascia (il colore della sezione schiarito). */
+  const tenue = (hex) => { const h = String(hex || '#4D5A68').replace('#', ''); const c = [0, 2, 4].map((i) => parseInt(h.substr(i, 2), 16)); return 'rgb(' + c.map((x) => Math.round(x + (255 - x) * 0.88)).join(',') + ')'; };
+  const lunedi = (iso) => { const g = dt(iso); g.setUTCDate(g.getUTCDate() - ((g.getUTCDay() + 6) % 7)); return g.toISOString().slice(0, 10); };
+  const giornoMese = (g) => g.getUTCDate() + ' ' + MESI[g.getUTCMonth()];
+  /** Una scheda di «I miei impegni»: fascia con il giorno per intero nel colore della sezione, sotto la descrizione completa. */
   function scheda(x, d) {
     const g = dt(x.data), c = x.col || COL[x.tipo] || '#4D5A68';
-    const giorno = GL[g.getUTCDay()] + ' ' + g.getUTCDate() + ' ' + MESI[g.getUTCMonth()].toUpperCase();
-    const data = x.sett ? 'SETTIMANA DAL ' + g.getUTCDate() + ' ' + MESI[g.getUTCMonth()].toUpperCase() : giorno;
     const fine = x.sett ? dt(x.data) : null; if (fine) fine.setUTCDate(fine.getUTCDate() + 6);
+    const data = x.sett ? 'SETTIMANA DAL ' + g.getUTCDate() + ' AL ' + giornoMese(fine).toUpperCase() : GL[g.getUTCDay()] + ' ' + giornoMese(g).toUpperCase();
     const passato = (x.sett ? fine.toISOString().slice(0, 10) : x.data) < d.oggi;
-    return '<div class="bc-ic' + (passato ? ' pass' : '') + '" style="--c:' + c + '">' + (x.ruolo ? '<span class="bd">' + esc(x.ruolo) + '</span>' : '') +
-      '<p class="dt">' + esc(data) + (fine ? ' AL ' + fine.getUTCDate() + ' ' + MESI[fine.getUTCMonth()].toUpperCase() : '') + (x.ora ? '<small>' + esc(x.ora) + '</small>' : '') + '</p>' +
-      '<p class="tt">' + esc(x.titolo || x.testo) + '</p>' +
-      (x.dett ? '<p class="s">' + esc(x.dett) + '</p>' : '') + (x.con ? '<p class="s">' + esc(x.con) + '</p>' : '') + '</div>';
+    return '<div class="bc-ic' + (passato ? ' pass' : '') + '" style="--c:' + c + ';--t:' + tenue(c) + '"><div class="bnd"><b>' + esc(data) + (x.ora ? ' · ' + esc(x.ora) : '') + '</b>' + (x.ruolo ? '<span>' + esc(x.ruolo) + '</span>' : '') + '</div>' +
+      '<div class="cp"><p class="tt">' + esc(x.titolo || x.testo) + '</p>' + (x.dett ? '<p class="s">' + esc(x.dett) + '</p>' : '') + (x.con ? '<p class="s">' + esc(x.con) + '</p>' : '') +
+      (x.adOra ? '<p class="s">Adunanza alle ' + esc(x.adOra) + '</p>' : '') + '</div></div>';
+  }
+  /** Gli impegni in ordine di data, settimana per settimana (lunedì–domenica). */
+  function impegni(d) {
+    const sett = {};
+    d.impegni.slice().sort((a, b) => (a.data + (a.ora || '').padStart(5, '0') < b.data + (b.ora || '').padStart(5, '0') ? -1 : 1)).forEach((x) => { const l = lunedi(x.data); (sett[l] = sett[l] || []).push(x); });
+    return Object.keys(sett).sort().map((l) => {
+      const a = dt(l), b = dt(l); b.setUTCDate(b.getUTCDate() + 6);
+      return '<div class="bc-sett">Settimana dal ' + a.getUTCDate() + (a.getUTCMonth() !== b.getUTCMonth() ? ' ' + MESI[a.getUTCMonth()] : '') + ' al ' + giornoMese(b) + '</div><div class="bc-imps">' + sett[l].map((x) => scheda(x, d)).join('') + '</div>';
+    }).join('');
   }
 
   P.viste.bacheca = function () {
@@ -104,7 +119,7 @@
     let h = h0 + '<div class="rp-bar"><select data-bc="mese">' + [-1, 0, 1, 2].map((n) => meseDopo(d.oggi.slice(0, 7), n)).map((m) => '<option value="' + m + '"' + (m === d.mese ? ' selected' : '') + '>' + P.cap(nomeMese(m)) + '</option>').join('') + '</select></div>';
     h += '<h3 class="t">I miei impegni</h3>';
     if (!d.impegni.length) h += '<p class="bc-vuoto">Nei programmi pubblicati di ' + esc(nomeMese(d.mese)) + ' non hai impegni.</p>';
-    else h += '<div class="bc-imps">' + d.impegni.map((x) => scheda(x, d)).join('') + '</div>';
+    else h += '<div style="margin-bottom:18px">' + impegni(d) + '</div>';
     h += '<h3 class="t">Programmi · ' + esc(P.cap(nomeMese(d.mese))) + '</h3><div class="bc-lib">';
     let n = 0;
     const libro = (attr, c, titolo, sotto, pagina, soloNom) => { n++; return '<button class="bc-book' + (soloNom ? ' solo-nom' : '') + '" style="--c:' + c + '" ' + attr + '><span class="pg">' + pagina + '</span><b>' + esc(titolo) + (sotto ? '<small>' + esc(sotto) + '</small>' : '') + '</b></button>'; };

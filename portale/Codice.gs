@@ -2102,10 +2102,17 @@ function statoPubblicazione(k, tipo, mese) {
   return { pubblicato: true, quando: p.quando, chi: p.chi, cambiato: cambiato };
 }
 
+/** «19:30» + 22 minuti → «19:52». */
+function piuMinuti_(ora, min) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(ora || ''));
+  if (!m) return String(ora || '');
+  const t = Number(m[1]) * 60 + Number(m[2]) + Number(min || 0);
+  return Math.floor(t / 60) % 24 + ':' + String(t % 60).padStart(2, '0');
+}
 /** Le righe della guida con un nome da scrivere, con un'etichetta leggibile (per «I miei impegni»)
  *  e i dettagli per la scheda della bacheca: numero, titolo, minuti, ambito, riferimento, colore della sezione, ruolo. */
 function righeGuida_(mese) {
-  const c = CacheService.getScriptCache(), key = 'righe2:' + mese, t = c.get(key);
+  const c = CacheService.getScriptCache(), key = 'righe3:' + mese, t = c.get(key);
   if (t) return JSON.parse(t);
   let g;
   try { const r = UrlFetchApp.fetch(REPO + 'dati/' + mese + '.json', { muteHttpExceptions: true }); if (r.getResponseCode() !== 200) return []; g = JSON.parse(r.getContentText()); } catch (e) { return []; }
@@ -2116,6 +2123,9 @@ function righeGuida_(mese) {
   (g.settimane || []).forEach((w) => (w.carte || []).forEach((ca) => {
     let n = 0;
     const tutte = [].concat.apply([], (ca.sezioni || []).map((z) => z.righe || []));
+    // minuti dall'inizio dell'adunanza a ogni riga (come gli orari del programma)
+    const off = {}; let m0 = 0;
+    tutte.forEach((r) => { off[r.id] = m0; if (typeof r.min === 'number') m0 += r.min + (r.extra || 0); });
     const preghiere = tutte.filter((r) => r.tipo === 'cantico' && r.ruolo === 'Preghiera');
     (ca.sezioni || []).forEach((z) => (z.righe || []).forEach((r) => {
       const num = r.numero ? ++n : null;
@@ -2124,7 +2134,7 @@ function righeGuida_(mese) {
         const ruolo = campo === 'chi2' ? ({ 'Ass.': 'assistente', 'Lett.': 'lettore' }[r.ruolo2] || '') : ({ 'Stud.': 'studente', 'Cond.': 'conduttore' }[r.ruolo] || '');
         const base = r.ruolo === 'Presidente' ? 'Presidente' : r.tipo === 'cantico' ? 'Preghiera' : String(r.titolo || r.ruolo || z.titolo);
         const d = { k: r.id + ':' + campo, carta: ca.id, tipo: ca.tipo, testo: base + (ruolo ? ' (' + ruolo + ')' : ''), sezione: String(z.titolo || ''),
-          col: colore(z.colore) || colore(ca.tipo === 'INFRA' ? '@infra' : '@fine') };
+          col: colore(z.colore) || colore(ca.tipo === 'INFRA' ? '@infra' : '@fine'), off: r.tipo === 'parte' || r.tipo === 'cantico' ? off[r.id] : 0 };
         if (r.tipo === 'parte') {
           d.titolo = (num ? num + '. ' : '') + String(r.titolo || '') + (r.min ? ' (' + r.min + ' min)' : '');
           d.dett = [r.ambito ? String(r.ambito).toUpperCase() : '', r.rif || ''].filter(Boolean).join(' · ');
@@ -2142,6 +2152,7 @@ function righeGuida_(mese) {
           const tema = (z.righe || []).find((x) => x.tipo === 'parte');
           d.titolo = String(z.titolo || ''); d.ruolo = String(r.titolo || '');
           d.dett = tema ? String(tema.titolo || '') : '';
+          if (tema) d.off = off[tema.id] || 0;
           if (tema && (tema.campi || []).indexOf('titolo') >= 0) d.tema = tema.id + ':titolo';
         }
         out.push(d);
@@ -2221,8 +2232,10 @@ function bachecaPer_(io, mese) {
   righeGuida_(mese).forEach((r) => {
     if (!val[r.k] || !mie(val[r.k])) return;
     const a = adDi(r.carta);
+    // l'orario della parte (inizio dell'adunanza + i minuti delle parti prima); l'orario dell'adunanza resta a parte
+    const ora = a && a.ora ? piuMinuti_(a.ora, r.off || 0) : '';
     out.impegni.push({ data: dataDi(r.carta), tipo: r.tipo === 'INFRA' ? 'inf' : 'fs', testo: r.testo,
-      col: r.col || '', ruolo: r.ruolo || '', titolo: r.titolo || r.testo, ora: a ? a.ora || '' : '',
+      col: r.col || '', ruolo: r.ruolo || '', titolo: r.titolo || r.testo, ora: ora, adOra: a && r.off ? a.ora || '' : '',
       dett: (r.tema && val[r.tema] ? String(val[r.tema]) : r.dett) || '',
       con: r.con && val[r.con] ? (r.conRuolo ? r.conRuolo + ': ' : 'Con ') + nomeTesto(val[r.con]) : '' });
   });
@@ -2298,7 +2311,7 @@ function bachecaPer_(io, mese) {
     if (x.titolo) return;
     if (x.tipo === 'pul') {
       const m = /^(Coordinatore|Referente) pulizie(?: \(solo ([^)]+)\))?(?: · (settimana del .+))?$/.exec(x.testo), g = /^Pulizia generale · (\w+)/.exec(x.testo);
-      x.col = '#9A7A1E';
+      x.col = '#2E75B5';
       if (g) { x.titolo = 'Pulizia generale'; x.ruolo = g[1].charAt(0).toUpperCase() + g[1].slice(1); }
       else if (m) { x.titolo = 'Pulizie della Sala' + (m[2] ? ' · solo ' + m[2] : ''); x.ruolo = m[1]; x.sett = true; }
       else x.titolo = x.testo;
@@ -2484,29 +2497,47 @@ function vedeVoce_(voce, chiavi) {
 function vede_(io, voce) { return !!io.tutto || vedeVoce_(voce, chiaviRuoli_(io)); }
 
 const nomePersona_ = (p) => (p.n + ' ' + p.cognome).trim();
+/** Sui fogli dei gruppi e dell'organigramma: prima il cognome, poi il nome. */
+const nomeCN_ = (p) => (p.cognome + ' ' + p.n).trim();
 const perCognome_ = (a, b) => (a.cognome + ' ' + a.n).localeCompare(b.cognome + ' ' + b.n, 'it');
-/** I gruppi di servizio per il foglio: intestazione dal cognome di chi lo guida, prima lui, poi l'assistente, poi gli altri. */
+/** I numeri della congregazione (proclamatori attivi): anziani, servitori, pionieri, non battezzati. */
+function numeriCongregazione_() {
+  const pp = persone_(), n = (f) => pp.filter(f).length, nomina = (p) => p.riga[C.nomina - 1];
+  return { proclamatori: pp.length, anziani: n((p) => nomina(p) === 'Anziano'), servitori: n((p) => nomina(p) === 'Servitore di ministero'),
+    pr: n((p) => p.servizio === 'PR'), pa: n((p) => p.servizio === 'PA'), nb: n((p) => p.servizio === 'NB') };
+}
+/** I gruppi di servizio per il foglio: intestazione dal cognome di chi lo guida; prima il sorvegliante (o il servitore)
+ *  del gruppo, poi l'assistente, poi gli altri in ordine alfabetico per cognome. */
 function datiGruppi_() {
   const per = {};
   persone_().forEach((p) => { if (p.gruppo) (per[p.gruppo] = per[p.gruppo] || []).push(p); });
-  const ord = (p) => { const r = String(p.riga[C.ruolo - 1] || ''); return r === 'SGS' || r === 'SDG' ? 0 : r === 'ASS' ? 1 : 2; };
+  const ord = (p) => ({ SGS: 0, SDG: 1, ASS: 2 })[String(p.riga[C.ruolo - 1] || '')] ?? 3;
   const gruppi = Object.keys(per).map((g) => {
     const m = per[g].slice().sort((a, b) => ord(a) - ord(b) || perCognome_(a, b));
-    const capo = m.find((p) => ord(p) === 0);
+    const capo = m.find((p) => ord(p) < 2);
     return { gruppo: g, titolo: capo ? capo.cognome : g, guida: capo ? String(capo.riga[C.ruolo - 1]) : '',
-      membri: m.map((p) => ({ nome: nomePersona_(p), sigla: String(p.riga[C.sigla - 1] || ''), capo: ord(p) === 0, ass: ord(p) === 1 })) };
+      membri: m.map((p) => ({ nome: nomeCN_(p), sigla: String(p.riga[C.sigla - 1] || ''), capo: ord(p) < 2, ass: ord(p) === 2 })) };
   });
   gruppi.sort((a, b) => a.titolo.localeCompare(b.titolo, 'it'));
-  return { cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), gruppi: gruppi, n: persone_().length };
+  return { cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), gruppi: gruppi, n: persone_().length, numeri: numeriCongregazione_(), quando: iso_(new Date()) };
 }
-/** Organigramma: comitato di servizio, ruoli degli anziani, reparti. */
+/** Organigramma: ruoli degli anziani (con gli assistenti), comitato di servizio, reparti. Nomi: cognome e nome, in ordine alfabetico. */
 function datiOrganigramma_() {
   const col = strutturaMemo_().filter((x) => x.ruolo), pp = persone_();
-  const chi = (x, val) => pp.filter((p) => { const v = String(p.riga[x.c - 1] || ''); return typeof val === 'function' ? val(v) : v === val; }).sort(perCognome_).map(nomePersona_);
+  const chi = (x, val) => pp.filter((p) => { const v = String(p.riga[x.c - 1] || ''); return typeof val === 'function' ? val(v) : v === val; }).sort(perCognome_).map(nomeCN_);
   const anziani = col.filter((x) => x.tipoRuolo === 'anziani').map((x) => ({ compito: x.titolo, incaricati: chi(x, 'Incaricato'), assistenti: chi(x, 'Assistente') }));
   const comitato = COMITATO_SERVIZIO_.map((t) => { const a = anziani.find((x) => x.compito === t); return { compito: t, chi: a ? a.incaricati : [] }; });
   const reparti = col.filter((x) => x.tipoRuolo === 'reparto').map((x) => ({ reparto: x.titolo, sorveglianti: chi(x, 'Sorvegliante'), coordinatori: chi(x, eCoordinatore_), assistenti: chi(x, 'Assistente') }));
-  return { cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), comitato: comitato, anziani: anziani, reparti: reparti, pronto: anziani.length > 0 };
+  const nomina = (v) => pp.filter((p) => p.riga[C.nomina - 1] === v).sort(perCognome_).map(nomeCN_);
+  return { cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), comitato: comitato, anziani: anziani, reparti: reparti, pronto: anziani.length > 0,
+    elenchi: { anziani: nomina('Anziano'), servitori: nomina('Servitore di ministero') }, mostraElenchi: !!leggiImpostazione_('org:elenchi', false), quando: iso_(new Date()) };
+}
+/** Opzioni dei fogli di «Ruoli e gruppi» (solo Luca): per ora l'elenco di anziani e servitori nell'organigramma. */
+function og_opzione(k, chiave, valore) {
+  richiedi_(k, true);
+  if (chiave !== 'org:elenchi') throw new Error('Opzione sconosciuta.');
+  scriviImpostazione_(chiave, !!valore);
+  return datiOrganigramma_();
 }
 /** La pagina «Ruoli e gruppi» (solo Luca). */
 function og_stato(k) {
