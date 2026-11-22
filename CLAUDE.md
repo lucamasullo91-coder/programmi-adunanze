@@ -56,6 +56,18 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
 - **PDF senza finestra di stampa** in tutto il portale (la stampa mette il link del portale a piè di pagina):
   Programmi adunanze ha «Scarica PDF» (tutto) e «Scegli pagine»; gli altri fogli «Prepara PDF».
 
+### Ruoli e gruppi · Chi vede cosa
+- I ruoli stanno **solo** nell'anagrafica: sezioni «RUOLI NEI REPARTI» (Sorvegliante, Coordinatore del reparto, Assistente) e
+  «RUOLI DEGLI ANZIANI» (una colonna per compito: Incaricato, Assistente; creata dal portale in fondo alla scheda Fratelli).
+  La pagina «Ruoli e gruppi» li mostra per compito e li salva con `salva()`, come l'anagrafica.
+- Il sorvegliante di un reparto e l'incaricato di un compito degli anziani sono anziani (comitato di gestione: anche servitori).
+- Il **comitato di servizio** non si compila: incaricati di coordinatore del corpo degli anziani, segretario, sorvegliante del servizio.
+- **Chi vede cosa** (solo Luca, Impostazione `permessi`): per ogni voce (immagini WhatsApp, fogli della bacheca) i ruoli che la vedono;
+  senza scelta vale l'impostazione di prima (`vociPortale_()`). Luca vede tutto; chi compila vede sempre le immagini da confermare.
+- Foglio **Gruppi di servizio**: gruppi in ordine alfabetico per cognome di chi li guida (SGS/SDG); prima lui, poi ASS, poi gli altri
+  per cognome; sigla accanto al nome (es. «SGS – PR»). Foglio **Organigramma**: comitato di servizio, ruoli degli anziani, reparti.
+  In bacheca va la versione pubblicata.
+
 ### Turnazione reparti
 - Abilitazioni dall'anagrafica. Le abilitazioni non vengono spuntate in automatico (eccezione: comitive di congregazione già spuntate per i nominati).
 - Esclusi da uscieri e audio/video, *solo per quell'adunanza*:

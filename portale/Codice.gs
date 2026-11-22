@@ -34,6 +34,13 @@ const LISTE = {
 const GRIGIO = '#E3E3E3';
 const RUOLI_REPARTO_ = ['', 'Sorvegliante', 'Coordinatore del reparto', 'Assistente'];
 const RUOLI_GRUPPO_ = ['', 'Sorvegliante', 'Assistente'];
+// Ruoli degli anziani: una colonna per compito (sezione «RUOLI DEGLI ANZIANI» in fondo alla scheda), l'incaricato e i suoi assistenti
+const SEZ_ANZIANI_ = 'RUOLI DEGLI ANZIANI';
+const RUOLI_ANZIANI_ = ['', 'Incaricato', 'Assistente'];
+const COMPITI_ANZIANI_ = ['Coordinatore del corpo degli anziani', 'Segretario', 'Sorvegliante del servizio', 'Sorvegliante dell\'adunanza Vita e ministero',
+  'Conduttore della Torre di Guardia', 'Comitato di gestione', 'Consigliere'];
+// Il comitato di servizio non si compila: sono gli incaricati di questi tre compiti
+const COMITATO_SERVIZIO_ = ['Coordinatore del corpo degli anziani', 'Segretario', 'Sorvegliante del servizio'];
 
 /* ───────────────────────── Pagina ───────────────────────── */
 
@@ -171,7 +178,8 @@ function struttura_(sh) {
     else if (LISTE[c]) tipo = 'lista';
     if (c === C.id) tipo = 'calc';
     col.push({ c: c, titolo: titolo, sezione: c < PRIMA_ABIL ? 'ANAGRAFICA' : sez, colore: coloreSezione_(c < PRIMA_ABIL ? '' : sez),
-      regola: tipo === 'check' || ruoli ? (regola || 'tutti') : '', ambito: ambito, tipo: tipo, opzioni: ruoli ? (/gruppo/i.test(titolo) ? RUOLI_GRUPPO_ : RUOLI_REPARTO_) : LISTE[c] || null, ruolo: ruoli,
+      regola: tipo === 'check' || ruoli ? (regola || 'tutti') : '', ambito: ambito, tipo: tipo, opzioni: ruoli ? (/anziani/i.test(sez) ? RUOLI_ANZIANI_ : /gruppo/i.test(titolo) ? RUOLI_GRUPPO_ : RUOLI_REPARTO_) : LISTE[c] || null, ruolo: ruoli,
+      tipoRuolo: ruoli ? (/anziani/i.test(sez) ? 'anziani' : /gruppo/i.test(titolo) ? 'gruppo' : 'reparto') : '',
       riservata: c === C.tel || sez.toUpperCase() === 'NOTE' });
   }
   return col;
@@ -264,7 +272,11 @@ function salva(k, modifiche) {
         val = String(val || '');
         if (x.opzioni.indexOf(val) < 0) throw new Error('Valore non ammesso per «' + x.titolo + '».');
         if (x.ruolo && val && !abilitato_(x.regola, r[C.sesso - 1], r[C.nomina - 1], r[C.servizio - 1])) throw new Error('I ruoli nei reparti sono solo per ' + x.regola + '.');
-        if (x.ruolo && val === 'Sorvegliante' && !/gruppo/i.test(x.titolo) && r[C.nomina - 1] !== 'Anziano') throw new Error('Il sorvegliante di un reparto è un anziano.');
+        if (x.ruolo && x.tipoRuolo === 'reparto' && val === 'Sorvegliante' && r[C.nomina - 1] !== 'Anziano') throw new Error('Il sorvegliante di un reparto è un anziano.');
+        if (x.tipoRuolo === 'anziani' && val === 'Incaricato') {
+          if (/gestione/i.test(x.titolo)) { if (r[C.nomina - 1] === 'Nessuna' || !r[C.nomina - 1]) throw new Error('Il comitato di gestione è formato da anziani e servitori di ministero.'); }
+          else if (r[C.nomina - 1] !== 'Anziano') throw new Error('L\'incaricato di «' + x.titolo + '» è un anziano.');
+        }
         if (x.c === C.ruolo && val === 'SDG' && r[C.nomina - 1] !== 'Servitore di ministero') throw new Error('SDG è solo per i servitori di ministero.');
         if (x.c === C.ruolo && val === 'ASS' && r[C.nomina - 1] === 'Nessuna') throw new Error('ASS è solo per anziani e servitori.');
       } else {
@@ -2192,9 +2204,11 @@ function bachecaPer_(io, mese) {
   mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : oggi_().slice(0, 7);
   const p = persone_().find((x) => x.id === io.id) || { nominato: false, reparti: false, oem: false, n: '', cognome: '' };
   const tutto = io.tutto;
-  const out = { mese: mese, nomeMese: nomeMese_(mese), oggi: oggi_(), io: { id: io.id, nominato: p.nominato || tutto, reparti: p.reparti || tutto, oem: p.oem || tutto }, impegni: [] };
+  // chi vede cosa in bacheca: i ruoli della persona e la tabella «Chi vede cosa» (Luca e gli avvisi Telegram vedono tutto)
+  const ch = tutto ? null : chiaviRuoli_(io), V = (v) => !!tutto || vedeVoce_(v, ch);
+  const out = { mese: mese, nomeMese: nomeMese_(mese), oggi: oggi_(), io: { id: io.id, nominato: p.nominato || tutto, reparti: p.reparti || tutto, oem: p.oem || tutto, adrep: V('bc:adrep') }, impegni: [] };
   const pin = leggiImpostazione_('pub:programmi-inf:' + mese, null), pfs = leggiImpostazione_('pub:programmi-fs:' + mese, null);
-  out.programmi = { inf: pin ? pin.quando : '', fs: pfs ? pfs.quando : '' };
+  out.programmi = { inf: pin && V('bc:inf') ? pin.quando : '', fs: pfs && V('bc:fs') ? pfs.quando : '' };
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
   const ads = adunanzeReparti_(cal, settimane_(cal, mese), {});
   const dataDi = (carta) => { const id = String(carta).replace(/-inf$/, '-INFRA').replace(/-fs$/, '-FINE'); const a = ads.find((x) => x.id === id); return a ? a.data : String(carta).slice(0, 10); };
@@ -2232,7 +2246,8 @@ function bachecaPer_(io, mese) {
       rp.stato.turni.filter((t) => t.persona_id === io.id && /^PUL_/.test(t.incarico_id)).forEach((t) => out.impegni.push({ data: t.settimana_id, tipo: 'pul', testo: nomeInc[t.incarico_id] + ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7) }));
       Object.keys(rp.stato.generali).forEach((s) => { const g = rp.stato.generali[s]; if (g.attiva && (g.coord === io.id || g.ref === io.id)) out.impegni.push({ data: g.data, tipo: 'pul', testo: 'Pulizia generale · ' + (g.coord === io.id ? 'coordinatore' : 'referente') }); });
     }
-    if (out.io.reparti || rp.stato.turni.some((t) => t.persona_id === io.id)) out.reparti = rp;
+    out.repTutti = V('bc:rep');
+    if (out.repTutti || rp.stato.turni.some((t) => t.persona_id === io.id)) out.reparti = rp;
   }
   // pulizie, dal programma pulizie pubblicato
   settimane_(cal, mese).forEach((w) => {
@@ -2247,7 +2262,7 @@ function bachecaPer_(io, mese) {
     if (e.r === io.id) out.impegni.push({ data: w.lunedi, tipo: 'pul', testo: 'Referente pulizie' + sett });
     if (e.gc === io.id || e.gr === io.id) out.impegni.push({ data: e.gd || w.lunedi, tipo: 'pul', testo: 'Pulizia generale · ' + (e.gc === io.id ? 'coordinatore' : 'referente') });
   });
-  const pp = puliziePubblicate_(mese);
+  const pp = V('bc:pul') ? puliziePubblicate_(mese) : null;
   if (pp) out.pulizie = pp;
   out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   // comitive
@@ -2255,8 +2270,8 @@ function bachecaPer_(io, mese) {
   if (cm) {
     cm.settimane.forEach((w) => w.comitive.forEach((c) => { if (!c.annullata && !cm.stato.nascoste[c.k] && cm.stato.assegnati[c.k] === io.id) out.impegni.push({ data: c.data, tipo: 'com', testo: 'Comitiva ' + c.ora + ' · ' + c.luogo }); }));
     (cm.foglio.domeniche || []).forEach((r) => { if (r.conduttore === io.id) out.impegni.push({ data: r.data, tipo: 'com', testo: 'Comitiva della domenica ' + r.ora + ' · ' + r.luogo + ' · ' + (r.gruppi.length > 1 && r.gruppi.length === cm.foglio.gruppi.length ? 'tutti i gruppi' : 'gruppi ' + r.gruppi.join(', ')) }); });
-    out.comitive = cm;
-    out.versioniComitive = out.io.nominato ? ['generale', 'personale', 'tabella'] : ['tabella'];
+    out.versioniComitive = ['generale', 'personale', 'tabella'].filter((v) => V('bc:com:' + v));
+    if (out.versioniComitive.length) out.comitive = cm;
   }
   // espositori
   if (out.io.oem) {
@@ -2297,6 +2312,9 @@ function bachecaPer_(io, mese) {
       if (m) { x.titolo = 'Postazione ' + m[1]; x.ora = m[2].trim(); } else x.titolo = x.testo;
     }
   });
+  if (out.espositori && !V('bc:oem')) delete out.espositori;
+  // gruppi di servizio e organigramma: come pubblicati da Luca
+  [['gruppi', 'gruppi', 'bc:gruppi'], ['org', 'organigramma', 'bc:org']].forEach(([k2, q, v]) => { if (!V(v)) return; const x = leggiImpostazione_('pub:' + q, null); if (x) out[k2] = x; });
   out.mieiPub = { reparti: !!rp, comitive: !!cm };
   out.impegni.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
   return out;
@@ -2309,7 +2327,8 @@ function pa_bacheca(k) {
   const ss = foglioProgrammi_();
   const valori = {};
   valori_('Impostazioni').slice(1).forEach((r) => { if (/^pub:programmi-(inf|fs):/.test(String(r[0])) && r[1]) Object.assign(valori, JSON.parse(String(r[1])).dati || {}); });
-  return { email: io.nome, ruolo: 'legge', impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: {}, bacheca: true, conReparti: !!(p.nominato || io.tutto), reparti: (p.nominato || io.tutto) ? repartiPerProgramma_(true) : {},
+  const adrep = vede_(io, 'bc:adrep');
+  return { email: io.nome, ruolo: 'legge', impostazioni: coppie_(ss.getSheetByName('Impostazioni')), valori: valori, podio: {}, bacheca: true, conReparti: adrep, reparti: adrep ? repartiPerProgramma_(true) : {},
     cal: calendarioProgramma_(), mesiPubblicati: mesiPubblicati_() };
 }
 /** Espositori pubblicati per la bacheca. */
@@ -2358,6 +2377,173 @@ function repartiPerProgramma_(pubblicati) {
   return out;
 }
 
+
+/* ═════════════════════ Ruoli, gruppi di servizio, chi vede cosa ═════════════════════
+ * Una sola fonte: i ruoli stanno nell'anagrafica (sezioni «RUOLI NEI REPARTI» e «RUOLI DEGLI ANZIANI», colonna Ruolo
+ * del gruppo). Le pagine Reparti, Ruoli degli anziani e Gruppi di servizio sono un altro modo di guardare le stesse celle:
+ * scrivono con salva() come l'anagrafica. Il comitato di servizio si ricava dagli incaricati dei suoi tre compiti.
+ * «Chi vede cosa» (solo Luca): per ogni cosa del portale (immagini WhatsApp, fogli della bacheca) i ruoli che la vedono. */
+
+/** Crea in fondo all'anagrafica la sezione dei ruoli degli anziani (una volta sola). */
+function og_prepara(k) {
+  richiedi_(k, true);
+  const sh = SpreadsheetApp.getActive().getSheetByName(FOGLIO);
+  if (struttura_(sh).some((x) => x.tipoRuolo === 'anziani')) return portale(k);
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const ultima = sh.getLastColumn(), c0 = ultima + 1, n = COMPITI_ANZIANI_.length;
+    if (sh.getMaxColumns() < c0 + n - 1) sh.insertColumnsAfter(sh.getMaxColumns(), c0 + n - 1 - sh.getMaxColumns());
+    sh.getRange(RIGA_SEZIONI, ultima, 3, 1).copyFormatToRange(sh, c0, c0 + n - 1, RIGA_SEZIONI, RIGA_REGOLE);
+    sh.getRange(RIGA_SEZIONI, c0).setValue(SEZ_ANZIANI_);
+    sh.getRange(RIGA_TITOLI, c0, 1, n).setValues([COMPITI_ANZIANI_]);
+    sh.getRange(RIGA_REGOLE, c0, 1, n).setValues([COMPITI_ANZIANI_.map(() => 'nominati')]);
+    const righe = Math.max(sh.getMaxRows() - RIGA_DATI + 1, 1);
+    sh.getRange(RIGA_DATI, c0, righe, n).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(RUOLI_ANZIANI_.slice(1), true).setAllowInvalid(false).build());
+    scheda_('Registro').appendRow([new Date(), '', 'Portale', 'anagrafica', 'Aggiunta la sezione «' + SEZ_ANZIANI_ + '» (' + n + ' compiti)']);
+  } finally { lock.releaseLock(); }
+  dimentica_(FOGLIO); delete MEMO_.struttura;
+  return portale(k);
+}
+
+function strutturaMemo_() {
+  return MEMO_.struttura || (MEMO_.struttura = struttura_(SpreadsheetApp.getActive().getSheetByName(FOGLIO)));
+}
+const rkReparto_ = (v) => (v === 'Sorvegliante' ? 'sorv' : eCoordinatore_(v) ? 'coord' : v === 'Assistente' ? 'ass' : '');
+
+/** I ruoli di chi usa il portale, come chiavi: «tutti», «anziani», «comp:inf», «rep:Audio/Video:coord», «anz:Segretario:inc», «cs»… */
+function chiaviRuoli_(io) {
+  const out = { tutti: true };
+  const p = persone_().find((x) => x.id === io.id);
+  (io.ambiti || []).forEach((a) => { if (a !== 'tutto') out['comp:' + a] = true; });
+  if (!p) return out;
+  const r = p.riga, nomina = r[C.nomina - 1];
+  if (nomina === 'Anziano') out.anziani = true;
+  if (nomina === 'Servitore di ministero') out.servitori = true;
+  if (p.reparti) out['abil:reparti'] = true;
+  if (p.oem) out['abil:oem'] = true;
+  const rg = String(r[C.ruolo - 1] || '');
+  if (rg === 'SGS' || rg === 'SDG') out['grp:sorv'] = true;
+  if (rg === 'ASS') out['grp:ass'] = true;
+  strutturaMemo_().filter((x) => x.ruolo).forEach((x) => {
+    const v = String(r[x.c - 1] || '');
+    if (!v) return;
+    if (x.tipoRuolo === 'reparto') { const s = rkReparto_(v); if (s) out['rep:' + x.titolo + ':' + s] = true; }
+    if (x.tipoRuolo === 'anziani') {
+      out['anz:' + x.titolo + ':' + (v === 'Incaricato' ? 'inc' : 'ass')] = true;
+      if (v === 'Incaricato' && COMITATO_SERVIZIO_.indexOf(x.titolo) >= 0) out.cs = true;
+    }
+  });
+  return out;
+}
+/** Le cose del portale che si possono mostrare o nascondere, con chi le vede se Luca non ha deciso altro (come prima). */
+function vociPortale_() {
+  const rep = (t) => ['rep:' + t + ':sorv', 'rep:' + t + ':coord', 'rep:' + t + ':ass'];
+  return [
+    { k: 'wa:pres:INFRA', g: 'Pronto per WhatsApp', n: 'Presidente · infrasettimanale', d: ['anziani', 'servitori', 'comp:inf', 'comp:fs'] },
+    { k: 'wa:pres:FINE', g: 'Pronto per WhatsApp', n: 'Presidente · fine settimana', d: ['anziani', 'servitori', 'comp:inf', 'comp:fs'] },
+    { k: 'wa:prove:INFRA', g: 'Pronto per WhatsApp', n: 'Audio/Video · prove · infrasettimanale', d: ['comp:inf'].concat(rep('Audio/Video')) },
+    { k: 'wa:prove:FINE', g: 'Pronto per WhatsApp', n: 'Audio/Video · prove · fine settimana', d: ['comp:fs'].concat(rep('Audio/Video')) },
+    { k: 'wa:rep:av', g: 'Pronto per WhatsApp', n: 'Reparto Audio/Video', d: rep('Audio/Video') },
+    { k: 'wa:rep:usc', g: 'Pronto per WhatsApp', n: 'Reparto Uscieri', d: rep('Uscieri') },
+    { k: 'wa:rep:let', g: 'Pronto per WhatsApp', n: 'Reparto Letteratura e territori', d: rep('Letteratura e territori') },
+    { k: 'wa:rep:pul', g: 'Pronto per WhatsApp', n: 'Pulizie', d: rep('Pulizie') },
+    { k: 'bc:inf', g: 'Bacheca', n: 'Adunanza infrasettimanale', d: ['tutti'] },
+    { k: 'bc:fs', g: 'Bacheca', n: 'Adunanza del fine settimana', d: ['tutti'] },
+    { k: 'bc:adrep', g: 'Bacheca', n: 'Adunanze e reparti', d: ['anziani', 'servitori'] },
+    { k: 'bc:rep', g: 'Bacheca', n: 'Turnazione reparti (foglio generale)', d: ['abil:reparti'] },
+    { k: 'bc:pul', g: 'Bacheca', n: 'Programma pulizie', d: ['tutti'] },
+    { k: 'bc:com:generale', g: 'Bacheca', n: 'Comitive · generale', d: ['anziani', 'servitori'] },
+    { k: 'bc:com:personale', g: 'Bacheca', n: 'Comitive · le mie comitive', d: ['anziani', 'servitori'] },
+    { k: 'bc:com:tabella', g: 'Bacheca', n: 'Comitive · tabella informazioni', d: ['tutti'] },
+    { k: 'bc:oem', g: 'Bacheca', n: 'Programma espositori', d: ['abil:oem'] },
+    { k: 'bc:gruppi', g: 'Bacheca', n: 'Gruppi di servizio', d: ['tutti'] },
+    { k: 'bc:org', g: 'Bacheca', n: 'Organigramma della congregazione', d: ['tutti'] },
+  ];
+}
+/** Tutti i ruoli che si possono scegliere, a gruppi, dall'anagrafica di oggi. */
+function catalogoRuoli_() {
+  const col = strutturaMemo_().filter((x) => x.ruolo);
+  const g = [
+    { t: 'Tutti', r: [['tutti', 'Tutti i proclamatori']] },
+    { t: 'Nomine', r: [['anziani', 'Anziani'], ['servitori', 'Servitori di ministero'], ['cs', 'Comitato di servizio']] },
+    { t: 'Ruoli degli anziani', r: [].concat.apply([], col.filter((x) => x.tipoRuolo === 'anziani').map((x) => [['anz:' + x.titolo + ':inc', x.titolo + ' · incaricato'], ['anz:' + x.titolo + ':ass', x.titolo + ' · assistenti']])) },
+    { t: 'Reparti', r: [].concat.apply([], col.filter((x) => x.tipoRuolo === 'reparto').map((x) => [['rep:' + x.titolo + ':sorv', x.titolo + ' · sorvegliante'], ['rep:' + x.titolo + ':coord', x.titolo + ' · coordinatore'], ['rep:' + x.titolo + ':ass', x.titolo + ' · assistenti']])) },
+    { t: 'Gruppi di servizio', r: [['grp:sorv', 'Sorveglianti e servitori dei gruppi'], ['grp:ass', 'Assistenti dei gruppi']] },
+    { t: 'Chi compila', r: [['comp:inf', 'Programma infrasettimanale'], ['comp:fs', 'Programma del fine settimana'], ['comp:reparti', 'Turnazione reparti'], ['comp:comitive', 'Comitive'], ['comp:oem', 'Espositori']] },
+    { t: 'Abilitati', r: [['abil:reparti', 'In turnazione reparti'], ['abil:oem', 'Opera pubblica (espositori)']] },
+  ];
+  return g.filter((x) => x.r.length);
+}
+function permessi_() { return MEMO_.permessi || (MEMO_.permessi = leggiImpostazione_('permessi', {})); }
+function vedeVoce_(voce, chiavi) {
+  const P = permessi_();
+  const lista = P[voce] || (vociPortale_().find((v) => v.k === voce) || { d: [] }).d;
+  return lista.some((x) => chiavi[x]);
+}
+/** Chi vede cosa per chi usa il portale (Luca sempre tutto). */
+function vede_(io, voce) { return !!io.tutto || vedeVoce_(voce, chiaviRuoli_(io)); }
+
+const nomePersona_ = (p) => (p.n + ' ' + p.cognome).trim();
+const perCognome_ = (a, b) => (a.cognome + ' ' + a.n).localeCompare(b.cognome + ' ' + b.n, 'it');
+/** I gruppi di servizio per il foglio: intestazione dal cognome di chi lo guida, prima lui, poi l'assistente, poi gli altri. */
+function datiGruppi_() {
+  const per = {};
+  persone_().forEach((p) => { if (p.gruppo) (per[p.gruppo] = per[p.gruppo] || []).push(p); });
+  const ord = (p) => { const r = String(p.riga[C.ruolo - 1] || ''); return r === 'SGS' || r === 'SDG' ? 0 : r === 'ASS' ? 1 : 2; };
+  const gruppi = Object.keys(per).map((g) => {
+    const m = per[g].slice().sort((a, b) => ord(a) - ord(b) || perCognome_(a, b));
+    const capo = m.find((p) => ord(p) === 0);
+    return { gruppo: g, titolo: capo ? capo.cognome : g, guida: capo ? String(capo.riga[C.ruolo - 1]) : '',
+      membri: m.map((p) => ({ nome: nomePersona_(p), sigla: String(p.riga[C.sigla - 1] || ''), capo: ord(p) === 0, ass: ord(p) === 1 })) };
+  });
+  gruppi.sort((a, b) => a.titolo.localeCompare(b.titolo, 'it'));
+  return { cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), gruppi: gruppi, n: persone_().length };
+}
+/** Organigramma: comitato di servizio, ruoli degli anziani, reparti. */
+function datiOrganigramma_() {
+  const col = strutturaMemo_().filter((x) => x.ruolo), pp = persone_();
+  const chi = (x, val) => pp.filter((p) => { const v = String(p.riga[x.c - 1] || ''); return typeof val === 'function' ? val(v) : v === val; }).sort(perCognome_).map(nomePersona_);
+  const anziani = col.filter((x) => x.tipoRuolo === 'anziani').map((x) => ({ compito: x.titolo, incaricati: chi(x, 'Incaricato'), assistenti: chi(x, 'Assistente') }));
+  const comitato = COMITATO_SERVIZIO_.map((t) => { const a = anziani.find((x) => x.compito === t); return { compito: t, chi: a ? a.incaricati : [] }; });
+  const reparti = col.filter((x) => x.tipoRuolo === 'reparto').map((x) => ({ reparto: x.titolo, sorveglianti: chi(x, 'Sorvegliante'), coordinatori: chi(x, eCoordinatore_), assistenti: chi(x, 'Assistente') }));
+  return { cong: leggiImpostazione_('nomeCongregazione', 'Napoli Pianura Trencia'), comitato: comitato, anziani: anziani, reparti: reparti, pronto: anziani.length > 0 };
+}
+/** La pagina «Ruoli e gruppi» (solo Luca). */
+function og_stato(k) {
+  richiedi_(k, true);
+  const pub = (q) => { const x = leggiImpostazione_('pub:' + q, null); return x ? x.quando : ''; };
+  const P = permessi_();
+  return { voci: vociPortale_().map((v) => ({ k: v.k, g: v.g, n: v.n, d: v.d, scelti: P[v.k] || null })), catalogo: catalogoRuoli_(),
+    gruppi: datiGruppi_(), org: datiOrganigramma_(), pub: { gruppi: pub('gruppi'), org: pub('organigramma') },
+    persone: persone_().slice().sort(perCognome_).map((p) => ({ id: p.id, nome: nomePersona_(p) })) };
+}
+function og_salvaPermessi(k, perm) {
+  const io = richiedi_(k, true);
+  const voci = {}; vociPortale_().forEach((v) => { voci[v.k] = true; });
+  const out = {};
+  Object.keys(perm || {}).forEach((v) => { if (voci[v] && Array.isArray(perm[v])) out[v] = perm[v].map(String).filter((x) => x.length < 120).slice(0, 80); });
+  scriviImpostazione_('permessi', out); delete MEMO_.permessi;
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'permessi', 'Chi vede cosa aggiornato (' + Object.keys(out).length + ' voci personalizzate)']);
+  return true;
+}
+/** «Guarda come…»: le cose che una persona vede, con i suoi ruoli. */
+function og_guardaCome(k, id) {
+  richiedi_(k, true);
+  const acc = Object.values(mappaAccessi_()).find((x) => x[0] === String(id));
+  const amb = acc ? acc[2].split(',').map((y) => y.trim()).filter(Boolean) : [];
+  const io = { id: String(id), ambiti: amb, tutto: amb.indexOf('tutto') >= 0 };
+  const ch = chiaviRuoli_(io);
+  return { tutto: io.tutto, ruoli: Object.keys(ch), voci: vociPortale_().filter((v) => io.tutto || vedeVoce_(v.k, ch)).map((v) => v.k) };
+}
+/** Pubblica in bacheca il foglio dei gruppi o l'organigramma così com'è adesso. */
+function og_pubblica(k, quale) {
+  const io = richiedi_(k, true);
+  if (quale !== 'gruppi' && quale !== 'organigramma') throw new Error('Foglio sconosciuto.');
+  scriviImpostazione_('pub:' + quale, { quando: iso_(new Date()), dati: quale === 'gruppi' ? datiGruppi_() : datiOrganigramma_() });
+  scheda_('Registro').appendRow([new Date(), io.id, io.nome, 'bacheca', (quale === 'gruppi' ? 'Gruppi di servizio' : 'Organigramma') + ' pubblicato']);
+  return iso_(new Date());
+}
+
 /* ═════════════════════════ Pronto per WhatsApp ═════════════════════════
  * Settimana per settimana, le immagini da mandare nei gruppi:
  * - Presidente e «Audio/Video · prove» di ogni adunanza: le conferma chi compila quel programma (inf / fs);
@@ -2380,13 +2566,14 @@ function puoPulizie_(io) {
   return !!p && eCoordinatore_(ruoliReparto_(p)['Pulizie']);
 }
 function waVede_(io) {
-  const p = persone_().find((x) => x.id === io.id) || {};
   let comp = null; try { comp = ruoloProgrammi_(io); } catch (e) { /* non compila */ }
-  const r = ruoliReparto_(p), tutto = !!io.tutto;
-  const coordAv = !!r['Audio/Video'];
-  const rep = {}; Object.keys(WA_REPARTI_).forEach((k) => { rep[k] = tutto || !!r[WA_REPARTI_[k]]; });
-  return { comp: comp, pres: tutto || !!p.nominato || !!comp,
-    prove: { INFRA: tutto || comp === 'inf' || comp === 'tutto' || coordAv, FINE: tutto || comp === 'fs' || comp === 'tutto' || coordAv },
+  const tutto = !!io.tutto, ch = chiaviRuoli_(io);
+  const v = (voce) => tutto || vedeVoce_(voce, ch);
+  const presT = { INFRA: v('wa:pres:INFRA'), FINE: v('wa:pres:FINE') };
+  const rep = {}; Object.keys(WA_REPARTI_).forEach((k) => { rep[k] = v('wa:rep:' + k); });
+  // chi compila un'adunanza vede sempre le sue immagini: le deve confermare
+  return { comp: comp, pres: presT.INFRA || presT.FINE || !!comp, presT: presT,
+    prove: { INFRA: v('wa:prove:INFRA') || comp === 'inf' || comp === 'tutto', FINE: v('wa:prove:FINE') || comp === 'fs' || comp === 'tutto' },
     rep: rep, luca: tutto };
 }
 function waQualcosa_(v) { return v.pres || v.prove.INFRA || v.prove.FINE || Object.keys(v.rep).some((k) => v.rep[k]); }

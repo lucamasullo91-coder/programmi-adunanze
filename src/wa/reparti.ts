@@ -10,7 +10,16 @@ export type NomeWA = { v: string; nome?: string; cognome?: string } | null;
 export type AdWA = { tipo: "INFRA" | "FINE"; data: string; ora: string; av?: [string, NomeWA][]; usc?: [string, NomeWA][]; let?: [string, NomeWA][] };
 export type PulWA = { gruppo: string; coord: NomeWA; ref: NomeWA; generale: { gruppo: string; data?: string; coord: NomeWA; ref: NomeWA } | null };
 export type SettWA = { lunedi: string; al: string; adunanze: AdWA[]; pul?: PulWA; pubblicato?: string; quando?: string; colori?: { infra?: string; fine?: string } };
-export type Vede = { comp: string | null; pres: boolean; prove: { INFRA: boolean; FINE: boolean }; rep: Record<Rep, boolean>; luca: boolean };
+export type Vede = {
+  comp: string | null;
+  pres: boolean;
+  /** The chairman image, meeting by meeting (from «Chi vede cosa»); old servers send only pres. */
+  presT?: { INFRA: boolean; FINE: boolean };
+  prove: { INFRA: boolean; FINE: boolean };
+  rep: Record<Rep, boolean>;
+  luca: boolean;
+};
+export const vedePres = (v: Pick<Vede, "pres" | "presT">, t: "INFRA" | "FINE") => (v.presT ? v.presT[t] : v.pres);
 export type Rep = "av" | "usc" | "let" | "pul";
 export type ConfRep = { firma: string; quando: string; il: string; da: string; png: Record<string, string> };
 

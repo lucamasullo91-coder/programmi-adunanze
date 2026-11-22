@@ -19,6 +19,7 @@ import {
   type CampoModifica,
   type Conferma,
 } from "./programma";
+import { vedePres, type Vede } from "./reparti";
 
 type Props = {
   fogli: Foglio[];
@@ -32,7 +33,7 @@ type Props = {
   carica: (base64: string, nome: string) => Promise<string>;
   /** Pronto per WhatsApp: only this week (lunedì) and only the images this person may see. */
   settimana?: string;
-  vede?: { pres: boolean; prove: { INFRA: boolean; FINE: boolean } };
+  vede?: Pick<Vede, "pres" | "presT" | "prove">;
 };
 
 type Voce = {
@@ -67,7 +68,7 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
         for (const c of s.carte) {
           if (!tipi.includes(c.tipo as "INFRA" | "FINE")) continue;
           if (settimana && c.id.slice(0, 10) !== settimana) continue;
-          if (vede ? !vede.pres && !vede.prove[c.tipo as "INFRA" | "FINE"] && !puo(c) : !puo(c)) continue;
+          if (vede ? !vedePres(vede, c.tipo as "INFRA" | "FINE") && !vede.prove[c.tipo as "INFRA" | "FINE"] && !puo(c) : !puo(c)) continue;
           const d = dataCarta(c, f);
           if (d && d < oggi) continue; // past meetings
           const p = valori[chiavePodio(c)] || (d ? podio[`${d}|${c.tipo}`] : "") || "";
@@ -169,7 +170,7 @@ export function PannelloWhatsApp({ fogli, valori, podio, email, puo, tipi, salva
 
   if (!voci.length) return settimana ? null : <p className="pa-msg">Nessuna adunanza in programma in questo bimestre.</p>;
   const tipiDi = (v: Voce) =>
-    (["pres", "av"] as const).filter((k) => !vede || puo(v.c) || (k === "pres" ? vede.pres : vede.prove[v.c.tipo as "INFRA" | "FINE"]));
+    (["pres", "av"] as const).filter((k) => !vede || puo(v.c) || (k === "pres" ? vedePres(vede, v.c.tipo as "INFRA" | "FINE") : vede.prove[v.c.tipo as "INFRA" | "FINE"]));
   return (
     <div className={settimana ? "wa-pan dentro" : "wa-pan"}>
       {!settimana && <p className="pa-aiuto wa-intro">

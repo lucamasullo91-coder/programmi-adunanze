@@ -241,10 +241,10 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       });
     });
   }
-  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], domeniche: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], programmi: ['programmi.js'], espositori: ['programmi.js'], telegram: ['programmi.js'], whatsapp: ['programmi.js'], pulizie: ['pulizie.js'],
-    bacheca: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'motore-reparti.js', 'reparti.js', 'comitive.js', 'pulizie.js', 'programmi.js', 'bacheca.js'] };
+  var MODULI = { reparti: ['stampa.css', 'motore-reparti.js', 'reparti.js'], comitive: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], domeniche: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'comitive.js'], programmi: ['programmi.js'], espositori: ['programmi.js'], telegram: ['programmi.js'], whatsapp: ['programmi.js'], pulizie: ['pulizie.js'], organigramma: ['stampa.css', 'organigramma.js'],
+    bacheca: ['stampa.css', 'foglio-comitive.css', 'foglio-comitive.js', 'motore-reparti.js', 'reparti.js', 'comitive.js', 'pulizie.js', 'programmi.js', 'organigramma.js', 'bacheca.js'] };
   MODULI.bachecaProgrammi = MODULI.bacheca; MODULI.bachecaEspositori = MODULI.bacheca;
-  var TITOLI = { reparti: 'Turnazione reparti', comitive: 'Comitive', programmi: 'Programmi adunanze', espositori: 'Programma espositori', telegram: 'Telegram', bacheca: 'Bacheca', domeniche: 'Domeniche del gruppo', pulizie: 'Programma pulizie', whatsapp: 'Pronto per WhatsApp' };
+  var TITOLI = { reparti: 'Turnazione reparti', comitive: 'Comitive', programmi: 'Programmi adunanze', espositori: 'Programma espositori', telegram: 'Telegram', bacheca: 'Bacheca', domeniche: 'Domeniche del gruppo', pulizie: 'Programma pulizie', whatsapp: 'Pronto per WhatsApp', organigramma: 'Ruoli e gruppi' };
   function apriModulo(v) {
     S.vista = v; window.scrollTo(0, 0);
     if (PC.viste[v]) return disegna();
@@ -345,6 +345,7 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
     if (io.tutto) {
       t += '<button class="tile" data-go="sondaggi" style="--c:#A8432B"><b>Sondaggi</b><span>Crea, invia i link, vedi le risposte</span></button>' +
         '<button class="tile" data-go="calendario" style="--c:#521F46"><b>Calendario</b><span>Orari, settimane speciali, comitive</span></button>' +
+        '<button class="tile" data-go="organigramma" style="--c:#A8432B"><b>Ruoli e gruppi</b><span>Reparti, anziani, gruppi di servizio, chi vede cosa</span></button>' +
         '<button class="tile" data-go="accessi" style="--c:#4D5A68"><b>Accessi</b><span>Link personali e permessi</span></button>' +
         '<button class="tile" data-go="registro" style="--c:#7A7A7A"><b>Registro</b><span>Chi ha fatto cosa e quando</span></button>';
     }

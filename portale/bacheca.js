@@ -53,7 +53,7 @@
     const out = [];
     if (d.reparti) {
       const mio = d.reparti.stato.turni.some((t) => t.persona_id === d.io.id);
-      out.push({ t: 'rep', titolo: 'Turnazione reparti', c: '#4D5A68', q: d.reparti.quando, classe: 'fa4', versioni: (mio ? [['mio', 'Il mio foglio']] : []).concat([['tutti', 'Foglio generale']]),
+      out.push({ t: 'rep', titolo: 'Turnazione reparti', c: '#4D5A68', q: d.reparti.quando, classe: 'fa4', versioni: (mio ? [['mio', 'Il mio foglio']] : []).concat(d.repTutti === false ? [] : [['tutti', 'Foglio generale']]),
         foglio: (v) => P.fogli.reparti(d.reparti, v === 'mio' ? d.io.id : '') });
     }
     if (d.pulizie) out.push({ t: 'pul', titolo: 'Programma pulizie', c: '#9A7A1E', q: d.pulizie.quando, classe: 'pu4', versioni: [['anno', 'Anno ' + d.pulizie.anno + '/' + (d.pulizie.anno + 1)]], foglio: () => P.fogli.pulizie(d.pulizie) });
@@ -64,7 +64,10 @@
       out.push({ t: 'com', titolo: 'Programma comitive', c: '#A86F00', q: d.comitive.quando, classe: 'cm4', versioni: vv.map((v) => [v, nomi[v]]),
         foglio: (v) => P.fogli.comitive(d.comitive, v === 'personale' ? 'p:' + d.io.id : v) });
     }
-    return out;
+    // gruppi di servizio e organigramma (pubblicati da Luca da «Ruoli e gruppi»)
+    if (d.gruppi && P.fogli.gruppi) out.push({ t: 'gruppi', titolo: 'Gruppi di servizio', c: '#4D5A68', q: d.gruppi.quando, classe: 'fa4', versioni: [['tutti', 'Gruppi di servizio']], foglio: () => P.fogli.gruppi(d.gruppi.dati, d.gruppi.quando) });
+    if (d.org && P.fogli.organigramma) out.push({ t: 'org', titolo: 'Organigramma', c: '#A8432B', q: d.org.quando, classe: 'fa4', versioni: [['tutti', 'Organigramma']], foglio: () => P.fogli.organigramma(d.org.dati, d.org.quando) });
+    return out.filter((f) => f.versioni.length);
   }
   const anteprima = (classe, html) => '<div class="rp-anteprima ' + classe + '" style="padding:0;background:none"><div class="pgm-fit" data-fit="1"><div class="pgm-scale">' + html + '</div></div></div>';
 
@@ -108,7 +111,7 @@
     if (d.programmi.inf || d.programmi.fs) {
       const pr = [['inf', 'Adunanza infrasettimanale', !!d.programmi.inf, '#A8432B'], ['fs', 'Adunanza del fine settimana', !!d.programmi.fs, '#521F46'],
         ['uni', 'Programma combinato', !!(d.programmi.inf && d.programmi.fs), '#4D5A68']].filter((x) => x[2]);
-      if (d.io.nominato) pr.push(['rep', 'Adunanze e reparti', true, '#4D5A68', true]);
+      if (d.io.adrep != null ? d.io.adrep : d.io.nominato) pr.push(['rep', 'Adunanze e reparti', true, '#4D5A68']);
       pr.forEach((x) => { h += libro('data-bc="prog" data-v="' + x[0] + '"', x[3], x[1], quando(d.programmi.inf || d.programmi.fs), '<iframe data-anteprima="' + x[0] + '" title="Anteprima: ' + esc(x[1]) + '" tabindex="-1"></iframe>', x[4]); });
     }
     F.forEach((f) => f.versioni.forEach((x) => {
