@@ -2112,7 +2112,7 @@ function piuMinuti_(ora, min) {
 /** Le righe della guida con un nome da scrivere, con un'etichetta leggibile (per «I miei impegni»)
  *  e i dettagli per la scheda della bacheca: numero, titolo, minuti, ambito, riferimento, colore della sezione, ruolo. */
 function righeGuida_(mese) {
-  const c = CacheService.getScriptCache(), key = 'righe3:' + mese, t = c.get(key);
+  const c = CacheService.getScriptCache(), key = 'righe4:' + mese, t = c.get(key);
   if (t) return JSON.parse(t);
   let g;
   try { const r = UrlFetchApp.fetch(REPO + 'dati/' + mese + '.json', { muteHttpExceptions: true }); if (r.getResponseCode() !== 200) return []; g = JSON.parse(r.getContentText()); } catch (e) { return []; }
@@ -2139,18 +2139,20 @@ function righeGuida_(mese) {
           d.titolo = (num ? num + '. ' : '') + String(r.titolo || '') + (r.min ? ' (' + r.min + ' min)' : '');
           d.dett = [r.ambito ? String(r.ambito).toUpperCase() : '', r.rif || ''].filter(Boolean).join(' · ');
           d.ruolo = RUOLI[campo === 'chi2' ? r.ruolo2 : r.ruolo] || '';
+          // la parte come sulla guida: numero, titolo, minuti, ambito, riferimento, tema
+          d.kind = 'parte'; d.parte = { n: num, titolo: String(r.titolo || ''), min: r.min || null, ambito: r.ambito || '', rif: r.rif || '', tema: r.tema || '' };
           const altro = campo === 'chi' ? 'chi2' : 'chi';
           if ((r.campi || []).indexOf(altro) >= 0) { d.con = r.id + ':' + altro; d.conRuolo = RUOLI[altro === 'chi2' ? r.ruolo2 : r.ruolo] || ''; }
         } else if (r.tipo === 'cantico') {
           d.titolo = r === preghiere[0] && preghiere.length > 1 ? 'Preghiera iniziale' : 'Preghiera finale';
           d.dett = r.titolo ? 'Cantico ' + r.titolo : '';
-          d.ruolo = 'Preghiera';
+          d.ruolo = 'Preghiera'; d.kind = 'preghiera';
         } else if (r.tipo === 'testa') {
-          d.titolo = 'Presidente dell\'adunanza'; d.ruolo = 'Presidente'; d.dett = r.rif ? String(r.titolo || '') + ' · ' + r.rif : '';
+          d.titolo = 'Presidente dell\'adunanza'; d.ruolo = 'Presidente'; d.kind = 'presidente'; d.dett = r.rif ? String(r.titolo || '') + ' · ' + r.rif : '';
         } else {
           // voce (Oratore, Conduttore, Lettore): la sezione e il suo tema
           const tema = (z.righe || []).find((x) => x.tipo === 'parte');
-          d.titolo = String(z.titolo || ''); d.ruolo = String(r.titolo || '');
+          d.titolo = String(z.titolo || ''); d.ruolo = String(r.titolo || ''); d.kind = 'voce';
           d.dett = tema ? String(tema.titolo || '') : '';
           if (tema) d.off = off[tema.id] || 0;
           if (tema && (tema.campi || []).indexOf('titolo') >= 0) d.tema = tema.id + ':titolo';
@@ -2235,7 +2237,7 @@ function bachecaPer_(io, mese) {
     // l'orario della parte (inizio dell'adunanza + i minuti delle parti prima); l'orario dell'adunanza resta a parte
     const ora = a && a.ora ? piuMinuti_(a.ora, r.off || 0) : '';
     out.impegni.push({ data: dataDi(r.carta), tipo: r.tipo === 'INFRA' ? 'inf' : 'fs', testo: r.testo,
-      col: r.col || '', ruolo: r.ruolo || '', titolo: r.titolo || r.testo, ora: ora, adOra: a && r.off ? a.ora || '' : '',
+      col: r.col || '', ruolo: r.ruolo || '', titolo: r.titolo || r.testo, ora: a ? a.ora || '' : '', oraParte: r.off ? ora : '', kind: r.kind || '', sezione: r.sezione || '', parte: r.parte || null,
       dett: (r.tema && val[r.tema] ? String(val[r.tema]) : r.dett) || '',
       con: r.con && val[r.con] ? (r.conRuolo ? r.conRuolo + ': ' : 'Con ') + nomeTesto(val[r.con]) : '' });
   });
@@ -2250,10 +2252,9 @@ function bachecaPer_(io, mese) {
     rp.stato.turni.filter((t) => t.persona_id === io.id && !/^PUL_/.test(t.incarico_id)).forEach((t) => {
       const a = rp.adunanze.find((x) => x.id === t.adunanza_id);
       const R = REP.find((x) => x[2].indexOf(t.incarico_id) >= 0);
-      const altri = R ? rp.stato.turni.filter((y) => y !== t && y.adunanza_id === t.adunanza_id && y.settimana_id === t.settimana_id && R[2].indexOf(y.incarico_id) >= 0 && y.persona_id && y.persona_id !== io.id)
-        .map((y) => POSTO[y.incarico_id] + ' ' + (nomeP[y.persona_id] || '')) : [];
+      // niente nomi degli altri: la scheda dice solo cosa fa chi la legge
       out.impegni.push({ data: a ? a.data : t.settimana_id, tipo: 'rep', testo: nomeInc[t.incarico_id] + (a ? '' : ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7)),
-        col: R ? R[1] : '#4D5A68', ruolo: POSTO[t.incarico_id] || '', titolo: R ? R[0] : nomeInc[t.incarico_id], ora: a ? a.ora || '' : '', dett: altri.join(' · '), sett: !a });
+        col: R ? R[1] : '#4D5A68', ruolo: POSTO[t.incarico_id] || '', titolo: R ? R[0] : nomeInc[t.incarico_id], ora: a ? a.ora || '' : '', posto: t.incarico_id, sett: !a });
     });
     if (!rp.stato.pulizieProgramma) {
       rp.stato.turni.filter((t) => t.persona_id === io.id && /^PUL_/.test(t.incarico_id)).forEach((t) => out.impegni.push({ data: t.settimana_id, tipo: 'pul', testo: nomeInc[t.incarico_id] + ' · settimana del ' + t.settimana_id.slice(8) + '/' + t.settimana_id.slice(5, 7) }));

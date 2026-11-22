@@ -72,7 +72,11 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
 - In ordine di data, divisi per settimana (lunedì–domenica). Ogni impegno: fascia con il giorno per intero in maiuscolo
   (e l'orario) nel colore della sezione, scritta bianca, ruolo in sovrimpressione a destra; sotto un riquadro più tenue
   con la descrizione completa. Nomi come nei programmi (nome e cognome).
-- Parti: orario della parte (inizio adunanza + minuti delle parti prima) e «Adunanza alle …». Comitive: Efficaci.
+- La scheda dice cosa fa chi la legge, senza i nomi degli altri (eccetto l'assistente/studente della stessa parte e il compagno
+  di postazione): sottotitolo in maiuscolo (reparto, tipo di adunanza…) e frase «Sei in programma…» (al mixer, come conduttore…).
+  Parti: «Sei in programma per la sezione X (come studente/assistente)» e sotto la parte come sulla guida (numero, titolo nel
+  colore della sezione, minuti, ambito, riferimento, tema), poi «Alle HH:MM» (orario della parte). Nella fascia l'orario dell'adunanza.
+- Colori: Comitive Efficaci.
   Audio/Video viola, Uscieri grigio, Letteratura e territori Efficaci, Pulizie azzurro #2E75B5, Espositori #2F7F8C.
 - Prima di aggiungere un nuovo tipo di impegno Luca ne decide l'aspetto.
 

@@ -28,7 +28,15 @@
   .bc-ic .bnd b{font-size:14.5px;font-weight:700;letter-spacing:.04em}
   .bc-ic .bnd span{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(255,255,255,.75);border-radius:4px;padding:2px 6px;white-space:nowrap}
   .bc-ic .cp{padding:9px 12px 10px}
-  .bc-ic .tt{color:var(--c);font-size:15px;font-weight:600;margin:0 0 2px;line-height:1.3}
+  .bc-ic .sot{display:block;background:none;padding:0;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--c);margin-bottom:3px}
+  .bc-ic .fr{font-size:14.5px;color:#1F2630;margin:0;line-height:1.4}
+  .bc-ic .fr b{font-weight:700;color:var(--c)}
+  .bc-ic .gp{margin:6px 0 0;font-size:14.5px;line-height:1.35}
+  .bc-ic .gt{color:var(--c);font-weight:700}
+  .bc-ic .gm{color:#4D5A68}
+  .bc-ic .ga{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4D5A68;margin-left:4px}
+  .bc-ic .gr{font-size:13px;color:#4D5A68;margin-left:4px}
+  .bc-ic .gq{margin:3px 0 0;font-size:13.5px;font-style:italic;color:#4D5A68}
   .bc-ic .s{font-size:13.5px;color:#4D5A68;margin:2px 0 0;line-height:1.45}
   .bc-ic .s b{color:#1F2630;font-weight:600}
   .bc-lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px 14px;margin-bottom:10px}
@@ -79,15 +87,55 @@
   const tenue = (hex) => { const h = String(hex || '#4D5A68').replace('#', ''); const c = [0, 2, 4].map((i) => parseInt(h.substr(i, 2), 16)); return 'rgb(' + c.map((x) => Math.round(x + (255 - x) * 0.88)).join(',') + ')'; };
   const lunedi = (iso) => { const g = dt(iso); g.setUTCDate(g.getUTCDate() - ((g.getUTCDay() + 6) % 7)); return g.toISOString().slice(0, 10); };
   const giornoMese = (g) => g.getUTCDate() + ' ' + MESI[g.getUTCMonth()];
-  /** Una scheda di «I miei impegni»: fascia con il giorno per intero nel colore della sezione, sotto la descrizione completa. */
+  // dove sei in programma, per ogni posto dei reparti
+  const AL = { USC_COORD: 'come coordinatore degli uscieri', USC_ING: 'all\'ingresso', USC_AUD: 'in auditorium', USC_PAR: 'al parcheggio', AV_POD: 'al podio', AV_MIC: 'al microfono',
+    AV_MIX: 'al mixer', AV_PC: 'al PC', LET: 'alla letteratura', TER: 'ai territori' };
+  const minuscolo = (s) => String(s || '').toLowerCase();
+  /** Cosa dice la scheda: sottotitolo in maiuscolo (facoltativo), la frase «Sei in programma…», la parte come sulla guida, i dettagli. */
+  function testoImpegno(x) {
+    const T = { sotto: '', frase: '', parte: '', dett: [] };
+    const nomeAd = x.tipo === 'inf' ? 'Adunanza infrasettimanale' : 'Adunanza del fine settimana';
+    if ((x.tipo === 'inf' || x.tipo === 'fs') && x.kind === 'parte' && x.parte) {
+      const come = x.ruolo ? ' come ' + minuscolo(x.ruolo) : '';
+      T.frase = 'Sei in programma per la sezione <b>' + esc(x.sezione) + '</b>' + esc(come) + '.';
+      const p = x.parte;
+      T.parte = '<p class="gp"><span class="gt">' + (p.n ? p.n + '. ' : '') + esc(p.titolo) + '</span>' + (p.min ? ' <span class="gm">(' + p.min + ' min)</span>' : '') +
+        (p.ambito ? ' <span class="ga">' + esc(p.ambito) + '</span>' : '') + (p.rif ? ' <span class="gr">' + esc(p.rif) + '</span>' : '') + '</p>' +
+        (p.tema ? '<p class="gq">«' + esc(p.tema) + '»</p>' : '');
+      if (x.oraParte) T.dett.push('Alle ' + x.oraParte);
+      if (x.con) T.dett.push(x.con);
+    } else if (x.tipo === 'inf' || x.tipo === 'fs') {
+      T.sotto = nomeAd;
+      if (x.kind === 'preghiera') { T.frase = 'Sei in programma per la ' + esc(minuscolo(x.titolo)) + '.'; if (x.dett) T.dett.push(x.dett); if (x.oraParte) T.dett.push('alle ' + x.oraParte); }
+      else if (x.kind === 'presidente') { T.frase = 'Sei in programma come presidente.'; if (x.dett) T.dett.push(x.dett); }
+      else {
+        T.sotto = x.titolo || nomeAd;
+        T.frase = 'Sei in programma come ' + esc(minuscolo(x.ruolo)) + '.';
+        if (x.dett) T.parte = '<p class="gp"><span class="gt">' + esc(x.dett) + '</span></p>';
+        if (x.oraParte) T.dett.push('Alle ' + x.oraParte);
+      }
+    } else if (x.tipo === 'rep') {
+      T.sotto = x.titolo === 'Uscieri' ? 'Reparto uscieri' : x.titolo;
+      T.frase = 'Sei in programma ' + esc(AL[x.posto] || 'per ' + minuscolo(x.ruolo)) + '.';
+    } else if (x.tipo === 'com') {
+      T.sotto = x.titolo; T.frase = 'Sei in programma come conduttore.'; if (x.dett) T.dett.push(x.dett);
+    } else if (x.tipo === 'pul') {
+      T.sotto = x.titolo; T.frase = 'Sei in programma come ' + esc(minuscolo(x.ruolo)) + '.';
+    } else if (x.tipo === 'oem') {
+      T.sotto = 'Opera pubblica'; T.frase = 'Sei in programma alla ' + esc(String(x.titolo || '').replace(/^Postazione /, 'postazione ')) + '.'; if (x.dett) T.dett.push(x.dett.replace(/^con /, 'Con '));
+    } else { T.frase = esc(x.titolo || x.testo); if (x.dett) T.dett.push(x.dett); }
+    return T;
+  }
+  /** Una scheda di «I miei impegni»: fascia con il giorno per intero nel colore della sezione, sotto cosa devi fare. */
   function scheda(x, d) {
     const g = dt(x.data), c = x.col || COL[x.tipo] || '#4D5A68';
     const fine = x.sett ? dt(x.data) : null; if (fine) fine.setUTCDate(fine.getUTCDate() + 6);
     const data = x.sett ? 'SETTIMANA DAL ' + g.getUTCDate() + ' AL ' + giornoMese(fine).toUpperCase() : GL[g.getUTCDay()] + ' ' + giornoMese(g).toUpperCase();
     const passato = (x.sett ? fine.toISOString().slice(0, 10) : x.data) < d.oggi;
-    return '<div class="bc-ic' + (passato ? ' pass' : '') + '" style="--c:' + c + ';--t:' + tenue(c) + '"><div class="bnd"><b>' + esc(data) + (x.ora ? ' · ' + esc(x.ora) : '') + '</b>' + (x.ruolo ? '<span>' + esc(x.ruolo) + '</span>' : '') + '</div>' +
-      '<div class="cp"><p class="tt">' + esc(x.titolo || x.testo) + '</p>' + (x.dett ? '<p class="s">' + esc(x.dett) + '</p>' : '') + (x.con ? '<p class="s">' + esc(x.con) + '</p>' : '') +
-      (x.adOra ? '<p class="s">Adunanza alle ' + esc(x.adOra) + '</p>' : '') + '</div></div>';
+    const T = testoImpegno(x);
+    return '<div class="bc-ic' + (passato ? ' pass' : '') + '" style="--c:' + c + ';--t:' + tenue(c) + '"><div class="bnd"><b>' + esc(data) + (x.ora ? ' · ' + esc(x.ora) : '') + '</b></div>' +
+      '<div class="cp">' + (T.sotto ? '<span class="sot">' + esc(T.sotto) + '</span>' : '') + '<p class="fr">' + T.frase + '</p>' + T.parte +
+      (T.dett.length ? '<p class="s">' + T.dett.map(esc).join(' · ') + '</p>' : '') + '</div></div>';
   }
   /** Gli impegni in ordine di data, settimana per settimana (lunedì–domenica). */
   function impegni(d) {
