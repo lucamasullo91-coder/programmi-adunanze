@@ -97,7 +97,8 @@
   .fa4 .og-el{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .fa4 .og-el>div{background:#F4F3EF;border-radius:3px;padding:7px 10px}
   .fa4 .og-el .og-n{font-size:10.5px;font-weight:600;padding:1px 0}
-  .fa4 .og-el .cols{columns:2;column-gap:12px}
+  .fa4 .og-el .cols{display:grid;grid-auto-flow:column;grid-template-columns:1fr 1fr;column-gap:12px}
+  .fa4 .og-el .og-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fa4 .og-vuoto{color:#9aa3ad;font-weight:400}`;
   document.head.appendChild(css);
 
@@ -219,7 +220,7 @@
         '<div class="og-ass"><small>Assistenti</small>' + nomi1(r.assistenti) + '</div></section>';
     }).join('') + '</div>';
     if (d.mostraElenchi && d.elenchi) h += '<div class="og-sez">Anziani e servitori di ministero</div><div class="og-el">' +
-      [['Anziani', d.elenchi.anziani], ['Servitori di ministero', d.elenchi.servitori]].map((x) => '<div><small>' + x[0] + ' · ' + x[1].length + '</small><div class="cols">' + nomi1(x[1]) + '</div></div>').join('') + '</div>';
+      [['Anziani', d.elenchi.anziani], ['Servitori di ministero', d.elenchi.servitori]].map((x) => '<div><small>' + x[0] + ' · ' + x[1].length + '</small><div class="cols" style="grid-template-rows:repeat(' + Math.max(1, Math.ceil(x[1].length / 2)) + ',auto)">' + nomi1(x[1]) + '</div></div>').join('') + '</div>';
     return h + '<footer class="pgm-foot"><span><b>Organigramma</b>Ruoli degli anziani, comitato di servizio e reparti</span><span class="code">' + esc(d.cong || '') + '</span></footer></article>';
   };
   const anteprima = (html) => '<div class="rp-anteprima fa4"><div class="pgm-fit" data-ogfit="1"><div class="pgm-scale">' + html + '</div></div></div>';
