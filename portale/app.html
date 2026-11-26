@@ -985,8 +985,17 @@ h3.t{margin:16px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:upperc
       var bac = t.dataset.bac === '1';
       var link = S.acc.link + '?k=' + pp.codice + (bac ? '&v=bacheca' : '');
       if (t.dataset.copia) { (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () { toast('Link copiato'); }).catch(function () { window.prompt('Copia il link', link); }); return; }
-      var nomeP = pp.nome.split(' ').slice(1).join(' ') || pp.nome;
-      var testo = bac ? 'Ciao ' + nomeP + ', questo è il tuo link personale alla bacheca della congregazione: ogni mese ci trovi i programmi pubblicati e i tuoi impegni. Salvalo e non inoltrarlo a nessuno:\n' + link
+      var fr = (S.dati.fratelli || []).filter(function (x) { return x.id === pp.id; })[0];
+      var nomeP = (fr && nome(fr).fn) || pp.nome.split(' ').slice(1).join(' ') || pp.nome;
+      var testo = bac ? ['Ciao *' + nomeP + '*! 👋', '',
+          'Questo è il tuo *link personale* alla bacheca della congregazione Napoli Pianura Trencia.',
+          'Ogni mese ci trovi i programmi pubblicati e i tuoi impegni.', '',
+          '👉 ' + link, '',
+          '📌 *Come salvarlo sul telefono*',
+          '• iPhone: apri il link con Safari → tasto Condividi → «Aggiungi alla schermata Home»',
+          '• Android: apri il link con Chrome → menu ⋮ → «Aggiungi a schermata Home»', '',
+          'Così hai un\'icona che apre la bacheca con un tocco.', '',
+          '🔒 Il link è solo tuo: non inoltrarlo a nessuno.'].join('\n')
         : 'Ciao ' + nomeP + ', questo è il tuo link personale al portale della congregazione. Salvalo e non inoltrarlo a nessuno:\n' + link;
       window.open('https://wa.me/?text=' + encodeURIComponent(testo), '_blank');
       return;
