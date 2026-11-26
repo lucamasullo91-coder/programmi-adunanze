@@ -109,7 +109,8 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
 ### Avvisi Telegram (solo a Luca)
 - Giorno dell'adunanza alle 9:00: «Promemoria turni reparti» con le immagini di tutti i reparti, poi presidente e Audio/Video · prove.
 - Lunedì 9:00 pulizie della settimana (e pulizia generale); domenica 19:30 i suoi impegni della settimana dopo;
-  parti 10 giorni prima e comitive 3 giorni prima alle 9:00; allarme sostituzione una volta all'ora (solo casi nuovi).
+  parti 10 giorni prima e comitive 3 giorni prima alle 9:00; allarme sostituzione una volta ogni 3 ore dalle 9 (solo casi nuovi).
+- I controlli pesanti (parti, comitive, sostituzioni) girano una volta per fascia di 3 ore (9, 12, 15, 18, 21), non a ogni giro di 15 minuti: segno `avv:giro:<data>:<imp|sost>:<fascia>`.
 - Orari e giorni si cambiano nella pagina Telegram del portale (proprietà utente `AVVISI`).
 
 ### Immagini WhatsApp dei reparti
