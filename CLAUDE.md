@@ -105,6 +105,12 @@ I dati delle persone stanno **solo** nel Foglio Google, mai nel repository (il r
 - Giorno, ora e luogo di una comitiva si cambiano dal programma (solo quella settimana o da lì in poi): il cambio va nelle
   variazioni del Calendario (`tipo: 'cambiata'`), la chiave della comitiva resta quella originale (conduttore e offerte restano).
 - Domeniche dei gruppi: lo «schema del mese» mostra chi sta con chi (lettere A, B… con colori); i gruppi possono stare insieme o da soli.
+- **Luoghi**: un solo elenco (Impostazione `comitive:luoghi`): i luoghi delle comitive di congregazione dal Calendario (fissi) più quelli
+  aggiunti con «+ Nuovo luogo…» o dal pannello «Luoghi delle comitive»; niente doppioni per maiuscole o spazi. Ogni gruppo può avere un
+  luogo predefinito che precompila le sue domeniche (es. Muto → Casa Ricciardi).
+- **Tabella informazioni**: nelle comitive dei gruppi della domenica niente date (si tengono tutte le domeniche): solo gruppi, orario, luogo.
+  Le date compaiono («Solo …») solo se quella formazione non vale per tutto il mese. In fondo una riga solo per le domeniche senza
+  comitiva (di tutti o di alcuni gruppi), con il motivo della settimana se c'è (assemblea, congresso). Nessuna sezione di analisi nel portale.
 
 ### Avvisi Telegram (solo a Luca)
 - Giorno dell'adunanza alle 9:00: «Promemoria turni reparti» con le immagini di tutti i reparti, poi presidente e Audio/Video · prove.

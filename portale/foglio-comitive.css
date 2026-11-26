@@ -479,3 +479,12 @@
 .cm4 .pgm.com.a4 .dform .r .d{position: relative;}
 .cm4 .pgm.com.a4 .dform .r .d .ast{position: absolute; top: -2px; right: 2px; font-style: normal; font-weight: 800; font-size: 10px; color: #F2C66D;}
 .cm4 .pgm.com.a4 .dform .dvn{padding: 0 8px 6px; font-size: 8.5px; font-weight: 600; color: #A8432B;}
+
+/* Tabella informazioni: comitive della domenica senza date (si tengono tutte le domeniche) */
+.cm4 .pgm.com.a4.sala .dform .hd{padding: 8px 10px; gap: 2px;}
+.cm4 .pgm.com.a4.sala .dform .hd b{font-size: 12.5px;}
+.cm4 .pgm.com.a4.sala .dform .hd span{font-size: 12px;}
+.cm4 .pgm.com.a4.sala .dform .hd em{font-size: 11px; white-space: normal;}
+.cm4 .pgm.com.a4.sala .dform .hd .solo{font-size: 9.5px; font-weight: 700; color: var(--plum); letter-spacing: .02em; zoom: var(--z-giorni, 1);}
+.cm4 .pgm.com.a4.sala .dform .dvn{padding: 5px 10px 6px;}
+.cm4 .pgm.com.a4 .dex{margin-top: 8px; padding: 6px 10px; border-left: 3px solid #A8432B; background: #FBF1EE; font-size: 10px; font-weight: 600; color: #A8432B; line-height: 1.45; zoom: var(--z-note, 1);}

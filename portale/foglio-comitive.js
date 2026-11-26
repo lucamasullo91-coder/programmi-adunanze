@@ -203,7 +203,36 @@
     }
     const visH = domVisita.map((u) => { const [fn, ln] = nomeDiviso(u.conduttore_id), d = day(u.data);
       return '<span class="dvis ' + (io && u.conduttore_id === io ? 'me' : '') + '"><span class="d"><small>DOM</small><b>' + d.d + '</b><small>' + MESI3[d.m - 1] + '</small></span><span class="t">ore ' + esc(ora(u.ora)) + (u.luogo_id ? ' · ' + esc(titolo(u.luogo_id)) : '') + '</span>' + (u.conduttore_id ? '<span class="n">' + nomeIntero(fn, ln) + '</span>' : '') + '</span>'; }).join('');
-    if (forme.length) {
+    if (forme.length && sala) {
+      /* Tabella informazioni: le comitive dei gruppi si tengono tutte le domeniche, quindi niente date. Per ogni formazione
+       * gruppi, orario e luogo; le date solo se la formazione non vale per tutto il mese. In fondo, solo se ci sono,
+       * le domeniche senza comitiva (tutti o alcuni gruppi), con il motivo della settimana (assemblea, congresso…). */
+      const domeniche = M.settimane.map((s) => { const a = day(s.lunedi), f = new Date(Date.UTC(a.y, a.m - 1, a.d + 6)); return { data: f.toISOString().slice(0, 10), nota: s.nota }; });
+      const conVisita = new Set(domVisita.map((u) => String(u.data).slice(0, 10)));
+      const attivi = gruppiIds.filter((g) => M.slots.some((x) => x.gruppi.indexOf(g) >= 0));
+      const dataCorta = (iso) => { const d = day(iso); return d.d + ' ' + MESI3[d.m - 1]; };
+      const elenco = (xs) => (xs.length > 1 ? xs.slice(0, -1).join(', ') + ' e ' + xs[xs.length - 1] : xs[0] || '');
+      const eccezioni = [], senzaNessuno = new Set();
+      domeniche.forEach((dd) => {
+        if (conVisita.has(dd.data)) return;
+        const mancano = attivi.filter((g) => !M.slots.some((x) => x.data === dd.data && x.gruppi.indexOf(g) >= 0));
+        if (!mancano.length) return;
+        const d = day(dd.data), quando = 'Domenica ' + d.d + ' ' + MESI[d.m - 1];
+        if (mancano.length === attivi.length) { senzaNessuno.add(dd.data); eccezioni.push(quando + ': nessuna comitiva' + (dd.nota ? ' (' + dd.nota.toLowerCase() + ')' : '')); }
+        else eccezioni.push(quando + ': nessuna comitiva per ' + (mancano.length === 1 ? 'il gruppo ' : 'i gruppi ') + mancano.join(', ').toUpperCase() + (dd.nota ? ' (' + dd.nota.toLowerCase() + ')' : ''));
+      });
+      const valide = domeniche.map((x) => x.data).filter((x) => !conVisita.has(x) && !senzaNessuno.has(x));
+      h += '<section class="mwk dom"><h2><b>Domenica</b><i>|</i><span>Comitive dei gruppi di servizio</span>' + visH + '</h2><div class="dform-row" style="grid-template-columns:repeat(' + Math.min(forme.length, 4) + ',minmax(0,1fr))">' +
+        forme.map((f) => {
+          const date = f.righe.map((r) => r.data);
+          // «Solo …» quando in qualche domenica questi gruppi stanno in un'altra formazione (se mancano del tutto lo dice la riga in fondo)
+          const tutte = !valide.some((x) => date.indexOf(x) < 0 && M.slots.some((q) => q.data === x && q.gruppi.some((g) => f.gruppi.indexOf(g) >= 0)));
+          const diverse = f.righe.filter((r) => r.diversa).map((r) => dataCorta(r.data) + ': ' + r.diversa);
+          return '<div class="dform"' + stileRiquadro(layout, f.chiave) + '><div class="hd"><b>' + esc(titoloFormazione(f.gruppi, gruppiIds)) + '</b><span>ore ' + esc(f.ora) + '</span>' + (f.luogo ? '<em>' + esc(titolo(f.luogo)) + '</em>' : '') +
+            (tutte ? '' : '<small class="solo">Solo ' + esc(elenco(date.map(dataCorta))) + '</small>') + '</div>' +
+            (diverse.length ? '<div class="dvn">' + diverse.map(esc).join(' · ') + '</div>' : '') + '</div>';
+        }).join('') + '</div>' + (eccezioni.length ? '<div class="dex">' + eccezioni.map(esc).join('<br>') + '</div>' : '') + '</section>';
+    } else if (forme.length) {
       h += '<section class="mwk dom"><h2><b>Domenica</b><i>|</i><span>Comitive dei gruppi di servizio</span>' + visH + '</h2><div class="dform-row" style="grid-template-columns:repeat(' + Math.min(forme.length, 4) + ',minmax(0,1fr))">' +
         forme.map((f) => '<div class="dform"' + stileRiquadro(layout, f.chiave) + '><div class="hd"><b>' + esc(titoloFormazione(f.gruppi, gruppiIds)) + '</b><span>ore ' + esc(f.ora) + '</span>' + (f.luogo ? '<em>' + esc(titolo(f.luogo)) + '</em>' : '') + '</div><div class="rr">' +
           f.righe.map((r) => {

@@ -1462,7 +1462,7 @@ function comitive(k, mese) {
       adunanze: w.adunanze.map((a) => ({ tipo: a.tipo, data: a.data, ora: a.ora, spostata: !!a.spostata })) })),
     conduttori: lista.map((p) => ({ id: p.id, sigla: sg[p.id], nome: p.n, cognome: p.cognome, gruppo: p.gruppo, abilitato: !!(colC ? p.riga[colC.c - 1] === true : p.nominato) })),
     offerte: offerte, risposto: risposto, previsti: Object.keys(rd.previsti), storico: storico, stato: stato,
-    sedi: (cal.comitive || []).map((c) => c.luogo).filter((x, i, a) => x && a.indexOf(x) === i),
+    sedi: luoghiComitive_(cal).elenco, luoghi: luoghiComitive_(cal),
     foglio: datiFoglioComitive_(mese, cal), puoTutto: true,
   };
 }
@@ -1525,7 +1525,53 @@ function domenicheGruppo(k, mese) {
   mese = /^\d{4}-\d{2}$/.test(mese || '') ? mese : prossimoMese_();
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_);
   return { mese: mese, nomeMese: nomeMese_(mese), gruppo: mio, settimane: settimane_(cal, mese).map((w) => ({ lunedi: w.lunedi, domenica: w.al })),
-    foglio: datiFoglioComitive_(mese, cal), sedi: (cal.comitive || []).map((c) => c.luogo).filter((x, i, a) => x && a.indexOf(x) === i) };
+    foglio: datiFoglioComitive_(mese, cal), sedi: luoghiComitive_(cal).elenco, luoghi: luoghiComitive_(cal) };
+}
+/* ── Luoghi delle comitive: un solo elenco, ogni luogo scritto sempre allo stesso modo ── */
+const pulisciLuogo_ = (x) => {
+  const t = String(x || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return t === t.toLowerCase() ? t.replace(/(^|\s)\S/g, (m) => m.toUpperCase()).replace(/ (Del|Della|Dei|Di|Da|E|Al|Alla|In) /g, (m) => m.toLowerCase()) : t; // «casa ricciardi» → «Casa Ricciardi»
+};
+/** { elenco, fissi, predefiniti }: i luoghi delle comitive di congregazione (Calendario) sono fissi; gli altri si aggiungono
+ *  dal programma («+ Nuovo luogo…»). predefiniti = { gruppo: luogo } precompila le domeniche di quel gruppo. */
+function luoghiComitive_(cal) {
+  const L = leggiImpostazione_('comitive:luoghi', {}), elenco = [], fissi = [];
+  const metti = (a, x) => { x = pulisciLuogo_(x); if (x && !a.some((y) => y.toLowerCase() === x.toLowerCase())) a.push(x); };
+  (cal.comitive || []).forEach((c) => { metti(fissi, c.luogo); metti(elenco, c.luogo); });
+  (L.elenco || []).forEach((x) => metti(elenco, x));
+  const predefiniti = {};
+  Object.keys(L.predefiniti || {}).forEach((g) => { const x = elenco.find((y) => y.toLowerCase() === pulisciLuogo_(L.predefiniti[g]).toLowerCase()); if (x) predefiniti[g] = x; });
+  return { elenco: elenco, fissi: fissi, predefiniti: predefiniti };
+}
+/** «+ Nuovo luogo…» dal programma: chi cura le comitive o chi compila le domeniche del suo gruppo. Se esiste già (anche con
+ *  maiuscole o spazi diversi) non lo duplica. Restituisce l'elenco aggiornato e il nome come è scritto nell'elenco. */
+function aggiungiLuogo(k, nome) {
+  const io = richiedi_(k);
+  if (!haAmbito_(io, 'comitive') && !gruppoGuidato_(io)) throw new Error('Non puoi aggiungere luoghi.');
+  nome = pulisciLuogo_(nome);
+  if (!nome) throw new Error('Scrivi il nome del luogo.');
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), L = leggiImpostazione_('comitive:luoghi', {});
+    const gia = luoghiComitive_(cal).elenco.find((y) => y.toLowerCase() === nome.toLowerCase());
+    if (!gia) { L.elenco = (L.elenco || []).concat([nome]); scriviImpostazione_('comitive:luoghi', L); registroUnaVolta_(io, 'comitive', 'luogo delle comitive aggiunto: ' + nome); }
+    return Object.assign(luoghiComitive_(cal), { scelto: gia || nome });
+  } finally { lock.releaseLock(); }
+}
+/** Elenco dei luoghi e luogo predefinito dei gruppi (chi cura le comitive). I luoghi del Calendario restano sempre. */
+function salvaLuoghi(k, d) {
+  const io = richiediAmbito_(k, 'comitive');
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), fissi = luoghiComitive_(cal).fissi.map((x) => x.toLowerCase());
+    const elenco = [];
+    ((d && d.elenco) || []).forEach((x) => { x = pulisciLuogo_(x); if (x && fissi.indexOf(x.toLowerCase()) < 0 && !elenco.some((y) => y.toLowerCase() === x.toLowerCase())) elenco.push(x); });
+    const predefiniti = {}, gruppi = gruppiServizio_();
+    Object.keys((d && d.predefiniti) || {}).forEach((g) => { const x = pulisciLuogo_(d.predefiniti[g]); if (x && gruppi.indexOf(g) >= 0) predefiniti[g] = x; });
+    scriviImpostazione_('comitive:luoghi', { elenco: elenco, predefiniti: predefiniti });
+    registroUnaVolta_(io, 'comitive', 'luoghi delle comitive');
+    return luoghiComitive_(cal);
+  } finally { lock.releaseLock(); }
 }
 /** Piè di pagina del foglio comitive (per tutti i mesi). */
 function salvaPiedeComitive(k, piede) {

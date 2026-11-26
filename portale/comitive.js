@@ -201,8 +201,7 @@
       .concat(fuori.length ? ['Si sono offerti ma non hanno comitive: ' + fuori.map(sigla).join(', ')] : []);
     if (av.length) h += '<details class="rp-rev" open><summary>Da rivedere (' + av.length + ')</summary><ul>' + av.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></details>';
     const abil = C.d.conduttori.filter((p) => p.abilitato).sort((x, y) => x.cognome.localeCompare(y.cognome, 'it'));
-    h += sediDatalist();
-    h += schemaDomeniche();
+    h += schemaDomeniche() + pannelloLuoghi();
     C.d.settimane.forEach((w, i) => {
       h += '<section class="cm-wk"><h3><b>' + (i + 1) + 'ª settimana</b><span>' + intervallo(w.lunedi) + '</span>' + (w.speciale ? '<span style="color:#521F46">' + esc(w.speciale.nome) + '</span>' : '') + '</h3>';
       w.comitive.forEach((c) => {
@@ -237,7 +236,8 @@
     return '<div class="cm-mod" data-k="' + esc(c ? c.k : '') + '" data-w="' + w.lunedi + '">' +
       '<b style="color:#A86F00">' + (c ? 'Cambia la comitiva di ' + esc(lungo(c.data)) + ' ' + esc(c.ora) : 'Comitiva in più') + '</b>' +
       '<div class="rr"><select id="cmGiorno">' + giorni.map((g) => '<option value="' + g + '"' + (g === data ? ' selected' : '') + '>' + esc(lungo(g)) + '</option>').join('') + '</select>' +
-      '<input type="time" id="cmOra" value="' + esc(String(ora).padStart(5, '0')) + '"><input list="cmSedi" id="cmLuogo" value="' + esc(luogo) + '" placeholder="Luogo"></div>' +
+      '<input type="time" id="cmOra" value="' + esc(String(ora).padStart(5, '0')) + '">' + selLuogo('id="cmLuogo" data-cm="cLuogo"', luogo) + '</div>' +
+      '<input id="cmLuogoNuovo" placeholder="Nome del nuovo luogo (es. Casa Ricciardi)" style="display:none">' +
       '<input id="cmMotivo" placeholder="Motivo (facoltativo, es. visita del sorvegliante)">' +
       (c && !c.aggiunta ? '<label style="font-size:13px"><input type="checkbox" id="cmSeguenti"> Anche le settimane seguenti (cambio stabile)</label>' : '') +
       '<div class="rr"><button class="btn small" data-cm="cSalva" style="background:#A86F00;border-color:#A86F00">Salva</button><button class="btn small soft" data-cm="cChiudi">Annulla</button></div></div>';
@@ -295,7 +295,7 @@
         (mio ? '' : '<button class="cm-ic" data-cmd="nascondi" data-id="' + esc(r.id) + '" title="' + (r.nascosta ? 'Rimetti sul foglio' : 'Nascondi dal foglio (resta qui)') + '">' + (r.nascosta ? 'Mostra' : 'Nascondi') + '</button>') +
         (!mio || r.gruppi.join() === mio ? '<button class="cm-ic x" data-cmd="togli" data-id="' + esc(r.id) + '" title="Togli questa comitiva">✕</button>' : '') + '</div>' +
         '<div class="rr"><input type="time" data-cmd="ora" data-id="' + esc(r.id) + '" value="' + esc(String(r.ora).padStart(5, '0')) + '">' +
-        '<input list="cmSedi" data-cmd="luogo" data-id="' + esc(r.id) + '" value="' + esc(r.luogo) + '" placeholder="Luogo"></div>' +
+        (nuovoLuogo === r.id ? '<input data-cmd="luogoNuovo" data-id="' + esc(r.id) + '" placeholder="Nome del nuovo luogo (es. Casa Ricciardi)" autofocus>' : selLuogo('data-cmd="luogo" data-id="' + esc(r.id) + '"', r.luogo)) + '</div>' +
         '<select data-cmd="cond" data-id="' + esc(r.id) + '"><option value="">— conduttore da comunicare —</option>' +
         '<optgroup label="Conduttori">' + cond.map((p) => '<option value="' + p.id + '"' + (r.conduttore === p.id ? ' selected' : '') + '>' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</optgroup>' +
         '<optgroup label="Altri fratelli">' + altri.map((p) => '<option value="' + p.id + '"' + (r.conduttore === p.id ? ' selected' : '') + '>' + esc(p.cognome + ' ' + p.nome) + '</option>').join('') + '</optgroup>' +
@@ -316,11 +316,44 @@
     if (!qui.length && !vis.length) h += '<p class="nota" style="margin:0">Nessuna comitiva inserita: sul foglio questa domenica resta vuota.</p>';
     return h + '</div>';
   }
-  const sediDatalist = () => '<datalist id="cmSedi">' + ((ctxDom() || {}).sedi || []).map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist>';
+  /* ── luoghi: un elenco unico (Codice.gs → luoghiComitive_), «+ Nuovo luogo…» per aggiungerne uno ── */
+  let nuovoLuogo = null;
+  const elencoLuoghi = () => ((ctxDom() || {}).sedi || []);
+  const uguale = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  function selLuogo(attr, val) {
+    const el = elencoLuoghi().slice();
+    if (val && !el.some((x) => uguale(x, val))) el.push(val);
+    return '<select ' + attr + '>' + (val ? '' : '<option value="" selected>— luogo —</option>') + el.map((x) => '<option value="' + esc(x) + '"' + (uguale(x, val) ? ' selected' : '') + '>' + esc(x) + '</option>').join('') +
+      '<option value="@nuovo">+ Nuovo luogo…</option></select>';
+  }
+  /** Il luogo predefinito dei gruppi (se tutti i gruppi della comitiva hanno lo stesso), altrimenti ''. */
+  function luogoDeiGruppi(gruppi) {
+    const pr = (((ctxDom() || {}).luoghi || {}).predefiniti) || {}, v = gruppi.map((g) => pr[g] || '');
+    return v.length && v.every((x) => x && x === v[0]) ? v[0] : '';
+  }
+  /** Aggiunge un luogo all'elenco (se c'è già lo riusa, scritto come nell'elenco) e restituisce il nome. */
+  function aggiungiLuogo(nome) {
+    return P.srv('aggiungiLuogo', nome).then((r) => { const d = ctxDom(); d.sedi = r.elenco; d.luoghi = r; return r.scelto; });
+  }
   function nuovaRiga(data, gruppi, n) {
-    const d = ctxDom(), sedi = d.sedi || [];
+    const sedi = elencoLuoghi();
     const sala = sedi.find((x) => /sala/i.test(x)) || sedi[0] || 'Sala del Regno';
-    return { id: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), data: data, ora: '09:30', luogo: sala, gruppi: gruppi, n: n || 1, conduttore: '', esterno: '' };
+    return { id: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), data: data, ora: '09:30', luogo: luogoDeiGruppi(gruppi) || sala, gruppi: gruppi, n: n || 1, conduttore: '', esterno: '' };
+  }
+  /** Pannello per chi cura le comitive: luoghi aggiunti e luogo predefinito di ogni gruppo. */
+  function pannelloLuoghi() {
+    const d = C.d, L = d.luoghi || { elenco: d.sedi || [], fissi: [], predefiniti: {} }, gruppi = (d.foglio && d.foglio.gruppi) || [];
+    const fisso = (x) => (L.fissi || []).some((y) => uguale(x, y));
+    return '<details class="cm-pan"><summary>Luoghi delle comitive</summary>' +
+      '<p class="nota" style="margin:6px 0 0">I luoghi delle comitive di congregazione vengono dal Calendario e restano sempre. Gli altri li aggiungi con «+ Nuovo luogo…» quando scegli il luogo di una comitiva, oppure qui. Il <b>luogo predefinito</b> di un gruppo si mette da solo nelle sue comitive della domenica (lo puoi sempre cambiare).</p><ul>' +
+      L.elenco.map((x) => '<li>' + esc(x) + (fisso(x) ? ' <small class="nota">· dal Calendario</small>' : ' <button class="cm-ic x" data-cm="luogoVia" data-v="' + esc(x) + '" title="Togli dall\'elenco">✕</button>') + '</li>').join('') + '</ul>' +
+      '<div class="rr"><input data-cm="luogoPiu" placeholder="Nuovo luogo (es. Casa Ricciardi)"></div>' +
+      (gruppi.length ? '<p class="nota" style="margin:8px 0 2px"><b>Luogo predefinito dei gruppi</b> (domenica)</p>' + gruppi.map((g) => '<div class="rr"><span style="min-width:110px;font-weight:600">' + esc(g) + '</span><select data-cm="luogoGruppo" data-v="' + esc(g) + '"><option value="">— come sempre —</option>' +
+        L.elenco.map((x) => '<option value="' + esc(x) + '"' + (uguale((L.predefiniti || {})[g], x) ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select></div>').join('') : '') + '</details>';
+  }
+  function salvaLuoghi(elenco, predefiniti) {
+    const fissi = (C.d.luoghi || {}).fissi || [];
+    return P.srv('salvaLuoghi', { elenco: elenco.filter((x) => !fissi.some((y) => uguale(x, y))), predefiniti: predefiniti }).then((r) => { C.d.sedi = r.elenco; C.d.luoghi = r; P.toast('Luoghi salvati'); rd(); }).catch((e) => P.toast(e.message, true));
   }
   function trova(id) { return righeDom().find((r) => r.id === id); }
   function azioneDom(u) {
@@ -359,11 +392,12 @@
       const ordina = (a) => a.sort((x, y) => ids.indexOf(x) - ids.indexOf(y));
       if (dove) return via.then(() => salvaDom(Object.assign({}, dove, { gruppi: ordina(dove.gruppi.concat(g)) })));
       const modello = righe[0];
-      return via.then(() => salvaDom(Object.assign(nuovaRiga(data, [g]), modello ? { ora: modello.ora, luogo: '' } : {})));
+      return via.then(() => salvaDom(Object.assign(nuovaRiga(data, [g]), modello ? { ora: modello.ora, luogo: luogoDeiGruppi([g]) } : {})));
     }
     if (!r) return;
     if (c === 'ora' && u.value) return salvaDom(Object.assign({}, r, { ora: u.value }));
-    if (c === 'luogo') return salvaDom(Object.assign({}, r, { luogo: u.value.trim() }));
+    if (c === 'luogo') { if (u.value === '@nuovo') { nuovoLuogo = r.id; return rd(); } return salvaDom(Object.assign({}, r, { luogo: u.value.trim() })); }
+    if (c === 'luogoNuovo') { nuovoLuogo = null; if (!u.value.trim()) return rd(); return aggiungiLuogo(u.value).then((nome) => salvaDom(Object.assign({}, r, { luogo: nome }))).catch((e) => { P.toast(e.message, true); rd(); }); }
     if (c === 'esterno') return salvaDom(Object.assign({}, r, { esterno: u.value.trim(), conduttore: '' }));
     if (c === 'cond') { if (u.value === '@scrivi') { C.scrivi = r.id; return rd(); } return salvaDom(Object.assign({}, r, { conduttore: u.value, esterno: '' })); }
   }
@@ -376,7 +410,7 @@
     }
     const oggi = new Date().toISOString().slice(0, 7), mesi = [0, 1, 2].map((n) => meseDopo(oggi, n));
     let h = h0 + '<div class="rp-bar"><select data-cmd="meseDom">' + mesi.map((m) => '<option value="' + m + '"' + (m === DOM.mese ? ' selected' : '') + '>' + P.cap(nomeMese(m)) + '</option>').join('') + '</select></div>';
-    h += '<p class="rp-aiuto">Qui compili le comitive della domenica del gruppo <b>' + esc(DOM.d.gruppo) + '</b>: orario, luogo e conduttore. Le comitive con altri gruppi le vedi e puoi metterci il conduttore; come si dividono i gruppi lo decide chi cura il programma delle comitive.</p>' + sediDatalist();
+    h += '<p class="rp-aiuto">Qui compili le comitive della domenica del gruppo <b>' + esc(DOM.d.gruppo) + '</b>: orario, luogo e conduttore. Le comitive con altri gruppi le vedi e puoi metterci il conduttore; come si dividono i gruppi lo decide chi cura il programma delle comitive.</p>';
     DOM.d.settimane.forEach((w, i) => { h += '<section class="cm-wk"><h3><b>' + (i + 1) + 'ª settimana</b><span>' + intervallo(w.lunedi) + '</span></h3>' + domenica(Object.assign({ comitive: [] }, w), i, DOM.d.gruppo) + '</section>'; });
     return h;
   };
@@ -490,10 +524,13 @@
     if (k === 'cSalva') {
       const f = u.closest('.cm-mod'), val = (id) => (document.getElementById(id) || {}).value || '';
       const seg = document.getElementById('cmSeguenti');
-      const d = { data: val('cmGiorno'), ora: val('cmOra').replace(/^0(\d):/, '$1:'), luogo: val('cmLuogo').trim(), motivo: val('cmMotivo').trim(), seguenti: !!(seg && seg.checked) };
-      if (f.dataset.k) return cambioCalendario(f.dataset.k, Object.assign({ azione: 'cambia' }, d));
-      return cambioCalendario('', Object.assign({ azione: 'aggiungi' }, d));
+      const nuovo = val('cmLuogo') === '@nuovo', d = { data: val('cmGiorno'), ora: val('cmOra').replace(/^0(\d):/, '$1:'), luogo: nuovo ? '' : val('cmLuogo').trim(), motivo: val('cmMotivo').trim(), seguenti: !!(seg && seg.checked) };
+      if (nuovo && !val('cmLuogoNuovo').trim()) return P.toast('Scrivi il nome del nuovo luogo', true);
+      const vai = () => (f.dataset.k ? cambioCalendario(f.dataset.k, Object.assign({ azione: 'cambia' }, d)) : cambioCalendario('', Object.assign({ azione: 'aggiungi' }, d)));
+      if (nuovo) return aggiungiLuogo(val('cmLuogoNuovo')).then((nome) => { d.luogo = nome; return vai(); }).catch((e) => P.toast(e.message, true));
+      return vai();
     }
+    if (k === 'luogoVia') { const L = C.d.luoghi || {}; if (!confirm('Tolgo «' + v + '» dall\'elenco dei luoghi? Le comitive già salvate lo mantengono.')) return; return salvaLuoghi((L.elenco || []).filter((x) => !uguale(x, v)), Object.assign({}, L.predefiniti)); }
     if (k === 'pdf') return preparaPdf();
     if (k === 'pdfTutti') return preparaTutti();
     if (k === 'variante') { salvaPref('cm-comitive-variante', v); return rd(); }
@@ -523,6 +560,9 @@
     if (!u) return;
     const k = u.dataset.cm;
     if (k === 'mese') { if (C.salvo === 'Da salvare') { clearTimeout(C.coda); salva(); } C.mese = u.value; C.salvo = ''; C.avvisi = []; return carica(u.value); }
+    if (k === 'cLuogo') { const n = document.getElementById('cmLuogoNuovo'); if (n) { n.style.display = u.value === '@nuovo' ? '' : 'none'; if (u.value === '@nuovo') n.focus(); } return; }
+    if (k === 'luogoPiu') { if (!u.value.trim()) return; return aggiungiLuogo(u.value).then(() => { P.toast('Luogo aggiunto'); rd(); }).catch((err) => P.toast(err.message, true)); }
+    if (k === 'luogoGruppo') { const L = C.d.luoghi || {}, pr = Object.assign({}, L.predefiniti); if (u.value) pr[u.dataset.v] = u.value; else delete pr[u.dataset.v]; return salvaLuoghi(L.elenco || [], pr); }
     if (k === 'chi') { if (u.value) C.st.assegnati[u.dataset.k] = u.value; else delete C.st.assegnati[u.dataset.k]; delete C.motivi[u.dataset.k]; cambiato(); return rd(); }
     if (k === 'nota') { if (u.value.trim()) C.st.note[u.dataset.k] = u.value.trim(); else delete C.st.note[u.dataset.k]; return cambiato(); }
     if (k === 'dom') { const d = C.st.domeniche[u.dataset.k] || (C.st.domeniche[u.dataset.k] = {}); d[u.dataset.v] = u.value.trim(); return cambiato(); }
