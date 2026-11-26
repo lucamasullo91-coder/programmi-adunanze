@@ -1781,7 +1781,7 @@ function dataRoma_(s) {
  * pulizie:  il lunedì, gruppo, coordinatore e referente della settimana (e la pulizia generale, se c'è);
  * riepilogo: la domenica, i miei impegni della settimana dopo;
  * parti / comitive: X giorni prima, il promemoria per prepararsi;
- * sostituzioni: una volta all'ora, chi è in turno ma risulta assente o ha una parte che lo esclude dal reparto.
+ * sostituzioni: una volta ogni 3 ore (dalle 9), chi è in turno ma risulta assente o ha una parte che lo esclude dal reparto.
  * Ogni invio si segna nelle proprietà (avv:…) per non ripeterlo. */
 const AVVISI_BASE_ = {
   adunanza: { on: true, ora: '09:00' }, pulizie: { on: true, ora: '09:00' }, riepilogo: { on: true, ora: '19:30' },
@@ -1818,8 +1818,13 @@ function inviiWhatsApp(e) {
   if (A.adunanza.on && ok(A.adunanza.ora)) passo('adunanza', () => avvisoAdunanze_(p, oggi, invia, foto));
   if (A.pulizie.on && d_(oggi).getUTCDay() === 1 && ok(A.pulizie.ora)) passo('pulizie', () => avvisoPulizie_(p, oggi, invia, foto));
   const io = p.getProperty('IO_ID');
-  if (io && (A.riepilogo.on || A.parti.on || A.comitive.on)) passo('impegni', () => avvisoImpegni_(p, A, io, oggi, ok, invia));
-  if (A.sostituzioni.on && Number(Utilities.formatDate(adesso, 'Europe/Rome', 'm')) < 15) passo('sostituzioni', () => avvisoSostituzioni_(p, oggi, invia, link));
+  // I controlli pesanti (parti, comitive, sostituzioni) girano una volta per fascia di 3 ore, dalle 9 alle 24:
+  // fascia 0 = 9–11, 1 = 12–14, 2 = 15–17, 3 = 18–20, 4 = 21–23. Prima delle 9 niente.
+  const oraRoma = Number(Utilities.formatDate(adesso, 'Europe/Rome', 'H'));
+  const fascia = oraRoma >= 9 ? Math.floor((oraRoma - 9) / 3) : -1;
+  if (io && (A.riepilogo.on || A.parti.on || A.comitive.on)) passo('impegni', () => avvisoImpegni_(p, A, io, oggi, ok, invia, fascia));
+  const giroSost = 'avv:giro:' + oggi + ':sost:' + fascia;
+  if (A.sostituzioni.on && fascia >= 0 && !p.getProperty(giroSost)) passo('sostituzioni', () => { avvisoSostituzioni_(p, oggi, invia, link); p.setProperty(giroSost, '1'); });
   if (d_(oggi).getUTCDay() === 1 && !p.getProperty('avv:pulito:' + oggi)) passo('pulizia', () => pulisciAvvisi_(p, oggi));
 }
 /** Il giorno dell'adunanza: le immagini di tutti i reparti, poi presidente e prove dell'Audio/Video. */
@@ -1861,7 +1866,7 @@ function avvisoPulizie_(p, oggi, invia, foto) {
   p.setProperty(key, '1');
 }
 /** I miei impegni (dalla bacheca): riepilogo della domenica per la settimana dopo, parti e comitive qualche giorno prima. */
-function avvisoImpegni_(p, A, io, oggi, ok, invia) {
+function avvisoImpegni_(p, A, io, oggi, ok, invia, fascia) {
   const persona = { id: io, tutto: true };
   const lista = () => {
     const m = oggi.slice(0, 7), out = [], visti = {};
@@ -1877,9 +1882,14 @@ function avvisoImpegni_(p, A, io, oggi, ok, invia) {
       (sett.length ? sett.map((x) => breveIt_(x.data) + ' · ' + x.testo).join('\n') : 'Nessun impegno in programma.'));
     p.setProperty('avv:riep:' + oggi, '1');
   }
+  // parti e comitive: una sola volta per fascia di 3 ore (la bacheca di due mesi è il calcolo più pesante dell'avviso)
+  const giroImp = 'avv:giro:' + oggi + ':imp:' + fascia;
+  if (fascia < 0 || p.getProperty(giroImp)) return;
+  let controllato = false;
   [['parti', (x) => x.tipo === 'inf' || x.tipo === 'fs', '📖 Preparati'], ['comitive', (x) => x.tipo === 'com', '🚶 Comitiva']].forEach(([nome, filtro, titolo]) => {
     const a = A[nome];
     if (!a.on || !ok(a.ora)) return;
+    controllato = true;
     const giorno = piu_(oggi, a.giorni);
     imp().filter((x) => filtro(x) && x.data === giorno).forEach((x) => {
       const key = 'avv:' + nome + ':' + x.data + ':' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, x.testo)).slice(0, 10);
@@ -1888,8 +1898,9 @@ function avvisoImpegni_(p, A, io, oggi, ok, invia) {
       p.setProperty(key, '1');
     });
   });
+  if (controllato) p.setProperty(giroImp, '1');
 }
-/** Una volta all'ora: turni pubblicati da oggi in poi con la persona assente o con una parte che la esclude dal reparto.
+/** Una volta ogni 3 ore (dalle 9): turni pubblicati da oggi in poi con la persona assente o con una parte che la esclude dal reparto.
  * Avvisa solo dei casi nuovi (quelli già segnalati sono in avv:sost). */
 function avvisoSostituzioni_(p, oggi, invia, link) {
   const cal = leggiImpostazione_('calendario', CALENDARIO_BASE_), m = oggi.slice(0, 7);
